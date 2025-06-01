@@ -7,15 +7,14 @@ import (
 )
 
 type Auth struct {
-	AccessCookieName   string
-	AccessTokenSecret  string
-	AccessTokenTTL     time.Duration
-	RefreshCookieName  string
-	RefreshTokenSecret string
-	RefreshTokenTTL    time.Duration
-	Issuer             string
-	Audience           string
-	Domain             string
+	AccessCookieName  string
+	AccessTokenSecret string
+	AccessTokenTTL    time.Duration
+	RefreshCookieName string
+	RefreshTokenTTL   time.Duration
+	Issuer            string
+	Audience          string
+	Domain            string
 }
 type DB struct {
 	PostgresUrl  string
@@ -47,7 +46,6 @@ func Load() (*AppConfig, error) {
 	cfg.Auth.AccessTokenSecret = os.Getenv("JWT_ACCESS_SECRET")
 	cfg.Auth.AccessTokenTTL = 10 * time.Minute
 	cfg.Auth.RefreshCookieName = "refresh_token"
-	cfg.Auth.RefreshTokenSecret = os.Getenv("JWT_REFRESH_SECRET")
 	cfg.Auth.RefreshTokenTTL = 24 * time.Hour
 	cfg.Auth.Issuer = "letsgo"
 	cfg.Auth.Audience = "AuthService"

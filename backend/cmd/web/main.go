@@ -8,6 +8,7 @@ import (
 	"letsgo/internal/static"
 
 	"letsgo/internal/config"
+	"letsgo/pkg/jwt"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,9 +25,14 @@ func main() {
 	}
 	defer postgres.Close()
 
+	jwtManager := jwt.NewManager(
+		appConfig.Auth.AccessTokenSecret, appConfig.Auth.AccessTokenTTL,
+		appConfig.Auth.Issuer, appConfig.Auth.Audience,
+	)
+
 	r := chi.NewRouter()
 	r.Route("/api", func(api chi.Router) {
-		api.Mount("/auth", auth.Router(postgres, redis, &appConfig.Auth))
+		api.Mount("/auth", auth.Router(postgres, redis, &jwtManager, &appConfig.Auth))
 	})
 
 	// WebSocket routes (placeholder)

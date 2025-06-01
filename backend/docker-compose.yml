@@ -5,8 +5,9 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./cmd:/app/cmd
-      - ./static:/app/static
       - ./internal:/app/internal
+      - ./pkg:/app/pkg
+      - ./static:/app/static
       - ./scripts:/app/scripts
       - .air.toml:/app/.air.toml
     environment:
@@ -18,7 +19,6 @@ services:
       - REDIS_URL=${REDIS_URL}
 
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
 
       - DOMAIN=${DOMAIN}
       - GO_PORT=${GO_PORT}
