@@ -26,7 +26,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Route("/api", func(api chi.Router) {
-		api.Handle("/auth/*", auth.Router(postgres, redis))
+		api.Mount("/auth", auth.Router(postgres, redis, &appConfig.Auth))
 	})
 
 	// WebSocket routes (placeholder)

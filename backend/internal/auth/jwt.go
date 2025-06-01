@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"letsgo/internal/config"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -19,12 +21,12 @@ type JWTManager struct {
 	audience          string
 }
 
-func NewJWTManager(accessTokenSecret string, accessTokenExpiry time.Duration, issuer, audience string) *JWTManager {
+func NewJWTManager(c *config.Auth) *JWTManager {
 	return &JWTManager{
-		accessTokenSecret: []byte(accessTokenSecret),
-		accessTokenExpiry: accessTokenExpiry,
-		issuer:            issuer,
-		audience:          audience,
+		accessTokenSecret: []byte(c.AccessTokenSecret),
+		accessTokenExpiry: c.AccessTokenTTL,
+		issuer:            c.Issuer,
+		audience:          c.Audience,
 	}
 }
 

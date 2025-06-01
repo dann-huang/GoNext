@@ -7,12 +7,15 @@ import (
 )
 
 type Auth struct {
+	AccessCookieName   string
 	AccessTokenSecret  string
+	AccessTokenTTL     time.Duration
+	RefreshCookieName  string
 	RefreshTokenSecret string
-	AccessTokenExpiry  time.Duration
-	RefreshTokenExpiry time.Duration
+	RefreshTokenTTL    time.Duration
 	Issuer             string
 	Audience           string
+	Domain             string
 }
 type DB struct {
 	PostgresUrl  string
@@ -40,12 +43,15 @@ func Load() (*AppConfig, error) {
 	cfg := &AppConfig{}
 
 	//auth
+	cfg.Auth.AccessCookieName = "access_token"
 	cfg.Auth.AccessTokenSecret = os.Getenv("JWT_ACCESS_SECRET")
+	cfg.Auth.AccessTokenTTL = 10 * time.Minute
+	cfg.Auth.RefreshCookieName = "refresh_token"
 	cfg.Auth.RefreshTokenSecret = os.Getenv("JWT_REFRESH_SECRET")
-	cfg.Auth.AccessTokenExpiry = 10 * time.Minute
-	cfg.Auth.RefreshTokenExpiry = 24 * time.Hour
+	cfg.Auth.RefreshTokenTTL = 24 * time.Hour
 	cfg.Auth.Issuer = "letsgo"
-	cfg.Auth.Audience = "letsgo"
+	cfg.Auth.Audience = "AuthService"
+	cfg.Auth.Domain = os.Getenv("DOMAIN")
 
 	//db
 	cfg.DB.PostgresUrl = os.Getenv("POSTGRES_URL")
@@ -54,7 +60,7 @@ func Load() (*AppConfig, error) {
 	cfg.DB.PostgresDB = os.Getenv("POSTGRES_DB")
 	cfg.DB.RedisURL = os.Getenv("REDIS_URL")
 
-	cfg.ServerPort = "3000"
+	cfg.ServerPort = os.Getenv("GO_PORT")
 
 	return cfg, nil
 }

@@ -14,21 +14,22 @@ type User struct {
 	PassHash string
 }
 
-func CreateUser(ctx context.Context, db *sql.DB, name, pass string) error {
+func CreateUser(ctx context.Context, db *sql.DB, name, pass string) (*User, error) {
 	if name == "" {
-		return errors.New("name cannot be empty")
+		return nil, errors.New("name cannot be empty")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	query := `INSERT INTO users (name, pass_hash) VALUES ($1, $2)`
-	_, err = db.ExecContext(ctx, query, name, string(hash))
+	query := `INSERT INTO users (name, pass_hash) VALUES ($1, $2) RETURNING id`
+	var id int64
+	err = db.QueryRowContext(ctx, query, name, string(hash)).Scan(&id)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return &User{ID: id, Name: name, PassHash: string(hash)}, nil
 }
 
 func GetUserByName(ctx context.Context, db *sql.DB, name string) (*User, error) {
