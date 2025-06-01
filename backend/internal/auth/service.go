@@ -184,10 +184,8 @@ func (s *AuthService) RefreshHandler() http.HandlerFunc {
 				map[string]string{"error": "Server error"})
 			return
 		}
-
-		// Invalidate Old Refresh Token (single-use token rotation)
 		if err := s.rdb.Del(ctx, oldRefreshToken).Err(); err != nil {
-			// previously found, but now can't delete from redis, not sure what do
+			// token found, but now can't delete from redis, not sure what do
 		}
 
 		// Generate New Tokens
