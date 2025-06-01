@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>SPA Example</title>
+</head>
+<body>
+  <div id="app">Hello from SPA index.html!</div>
+  <script>
+    // Simple SPA navigation example
+    window.addEventListener('DOMContentLoaded', function() {
+      document.body.addEventListener('click', function(e) {
+        if (e.target.tagName === 'A') {
+          e.preventDefault();
+          history.pushState({}, '', e.target.getAttribute('href'));
+          document.getElementById('app').textContent = 'You navigated to ' + location.pathname;
+        }
+      });
+    });
+  </script>
+  <nav>
+    <a href="/">Home</a> |
+    <a href="/about">About</a>
+  </nav>
+</body>
+</html>

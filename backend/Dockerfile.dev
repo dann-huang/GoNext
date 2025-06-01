@@ -1,9 +1,10 @@
 FROM golang:1.24-alpine
-
 WORKDIR /app
 
-COPY go.mod go.sum ./
 RUN go install github.com/air-verse/air@latest
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+COPY go.mod go.sum .
 RUN go mod download
 
 CMD ["air"]

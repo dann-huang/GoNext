@@ -5,7 +5,9 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./src:/app/src
+      - ./scripts:/app/scripts
       - .air.toml:/app/.air.toml
+      - ./static:/app/static
     environment:
       - POSTGRES_URL=${POSTGRES_URL}
       - POSTGRES_USER=${POSTGRES_USER}
