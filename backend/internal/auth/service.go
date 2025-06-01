@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -80,6 +81,7 @@ func (s *AuthService) RegisterHandler() http.HandlerFunc {
 			return
 		}
 		if err != sql.ErrNoRows {
+			fmt.Println("Error checking user:", err)
 			util.RespondJSON(w, http.StatusInternalServerError,
 				map[string]string{"error": "Something went wrong"})
 			return
@@ -96,6 +98,13 @@ func (s *AuthService) RegisterHandler() http.HandlerFunc {
 			"userId":   strconv.FormatInt(usr.ID, 10),
 			"username": usr.Name,
 		})
+	}
+}
+
+func (s *AuthService) IndexHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Auth is running"}`))
 	}
 }
 

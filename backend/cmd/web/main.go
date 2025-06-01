@@ -8,6 +8,7 @@ import (
 	"letsgo/internal/static"
 
 	"letsgo/internal/config"
+	"letsgo/internal/user"
 	"letsgo/pkg/jwt"
 
 	"github.com/go-chi/chi/v5"
@@ -25,6 +26,8 @@ func main() {
 	}
 	defer postgres.Close()
 
+	user.InitSchema(postgres)
+
 	jwtManager := jwt.NewManager(
 		appConfig.Auth.AccessTokenSecret, appConfig.Auth.AccessTokenTTL,
 		appConfig.Auth.Issuer, appConfig.Auth.Audience,
@@ -32,20 +35,17 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Route("/api", func(api chi.Router) {
-		api.Mount("/auth", auth.Router(postgres, redis, &jwtManager, &appConfig.Auth))
+		api.Mount("/auth", auth.Router(postgres, redis, jwtManager, &appConfig.Auth))
 	})
 
-	// WebSocket routes (placeholder)
 	r.Route("/ws", func(wsRouter chi.Router) {
 		// TODO: Mount WebSocket handlers from ws package
 	})
 
-	// Room management routes (placeholder)
 	r.Route("/rooms", func(roomRouter chi.Router) {
 		// TODO: Mount room management handlers from rooms package
 	})
 
-	// WebRTC signaling routes (placeholder)
 	r.Route("/webrtc", func(webrtcRouter chi.Router) {
 		// TODO: Mount WebRTC signaling handlers from webrtc package
 	})

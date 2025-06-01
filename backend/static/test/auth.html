@@ -3,235 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auth Test Page</title>
+    <title>Auth API Tester</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1, h2 { color: #0056b3; }
-        input[type="text"], input[type="password"] {
-            width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;
-        }
-        button {
-            background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer;
-            font-size: 16px; margin-right: 10px;
-        }
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        h1, h2 { color: #333; }
+        .section { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fafafa; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-right: 10px; }
         button:hover { background-color: #0056b3; }
-        .status-box {
-            background-color: #e9ecef; padding: 15px; border-radius: 4px; margin-top: 20px;
-            white-space: pre-wrap; font-family: monospace;
-        }
-        .error { color: red; }
-        .success { color: green; }
-        .info { color: blue; }
+        .output { background-color: #e2e2e2; padding: 10px; border-radius: 4px; margin-top: 10px; white-space: pre-wrap; font-family: monospace; font-size: 0.9em; }
+        .status-message { font-weight: bold; margin-top: 10px; }
+        .status-message.success { color: green; }
+        .status-message.error { color: red; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Authentication Test</h1>
+        <h1>Auth API Tester</h1>
 
-        <h2>Login / Logout</h2>
-        <div>
-            <label for="email">Email:</label><br>
-            <input type="text" id="email" value="testuser@example.com"><br>
-            <label for="password">Password:</label><br>
-            <input type="password" id="password" value="password123"><br>
+        <div class="section">
+            <h2>User Credentials</h2>
+            <label for="username">Username:</label>
+            <input type="text" id="username" value="test">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="pass123">
+        </div>
+
+        <div class="section">
+            <h2>Actions</h2>
+            <button id="registerBtn">Register</button>
             <button id="loginBtn">Login</button>
             <button id="logoutBtn">Logout</button>
-            <button id="refreshTokenBtn">Refresh Token</button>
+            <button id="refreshBtn">Refresh Token</button>
         </div>
 
-        <h2>API Test</h2>
-        <div>
-            <button id="testApiBtn">Test Protected API</button>
+        <div class="section">
+            <h2>API Response</h2>
+            <div id="responseStatus" class="status-message"></div>
+            <div id="responseOutput" class="output">Waiting for action...</div>
         </div>
 
-        <h2>Status</h2>
-        <pre id="status" class="status-box">Not logged in.</pre>
-        <pre id="apiResponse" class="status-box">API Response: (none)</pre>
+        <div class="section">
+            <h2>Current Session Info (from last API response)</h2>
+            <p><strong>Access Token Expires At:</strong> <span id="accessTokenExpiresAt">N/A</span></p>
+            <p><strong>Refresh Token Expires At:</strong> <span id="refreshTokenExpiresAt">N/A</span></p>
+            <p><strong>User ID (from Access Token):</strong> <span id="decodedUserId">N/A</span></p>
+            <p>
+                *Note: Access and Refresh tokens are HttpOnly cookies and cannot be read by JavaScript directly.
+                The expiry times above are provided by the server in the login/refresh response body.
+            </p>
+        </div>
     </div>
 
     <script>
-        const API_BASE_URL = window.location.origin; // Assuming your Go server runs on the same origin as this HTML
-        // If your Go server is on a different port/domain, change this: e.g., 'http://localhost:8080'
-
-        const emailInput = document.getElementById('email');
+        const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
+        const registerBtn = document.getElementById('registerBtn');
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
-        const refreshTokenBtn = document.getElementById('refreshTokenBtn');
-        const testApiBtn = document.getElementById('testApiBtn');
-        const statusDiv = document.getElementById('status');
-        const apiResponseDiv = document.getElementById('apiResponse');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const responseStatusDiv = document.getElementById('responseStatus');
+        const responseOutputDiv = document.getElementById('responseOutput');
+        const accessTokenExpiresAtSpan = document.getElementById('accessTokenExpiresAt');
+        const refreshTokenExpiresAtSpan = document.getElementById('refreshTokenExpiresAt');
+        const decodedUserIdSpan = document.getElementById('decodedUserId');
 
-        let accessTokenExpiresAt = null;
-        let refreshTokenExpiresAt = null;
-        let currentUserId = null;
-
-        function updateStatus() {
-            let statusText = "Login Status: ";
-            if (accessTokenExpiresAt && new Date() < new Date(accessTokenExpiresAt)) {
-                const timeLeft = Math.floor((new Date(accessTokenExpiresAt) - new Date()) / 1000);
-                statusText += `<span class="success">Logged In (User ID: ${currentUserId})</span><br>`;
-                statusText += `Access Token valid for: ${timeLeft} seconds<br>`;
-            } else {
-                statusText += `<span class="error">Not Logged In (Access Token Expired/Missing)</span><br>`;
+        // Helper function to decode JWT (simplified, just for 'sub' claim)
+        function decodeJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error("Failed to decode JWT:", e);
+                return null;
             }
-
-            if (refreshTokenExpiresAt) {
-                const timeLeft = Math.floor((new Date(refreshTokenExpiresAt) - new Date()) / 1000);
-                 if (new Date() < new Date(refreshTokenExpiresAt)) {
-                    statusText += `Refresh Token valid for: ${timeLeft} seconds`;
-                 } else {
-                    statusText += `<span class="error">Refresh Token Expired</span>`;
-                 }
-            } else {
-                statusText += `Refresh Token: Not available`;
-            }
-            statusDiv.innerHTML = statusText;
         }
 
-        function displayApiResponse(message, isError = false) {
-            apiResponseDiv.className = `status-box ${isError ? 'error' : 'success'}`;
-            apiResponseDiv.innerText = `API Response: ${message}`;
-        }
-
-        async function sendRequest(url, method, body = null) {
-            const options = {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                // Credentials: 'include' is crucial for sending cookies
-                // It means: send cookies associated with this domain
-                // and accept cookies from this domain.
-                credentials: 'include',
-            };
-            if (body) {
-                options.body = JSON.stringify(body);
-            }
+        async function makeRequest(url, method, body = null) {
+            responseStatusDiv.textContent = '';
+            responseOutputDiv.textContent = 'Loading...';
+            responseStatusDiv.className = 'status-message';
+            accessTokenExpiresAtSpan.textContent = 'N/A';
+            refreshTokenExpiresAtSpan.textContent = 'N/A';
+            decodedUserIdSpan.textContent = 'N/A';
 
             try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    // Important: Credentials must be included for cookies to be sent/received
+                    credentials: 'include' // 'same-origin', 'include', 'omit'
+                };
+
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
                 const response = await fetch(url, options);
-                const data = await response.json().catch(() => ({})); // Try to parse JSON, fall back to empty object
-                return { response, data };
-            } catch (error) {
-                console.error("Network or parsing error:", error);
-                throw new Error(`Network error: ${error.message}`);
-            }
-        }
+                const data = await response.json();
 
-        async function login() {
-            displayApiResponse("Logging in...");
-            try {
-                const { response, data } = await sendRequest(
-                    `${API_BASE_URL}/auth/login`,
-                    'POST',
-                    { email: emailInput.value, password: passwordInput.value }
-                );
+                responseOutputDiv.textContent = JSON.stringify(data, null, 2);
 
                 if (response.ok) {
-                    displayApiResponse(`Login successful: ${data.message}`, false);
-                    accessTokenExpiresAt = data.accessTokenExpiresAt;
-                    refreshTokenExpiresAt = data.refreshTokenExpiresAt;
-                    currentUserId = data.userId;
+                    responseStatusDiv.textContent = `Success: ${response.status} ${response.statusText}`;
+                    responseStatusDiv.classList.add('success');
+
+                    // Update session info from response if available
+                    if (data.accessTokenExpiresAt) {
+                        accessTokenExpiresAtSpan.textContent = data.accessTokenExpiresAt;
+                    }
+                    if (data.refreshTokenExpiresAt) {
+                        refreshTokenExpiresAtSpan.textContent = data.refreshTokenExpiresAt;
+                    }
+                    if (data.accessToken) { // Try to decode userId from AccessToken if it's in the response body
+                        const decodedToken = decodeJwt(data.accessToken);
+                        if (decodedToken && decodedToken.sub) {
+                            decodedUserIdSpan.textContent = decodedToken.sub;
+                        }
+                    } else if (data.userId) { // Fallback if accessToken isn't in response but userId is (e.g., from Register)
+                        decodedUserIdSpan.textContent = data.userId;
+                    }
+
                 } else {
-                    displayApiResponse(`Login failed: ${data.error || response.statusText}`, true);
-                    accessTokenExpiresAt = null;
-                    refreshTokenExpiresAt = null;
-                    currentUserId = null;
+                    responseStatusDiv.textContent = `Error: ${response.status} ${response.statusText}`;
+                    responseStatusDiv.classList.add('error');
                 }
             } catch (error) {
-                displayApiResponse(`Login error: ${error.message}`, true);
-                accessTokenExpiresAt = null;
-                refreshTokenExpiresAt = null;
-                currentUserId = null;
-            } finally {
-                updateStatus();
+                responseStatusDiv.textContent = `Network Error: ${error.message}`;
+                responseStatusDiv.classList.add('error');
+                responseOutputDiv.textContent = `Failed to connect to API: ${error.message}`;
             }
         }
 
-        async function logout() {
-            displayApiResponse("Logging out...");
-            try {
-                const { response, data } = await sendRequest(
-                    `${API_BASE_URL}/auth/logout`,
-                    'POST'
-                );
-                if (response.ok) {
-                    displayApiResponse(`Logout successful: ${data.message}`, false);
-                    accessTokenExpiresAt = null;
-                    refreshTokenExpiresAt = null;
-                    currentUserId = null;
-                } else {
-                    displayApiResponse(`Logout failed: ${data.error || response.statusText}`, true);
-                }
-            } catch (error) {
-                displayApiResponse(`Logout error: ${error.message}`, true);
-            } finally {
-                updateStatus();
-            }
-        }
+        registerBtn.addEventListener('click', () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+            makeRequest('/api/auth/register', 'POST', { name: username, pass: password });
+        });
 
-        async function refreshToken() {
-            displayApiResponse("Attempting to refresh token...");
-            try {
-                const { response, data } = await sendRequest(
-                    `${API_BASE_URL}/auth/refresh`,
-                    'POST'
-                );
+        loginBtn.addEventListener('click', () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+            makeRequest('/api/auth/login', 'POST', { name: username, pass: password });
+        });
 
-                if (response.ok) {
-                    displayApiResponse(`Token refresh successful: ${data.message}`, false);
-                    accessTokenExpiresAt = data.accessTokenExpiresAt;
-                    refreshTokenExpiresAt = data.refreshTokenExpiresAt;
-                    currentUserId = data.userId;
-                } else {
-                    displayApiResponse(`Token refresh failed: ${data.error || response.statusText}`, true);
-                    accessTokenExpiresAt = null;
-                    refreshTokenExpiresAt = null;
-                    currentUserId = null;
-                }
-            } catch (error) {
-                displayApiResponse(`Refresh token error: ${error.message}`, true);
-                accessTokenExpiresAt = null;
-                refreshTokenExpiresAt = null;
-                currentUserId = null;
-            } finally {
-                updateStatus();
-            }
-        }
+        logoutBtn.addEventListener('click', () => {
+            // Note: Logout only sends the request; HttpOnly cookies are cleared by the server.
+            makeRequest('/api/auth/logout', 'POST');
+            // Optimistically clear display, as client cannot confirm cookie deletion
+            accessTokenExpiresAtSpan.textContent = 'N/A';
+            refreshTokenExpiresAtSpan.textContent = 'N/A';
+            decodedUserIdSpan.textContent = 'N/A';
+        });
 
-        async function testProtectedApi() {
-            displayApiResponse("Testing protected API...");
-            try {
-                const { response, data } = await sendRequest(
-                    `${API_BASE_URL}/api/protected`,
-                    'GET'
-                );
-
-                if (response.ok) {
-                    displayApiResponse(`Protected API success: ${data.message || await response.text()}`, false);
-                } else if (response.status === 401) {
-                    displayApiResponse(`Protected API failed (401 Unauthorized): ${data.error || response.statusText}`, true);
-                    // This is where you might trigger a refresh token flow automatically in a real app
-                    // For this test, we just show the error.
-                } else {
-                    displayApiResponse(`Protected API failed (${response.status}): ${data.error || response.statusText}`, true);
-                }
-            } catch (error) {
-                displayApiResponse(`Protected API error: ${error.message}`, true);
-            }
-        }
-
-        // Event Listeners
-        loginBtn.addEventListener('click', login);
-        logoutBtn.addEventListener('click', logout);
-        refreshTokenBtn.addEventListener('click', refreshToken);
-        testApiBtn.addEventListener('click', testProtectedApi);
-
-        // Initial status update
-        updateStatus();
-        setInterval(updateStatus, 1000); // Update status every second
+        refreshBtn.addEventListener('click', () => {
+            makeRequest('/api/auth/refresh', 'POST');
+        });
     </script>
 </body>
 </html>

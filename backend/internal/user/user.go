@@ -46,3 +46,17 @@ func GetUserByName(ctx context.Context, db *sql.DB, name string) (*User, error) 
 func (u *User) VerifyPassword(password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(u.PassHash), []byte(password)) == nil
 }
+
+func InitSchema(db *sql.DB) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		name TEXT UNIQUE NOT NULL,
+		password TEXT NOT NULL
+	);`
+	_, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+	return nil
+}

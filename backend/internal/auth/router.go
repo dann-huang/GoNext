@@ -14,6 +14,8 @@ func Router(db *sql.DB, rdb *redis.Client, jwt *jwt.JWTManager, config *config.A
 	s := NewAuthService(db, rdb, jwt, config)
 
 	r := chi.NewRouter()
+	r.Get("/", s.IndexHandler())
+	r.Post("/register", s.RegisterHandler())
 	r.Post("/login", s.LoginHandler())
 	r.Post("/logout", s.LogoutHandler())
 	r.Post("/refresh", s.RefreshHandler())
