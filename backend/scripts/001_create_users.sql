@@ -1,5 +1,0 @@
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    user TEXT UNIQUE NOT NULL,
-    pass_hash TEXT NOT NULL
-);
