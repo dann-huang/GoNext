@@ -2,9 +2,9 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd = "go build -o ./tmp/main ./src/main.go"
+  cmd = "go build -o ./tmp/main ./cmd/web/main.go"
   bin = "./tmp/main"
-  watch_dir = "src"
+  watch_dir = ["cmd", "internal"]
   watch_ext = ["go"]
   exclude_dir = ["tmp", "vendor"]
 

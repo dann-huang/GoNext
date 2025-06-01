@@ -4,10 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
-      - ./src:/app/src
+      - ./cmd:/app/cmd
+      - ./static:/app/static
+      - ./internal:/app/internal
       - ./scripts:/app/scripts
       - .air.toml:/app/.air.toml
-      - ./static:/app/static
     environment:
       - POSTGRES_URL=${POSTGRES_URL}
       - POSTGRES_USER=${POSTGRES_USER}

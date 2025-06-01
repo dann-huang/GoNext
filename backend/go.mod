@@ -1,4 +1,4 @@
-module letsgo-backend
+module letsgo
 
 go 1.24.3
 
