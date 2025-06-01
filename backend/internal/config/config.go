@@ -56,7 +56,7 @@ func Load() (*AppConfig, error) {
 	//db
 	cfg.DB.PostgresUrl = os.Getenv("POSTGRES_URL")
 	cfg.DB.PostgresUser = os.Getenv("POSTGRES_USER")
-	cfg.DB.PostgresPass = os.Getenv("POSTGRES_PASS")
+	cfg.DB.PostgresPass = os.Getenv("POSTGRES_PASSWORD")
 	cfg.DB.PostgresDB = os.Getenv("POSTGRES_DB")
 	cfg.DB.RedisURL = os.Getenv("REDIS_URL")
 

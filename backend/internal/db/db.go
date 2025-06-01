@@ -24,8 +24,7 @@ func Open(c *config.DB) (*sql.DB, *redis.Client, error) {
 	}
 	println("postgres success")
 
-	redisURL := fmt.Sprintf("redis://%s", rString)
-	opt, err := redis.ParseURL(redisURL)
+	opt, err := redis.ParseURL(rString)
 	if err != nil {
 		pg.Close()
 		return nil, nil, fmt.Errorf("invalid redis config: %w", err)

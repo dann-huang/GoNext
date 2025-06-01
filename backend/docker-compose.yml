@@ -23,8 +23,10 @@ services:
       - DOMAIN=${DOMAIN}
       - GO_PORT=${GO_PORT}
     ports:
-      - "80:3000"
-    command: air
+      - "80:${GO_PORT}"
+    depends_on:
+      - postgres
+      - redis
 
   postgres:
     image: postgres:13
