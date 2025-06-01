@@ -3,28 +3,30 @@ package main
 import (
 	"net/http"
 
+	"letsgo/internal/auth"
+	"letsgo/internal/db"
 	"letsgo/internal/static"
+
+	"letsgo/internal/config"
 
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
+	appConfig, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+
+	postgres, redis, err := db.Open(&appConfig.DB)
+	if err != nil {
+		panic(err)
+	}
+	defer postgres.Close()
+
 	r := chi.NewRouter()
-
-	// TODO: Add middleware usage here (e.g., auth, logging)
-
-	// API routes
-	r.Route("/api", func(apiRouter chi.Router) {
-		// TODO: Mount business logic handlers from api package
-		apiRouter.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"message": "Hello from API!"}`))
-		})
-	})
-
-	// Auth routes (placeholder)
-	r.Route("/auth", func(authRouter chi.Router) {
-		// TODO: Mount authentication handlers from auth package
+	r.Route("/api", func(api chi.Router) {
+		api.Handle("/auth/*", auth.Router(postgres, redis))
 	})
 
 	// WebSocket routes (placeholder)
