@@ -16,5 +16,6 @@ func Router(db *sql.DB, rdb *redis.Client, config *config.Auth) chi.Router {
 
 	r.Post("/login", s.LoginHandler())
 	r.Post("/logout", s.LogoutHandler())
+	r.Post("/refresh", s.RefreshHandler())
 	return r
 }

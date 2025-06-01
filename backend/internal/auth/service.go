@@ -69,7 +69,6 @@ func (s *AuthService) LoginHandler() http.HandlerFunc {
 			}
 		}
 
-		// Generate JWT token
 		accessToken, err := s.jwt.GenerateAccessToken(strconv.FormatInt(usr.ID, 10))
 		if err != nil {
 			util.RespondJSON(w, http.StatusInternalServerError,
@@ -77,18 +76,17 @@ func (s *AuthService) LoginHandler() http.HandlerFunc {
 			return
 		}
 
-		refreshToken := uuid.New().String()                            // Generate a UUID for the refresh token
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second) // Context with timeout for Redis ops
+		refreshToken := uuid.New().String()
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		err = s.rdb.Set(ctx, refreshToken, usr.ID, s.cfg.RefreshTokenTTL).Err() // Store refresh token in Redis
+		err = s.rdb.Set(ctx, refreshToken, usr.ID, s.cfg.RefreshTokenTTL).Err()
 		if err != nil {
 			util.RespondJSON(w, http.StatusInternalServerError,
 				map[string]string{"error": "Failed to store refresh token"})
 			return
 		}
 
-		// 3. Set Cookies
 		http.SetCookie(w, &http.Cookie{
 			Name:     s.cfg.AccessCookieName,
 			Value:    accessToken,
@@ -155,5 +153,84 @@ func (s *AuthService) LogoutHandler() http.HandlerFunc {
 
 		util.RespondJSON(w, http.StatusOK,
 			map[string]string{"message": "Logged out successfully"})
+	}
+}
+
+func (s *AuthService) RefreshHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		refreshTokenCookie, err := r.Cookie(s.cfg.RefreshCookieName)
+		if err != nil {
+			if err == http.ErrNoCookie {
+				util.RespondJSON(w, http.StatusUnauthorized,
+					map[string]string{"error": "No refresh token"})
+				return
+			}
+			util.RespondJSON(w, http.StatusBadRequest,
+				map[string]string{"error": "Invalid request"})
+			return
+		}
+
+		oldRefreshToken := refreshTokenCookie.Value
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		userIDStr, err := s.rdb.Get(ctx, oldRefreshToken).Result()
+		if err == redis.Nil { // Token not found or expired
+			util.RespondJSON(w, http.StatusUnauthorized,
+				map[string]string{"error": "Token does not exist"})
+			return
+		}
+		if err != nil {
+			util.RespondJSON(w, http.StatusInternalServerError,
+				map[string]string{"error": "Server error"})
+			return
+		}
+
+		// Invalidate Old Refresh Token (single-use token rotation)
+		if err := s.rdb.Del(ctx, oldRefreshToken).Err(); err != nil {
+			// previously found, but now can't delete from redis, not sure what do
+		}
+
+		// Generate New Tokens
+		newAccessToken, err := s.jwt.GenerateAccessToken(userIDStr)
+		if err != nil {
+			util.RespondJSON(w, http.StatusInternalServerError,
+				map[string]string{"error": "Failed to generate new access token"})
+			return
+		}
+
+		newRefreshToken := uuid.New().String()
+		err = s.rdb.Set(ctx, newRefreshToken, userIDStr, s.cfg.RefreshTokenTTL).Err()
+		if err != nil {
+			util.RespondJSON(w, http.StatusInternalServerError,
+				map[string]string{"error": "Failed to store new refresh token"})
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     s.cfg.AccessCookieName,
+			Value:    newAccessToken,
+			Expires:  time.Now().Add(s.cfg.AccessTokenTTL),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+			Domain:   s.cfg.Domain,
+			Path:     "/",
+		})
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     s.cfg.RefreshCookieName,
+			Value:    newRefreshToken,
+			Expires:  time.Now().Add(s.cfg.RefreshTokenTTL),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+			Domain:   s.cfg.Domain,
+			Path:     "/auth/refresh",
+		})
+
+		util.RespondJSON(w, http.StatusOK, map[string]string{
+			"message":     "Tokens refreshed successfully",
+			"accessToken": newAccessToken,
+		})
 	}
 }
