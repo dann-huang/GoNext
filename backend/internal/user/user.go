@@ -23,7 +23,7 @@ func CreateUser(ctx context.Context, db *sql.DB, name, pass string) (*User, erro
 	if err != nil {
 		return nil, err
 	}
-	query := `INSERT INTO users (name, pass_hash) VALUES ($1, $2) RETURNING id`
+	query := `INSERT INTO users (name, passhash) VALUES ($1, $2) RETURNING id`
 	var id int64
 	err = db.QueryRowContext(ctx, query, name, string(hash)).Scan(&id)
 	if err != nil {
@@ -34,7 +34,7 @@ func CreateUser(ctx context.Context, db *sql.DB, name, pass string) (*User, erro
 
 func GetUserByName(ctx context.Context, db *sql.DB, name string) (*User, error) {
 	var u User
-	query := `SELECT id, name, pass_hash FROM users WHERE name = $1`
+	query := `SELECT id, name, passhash FROM users WHERE name = $1`
 	err := db.QueryRowContext(ctx, query, name).
 		Scan(&u.ID, &u.Name, &u.PassHash)
 	if err != nil {
@@ -52,7 +52,7 @@ func InitSchema(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS users (
 		id SERIAL PRIMARY KEY,
 		name TEXT UNIQUE NOT NULL,
-		password TEXT NOT NULL
+		passhash TEXT NOT NULL
 	);`
 	_, err := db.Exec(query)
 	if err != nil {

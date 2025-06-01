@@ -116,6 +116,8 @@
                     responseStatusDiv.textContent = `Success: ${response.status} ${response.statusText}`;
                     responseStatusDiv.classList.add('success');
 
+                    console.log("Response Data:", data);
+
                     // Update session info from response if available
                     if (data.accessTokenExpiresAt) {
                         accessTokenExpiresAtSpan.textContent = data.accessTokenExpiresAt;

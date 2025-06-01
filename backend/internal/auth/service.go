@@ -43,7 +43,7 @@ func (s *AuthService) setAuthCookie(w http.ResponseWriter,
 		Value:    value,
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		Domain:   s.cfg.Domain,
 		Path:     path,
@@ -158,11 +158,11 @@ func (s *AuthService) LoginHandler() http.HandlerFunc {
 
 		s.setAuthCookie(w, s.cfg.AccessCookieName, accessToken, "/",
 			time.Now().Add(s.cfg.AccessTokenTTL))
-		s.setAuthCookie(w, s.cfg.RefreshCookieName, refreshToken, "/auth/refresh",
+		s.setAuthCookie(w, s.cfg.RefreshCookieName, refreshToken, "/api/auth",
 			time.Now().Add(s.cfg.RefreshTokenTTL))
 
 		util.RespondJSON(w, http.StatusOK, LoginResponse{
-			Message:               "Login successful",
+			Message:               s.cfg.Domain + " login success",
 			AccessToken:           accessToken,
 			AccessTokenExpiresAt:  time.Now().Add(s.cfg.AccessTokenTTL).Format(time.RFC3339),
 			RefreshTokenExpiresAt: time.Now().Add(s.cfg.RefreshTokenTTL).Format(time.RFC3339),
@@ -180,10 +180,14 @@ func (s *AuthService) LogoutHandler() http.HandlerFunc {
 			s.rdb.Del(ctx, refreshTokenCookie.Value).Err()
 
 			s.setAuthCookie(w, s.cfg.AccessCookieName, "", "/", time.Unix(0, 0))
-			s.setAuthCookie(w, s.cfg.RefreshCookieName, "", "/auth/refresh", time.Unix(0, 0))
+			s.setAuthCookie(w, s.cfg.RefreshCookieName, "", "/api/auth", time.Unix(0, 0))
+		} else {
+			util.RespondJSON(w, http.StatusOK,
+				map[string]string{"message": "Log out not success"})
+			return
 		}
 		util.RespondJSON(w, http.StatusOK,
-			map[string]string{"message": "Logged out successfully"})
+			map[string]string{"message": "Log out success"})
 	}
 }
 
@@ -238,7 +242,7 @@ func (s *AuthService) RefreshHandler() http.HandlerFunc {
 
 		s.setAuthCookie(w, s.cfg.AccessCookieName, accessToken, "/",
 			time.Now().Add(s.cfg.AccessTokenTTL))
-		s.setAuthCookie(w, s.cfg.RefreshCookieName, refreshToken, "/auth/refresh",
+		s.setAuthCookie(w, s.cfg.RefreshCookieName, refreshToken, "/api/auth",
 			time.Now().Add(s.cfg.RefreshTokenTTL))
 
 		util.RespondJSON(w, http.StatusOK, map[string]string{
