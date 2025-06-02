@@ -30,8 +30,9 @@ services:
 
   postgres:
     image: postgres:13
-    volumes:
-      - ./postgres:/var/lib/postgresql/data
+    # issues with permissions on linux. Somehow is fine on mac
+    # volumes:
+      # - ./postgres:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

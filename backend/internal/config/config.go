@@ -16,6 +16,7 @@ type Auth struct {
 	Audience          string
 	Domain            string
 }
+
 type DB struct {
 	PostgresUrl  string
 	PostgresUser string

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -50,6 +50,13 @@ func (s *AuthService) setAuthCookie(w http.ResponseWriter,
 	})
 }
 
+func (s *AuthService) sendErrorResponse(w http.ResponseWriter, status int, msg string, err error) {
+	if err != nil {
+		slog.Error("AuthService error", "status", status, "message", msg)
+	}
+	util.RespondJSON(w, status, map[string]string{"error": msg})
+}
+
 type UserRequest struct {
 	Name string `json:"name"`
 	Pass string `json:"pass"`
@@ -69,27 +76,22 @@ func (s *AuthService) RegisterHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req UserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			util.RespondJSON(w, http.StatusBadRequest,
-				map[string]string{"error": "Invalid request"})
+			s.sendErrorResponse(w, http.StatusBadRequest, "Invalid request", err)
 			return
 		}
 
 		_, err := user.GetUserByName(r.Context(), s.db, req.Name)
 		if err == nil {
-			util.RespondJSON(w, http.StatusConflict,
-				map[string]string{"error": "Username already taken"})
+			s.sendErrorResponse(w, http.StatusConflict, "Username already taken", nil)
 			return
 		}
 		if err != sql.ErrNoRows {
-			fmt.Println("Error checking user:", err)
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Something went wrong"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "Something went wrong", err)
 			return
 		}
 		usr, err := user.CreateUser(r.Context(), s.db, req.Name, req.Pass)
 		if err != nil {
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Something went wrong; failed to create user"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "User creation failed", err)
 			return
 		}
 
@@ -112,24 +114,20 @@ func (s *AuthService) LoginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req UserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			util.RespondJSON(w, http.StatusBadRequest,
-				map[string]string{"error": "Invalid request"})
+			s.sendErrorResponse(w, http.StatusBadRequest, "Invalid request", nil)
 			return
 		}
 
 		usr, err := user.GetUserByName(r.Context(), s.db, req.Name)
 		if err == sql.ErrNoRows {
-			util.RespondJSON(w, http.StatusUnauthorized,
-				map[string]string{"error": "Invalid username or password"})
+			s.sendErrorResponse(w, http.StatusUnauthorized, "Invalid username or password", nil)
 			return
 		} else if err != nil {
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Something went wrong"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "Something went wrong", err)
 			return
 		}
 		if !usr.VerifyPassword(req.Pass) {
-			util.RespondJSON(w, http.StatusUnauthorized,
-				map[string]string{"error": "Invalid username or password"})
+			s.sendErrorResponse(w, http.StatusUnauthorized, "Invalid username or password", nil)
 			return
 		}
 
@@ -140,8 +138,7 @@ func (s *AuthService) LoginHandler() http.HandlerFunc {
 
 		accessToken, err := s.jwtManager.GenerateToken(claims, nil)
 		if err != nil {
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Access token generation failed"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "Access token generation failed", err)
 			return
 		}
 
@@ -151,8 +148,7 @@ func (s *AuthService) LoginHandler() http.HandlerFunc {
 
 		err = s.rdb.Set(ctx, refreshToken, usr.ID, s.cfg.RefreshTokenTTL).Err()
 		if err != nil {
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Refresh token storage failed"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "Refresh token failed", err)
 			return
 		}
 
@@ -181,10 +177,6 @@ func (s *AuthService) LogoutHandler() http.HandlerFunc {
 
 			s.setAuthCookie(w, s.cfg.AccessCookieName, "", "/", time.Unix(0, 0))
 			s.setAuthCookie(w, s.cfg.RefreshCookieName, "", "/api/auth", time.Unix(0, 0))
-		} else {
-			util.RespondJSON(w, http.StatusOK,
-				map[string]string{"message": "Log out not success"})
-			return
 		}
 		util.RespondJSON(w, http.StatusOK,
 			map[string]string{"message": "Log out success"})
@@ -196,12 +188,10 @@ func (s *AuthService) RefreshHandler() http.HandlerFunc {
 		refreshCookie, err := r.Cookie(s.cfg.RefreshCookieName)
 		if err != nil {
 			if err == http.ErrNoCookie {
-				util.RespondJSON(w, http.StatusUnauthorized,
-					map[string]string{"error": "No refresh token"})
+				s.sendErrorResponse(w, http.StatusUnauthorized, "No refresh token", nil)
 				return
 			}
-			util.RespondJSON(w, http.StatusBadRequest,
-				map[string]string{"error": "Invalid request"})
+			s.sendErrorResponse(w, http.StatusBadRequest, "Invalid cookie", err)
 			return
 		}
 
@@ -211,13 +201,11 @@ func (s *AuthService) RefreshHandler() http.HandlerFunc {
 
 		userIDStr, err := s.rdb.Get(ctx, oldRefreshToken).Result()
 		if err == redis.Nil {
-			util.RespondJSON(w, http.StatusUnauthorized,
-				map[string]string{"error": "Token does not exist"})
+			s.sendErrorResponse(w, http.StatusUnauthorized, "Token does not exist", nil)
 			return
 		}
 		if err != nil {
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Server error"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "Server error", err)
 			return
 		}
 		s.rdb.Del(ctx, oldRefreshToken)
@@ -227,16 +215,14 @@ func (s *AuthService) RefreshHandler() http.HandlerFunc {
 		}
 		accessToken, err := s.jwtManager.GenerateToken(claims, nil)
 		if err != nil {
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Access token generation failed"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "Access token generation failed", err)
 			return
 		}
 
 		refreshToken := uuid.New().String()
 		err = s.rdb.Set(ctx, refreshToken, userIDStr, s.cfg.RefreshTokenTTL).Err()
 		if err != nil {
-			util.RespondJSON(w, http.StatusInternalServerError,
-				map[string]string{"error": "Failed to store new refresh token"})
+			s.sendErrorResponse(w, http.StatusInternalServerError, "Failed to store new refresh token", err)
 			return
 		}
 

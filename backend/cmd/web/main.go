@@ -1,7 +1,9 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
+	"os"
 
 	"letsgo/internal/auth"
 	"letsgo/internal/db"
@@ -15,11 +17,17 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+		// AddSource: true,
+	}))
+	slog.SetDefault(logger)
+
+	slog.Info("Loading config")
 	appConfig, err := config.Load()
 	if err != nil {
 		panic(err)
 	}
-
 	postgres, redis, err := db.Open(&appConfig.DB)
 	if err != nil {
 		panic(err)
@@ -36,18 +44,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Route("/api", func(api chi.Router) {
 		api.Mount("/auth", auth.Router(postgres, redis, jwtManager, &appConfig.Auth))
-	})
-
-	r.Route("/ws", func(wsRouter chi.Router) {
-		// TODO: Mount WebSocket handlers from ws package
-	})
-
-	r.Route("/rooms", func(roomRouter chi.Router) {
-		// TODO: Mount room management handlers from rooms package
-	})
-
-	r.Route("/webrtc", func(webrtcRouter chi.Router) {
-		// TODO: Mount WebRTC signaling handlers from webrtc package
+		// api.Mount("/room", room.Router())
 	})
 
 	// static pages
