@@ -37,13 +37,7 @@ func Router() chi.Router {
 		}
 
 		clientName := strconv.FormatInt(int64(rand.Intn(1000)), 10)
-		client := NewClient(hub, conn, clientName)
-
-		client.Hub.Register <- client
-		slog.Info("Client connected.", "client", client)
-		go client.WritePump()
-		go client.ReadPump()
-
+		hub.AddClient(conn, clientName)
 	})
 
 	return r
