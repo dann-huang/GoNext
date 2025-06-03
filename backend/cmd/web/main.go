@@ -7,6 +7,7 @@ import (
 
 	"letsgo/internal/auth"
 	"letsgo/internal/db"
+	"letsgo/internal/room"
 	"letsgo/internal/static"
 
 	"letsgo/internal/config"
@@ -14,16 +15,15 @@ import (
 	"letsgo/pkg/jwt"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-		// AddSource: true,
+		Level: slog.LevelDebug,
 	}))
 	slog.SetDefault(logger)
 
-	slog.Info("Loading config")
 	appConfig, err := config.Load()
 	if err != nil {
 		panic(err)
@@ -42,9 +42,12 @@ func main() {
 	)
 
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
 	r.Route("/api", func(api chi.Router) {
 		api.Mount("/auth", auth.Router(postgres, redis, jwtManager, &appConfig.Auth))
-		// api.Mount("/room", room.Router())
+		api.Mount("/room", room.Router())
 	})
 
 	// static pages
