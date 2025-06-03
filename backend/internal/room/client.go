@@ -54,7 +54,7 @@ func (c *client) readPump() {
 
 		default:
 			readCtx, cancelRead := context.WithTimeout(c.ctx, readTimeout)
-			msgType, message, err := c.Conn.Read(readCtx)
+			msgType, msgRaw, err := c.Conn.Read(readCtx)
 			cancelRead()
 			if err != nil {
 				if websocket.CloseStatus(err) != websocket.StatusNormalClosure &&
@@ -68,14 +68,14 @@ func (c *client) readPump() {
 				c.Send <- errMsg
 				continue
 			}
-			if len(message) > maxMessageSize {
+			if len(msgRaw) > maxMessageSize {
 				errMsg := createMsg("Message too large.", "", msgError)
 				c.Send <- errMsg
 				continue
 			}
 
-			var msg Message
-			if err := json.Unmarshal(message, &msg); err != nil {
+			var msg roomMsg
+			if err := json.Unmarshal(msgRaw, &msg); err != nil {
 				errMsg := createMsg("Invalid message format: "+err.Error(), "", msgError)
 				c.Send <- errMsg
 				continue

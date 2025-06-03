@@ -17,7 +17,7 @@ const (
 	msgGetClients = "get_clients"
 )
 
-type Message struct {
+type roomMsg struct {
 	Type     string `json:"type"`
 	RoomName string `json:"roomId,omitempty"`
 	Sender   string `json:"name,omitempty"`
@@ -31,7 +31,7 @@ type crPair struct {
 }
 
 func createMsg(msg, roomName string, msgType string) []byte {
-	statusMsg := &Message{
+	statusMsg := &roomMsg{
 		Type:     msgType,
 		RoomName: roomName,
 		Payload:  map[string]string{"status": msg},

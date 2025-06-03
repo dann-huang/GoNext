@@ -66,7 +66,7 @@ func (r *room) getClientList() []byte {
 		"clientIDs": clientNames,
 	}
 
-	msg := &Message{
+	msg := &roomMsg{
 		Type:     msgGetClients,
 		RoomName: r.name,
 		Payload:  payload,

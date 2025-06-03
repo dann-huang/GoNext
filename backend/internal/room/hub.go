@@ -11,7 +11,7 @@ import (
 type Hub struct {
 	Rooms    map[string]*room
 	Clients  map[string]*client
-	Messages chan *Message
+	Messages chan *roomMsg
 
 	Register   chan *client
 	Unregister chan *client
@@ -26,7 +26,7 @@ func NewHub() *Hub {
 	return &Hub{
 		Rooms:      make(map[string]*room, 10),
 		Clients:    make(map[string]*client, 10),
-		Messages:   make(chan *Message, 256),
+		Messages:   make(chan *roomMsg, 256),
 		Register:   make(chan *client, 10),
 		Unregister: make(chan *client, 10),
 		CreateRoom: make(chan string, 10),
