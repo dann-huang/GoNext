@@ -7,26 +7,26 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type JWTManager struct {
+type JWTManager[T jwt.Claims] struct {
 	secret   []byte
 	expiry   time.Duration
 	issuer   string
 	audience string
 }
 
-func NewManager(secret string, expliry time.Duration, issuer, audience string) *JWTManager {
-	return &JWTManager{
+func NewManager[T jwt.Claims](secret string, expiry time.Duration, issuer, audience string) *JWTManager[T] {
+	return &JWTManager[T]{
 		secret:   []byte(secret),
-		expiry:   expliry,
+		expiry:   expiry,
 		issuer:   issuer,
 		audience: audience,
 	}
 }
 
-func (m *JWTManager) GenerateToken(claims jwt.MapClaims, expiryOverride *time.Duration) (string, error) {
+func (m *JWTManager[T]) GenerateToken(claims jwt.MapClaims, expiryOverride ...*time.Duration) (string, error) {
 	expiry := m.expiry
-	if expiryOverride != nil {
-		expiry = *expiryOverride
+	if len(expiryOverride) > 0 && expiryOverride[0] != nil {
+		expiry = *expiryOverride[0]
 	}
 
 	claims["exp"] = time.Now().Add(expiry).Unix()
@@ -41,14 +41,18 @@ func (m *JWTManager) GenerateToken(claims jwt.MapClaims, expiryOverride *time.Du
 	return t, nil
 }
 
-func (m *JWTManager) ValidateToken(tokenString string) (jwt.MapClaims, error) {
+func (m *JWTManager[T]) ValidateToken(tokenString string) (*T, error) {
+	var claims T
+	claimsInstance := any(&claims).(jwt.Claims)
+
 	keyFunc := func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(m.secret), nil
+		return m.secret, nil
 	}
-	token, err := jwt.Parse(tokenString, keyFunc,
+
+	token, err := jwt.ParseWithClaims(tokenString, claimsInstance, keyFunc,
 		jwt.WithValidMethods([]string{"HS256"}),
 		jwt.WithAudience(m.audience),
 		jwt.WithIssuer(m.issuer),
@@ -58,11 +62,9 @@ func (m *JWTManager) ValidateToken(tokenString string) (jwt.MapClaims, error) {
 	if err != nil {
 		return nil, fmt.Errorf("token validation failed: %w", err)
 	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return nil, fmt.Errorf("invalid token claims")
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
 	}
 
-	return claims, nil
+	return &claims, nil
 }
