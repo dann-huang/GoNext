@@ -1,15 +1,14 @@
 package user
 
 import (
-	"database/sql"
 	"net/http"
 
 	"letsgo/internal/auth"
 	"letsgo/internal/config"
 	"letsgo/internal/mdw"
+	"letsgo/internal/repo"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/redis/go-redis/v9"
 )
 
 type UserModule interface {
@@ -22,12 +21,11 @@ type userModule struct {
 	authRouter chi.Router
 }
 
-func NewModule(db *sql.DB, rdb *redis.Client, accManager auth.AccessTokenManager, refManager auth.RefreshManager,
+func NewModule(userRepo repo.UserRepo, accManager auth.AccessTokenManager, refManager auth.RefreshManager,
 	accMdw func(http.Handler) http.Handler, userCtxKey mdw.ContextKey, config *config.Auth) UserModule {
 
-	repo := NewPgRepo(db)
-	service := NewService(repo)
-	handler := NewHandler(service)
+	service := NewService(userRepo)
+	handler := newHandler(service)
 	router := NewRouter(handler)
 
 	return &userModule{

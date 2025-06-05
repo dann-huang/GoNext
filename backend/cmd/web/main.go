@@ -8,6 +8,7 @@ import (
 	"letsgo/internal/auth"
 	"letsgo/internal/db"
 	"letsgo/internal/mdw"
+	"letsgo/internal/repo"
 	"letsgo/internal/room"
 	"letsgo/internal/static"
 	"letsgo/internal/user"
@@ -35,6 +36,8 @@ func main() {
 	}
 	defer db.Close()
 
+	store := repo.NewStore(db, rdb)
+
 	accessManager, err := jwt.NewManager(cfg.Auth.AccSecret,
 		cfg.Auth.AccTTL, cfg.Auth.Issuer, cfg.Auth.Audience, auth.AccessPayload{})
 	if err != nil {
@@ -44,7 +47,7 @@ func main() {
 
 	const userCtxKey mdw.ContextKey = "userPayload"
 	userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
-	userModule := user.NewModule(db, rdb, accessManager, refreshManager, userAccMdw, userCtxKey, cfg.Auth)
+	userModule := user.NewModule(store.User, accessManager, refreshManager, userAccMdw, userCtxKey, cfg.Auth)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

@@ -3,55 +3,50 @@ package user
 import (
 	"encoding/json"
 	"errors"
+	"letsgo/internal/model"
+	"letsgo/internal/repo"
 	"letsgo/pkg/util"
 	"net/http"
 )
 
-type Handler interface {
-	IndexHandler() http.HandlerFunc
-	RegisterHandler() http.HandlerFunc
-	LoginHandler() http.HandlerFunc
-	LogoutHandler() http.HandlerFunc
-	RefreshHandler() http.HandlerFunc
+type handler interface {
+	indexHandler() http.HandlerFunc
+	registerHandler() http.HandlerFunc
+	loginHandler() http.HandlerFunc
+	logoutHandler() http.HandlerFunc
+	refreshHandler() http.HandlerFunc
 }
 
 type handlerImpl struct {
 	service Service
 }
 
-func NewHandler(service Service) Handler {
+func newHandler(service Service) handler {
 	return &handlerImpl{
 		service: service,
 	}
 }
 
-func (h *handlerImpl) sendErrorResponse(w http.ResponseWriter, status int, msg string, err error) {
-	if err != nil {
-		//todo: error handling
-	}
-	util.RespondJSON(w, status, map[string]string{"error": msg})
-}
-
-func (h *handlerImpl) IndexHandler() http.HandlerFunc {
+func (h *handlerImpl) indexHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"message": "User is running"}`))
 	}
 }
 
-func (h *handlerImpl) RegisterHandler() http.HandlerFunc {
+func (h *handlerImpl) registerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var params NewUserParams
+		var params model.UserCreate
 		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-			h.sendErrorResponse(w, http.StatusBadRequest, "Invalid request", err)
+			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
 			return
 		}
 		usr, err := h.service.CreateUser(r.Context(), params.Username, params.Password)
 		if err != nil {
-			if errors.Is(err, ErrAlreadyExists) {
-				h.sendErrorResponse(w, http.StatusConflict, "Username taken", nil)
+			if errors.Is(err, repo.ErrAlreadyExists) {
+				util.RespondErr(w, http.StatusConflict, "Username taken", nil)
 			} else {
-				h.sendErrorResponse(w, http.StatusInternalServerError, "Something went wrong", err)
+				util.RespondErr(w, http.StatusInternalServerError, "Something went wrong", err)
 			}
 			return
 		}
@@ -64,19 +59,19 @@ func (h *handlerImpl) RegisterHandler() http.HandlerFunc {
 	}
 }
 
-func (h *handlerImpl) LoginHandler() http.HandlerFunc {
+func (h *handlerImpl) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//todo
 	}
 }
 
-func (h *handlerImpl) LogoutHandler() http.HandlerFunc {
+func (h *handlerImpl) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//todo
 	}
 }
 
-func (h *handlerImpl) RefreshHandler() http.HandlerFunc {
+func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//todo
 	}

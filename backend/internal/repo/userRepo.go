@@ -1,31 +1,32 @@
-package user
+package repo
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+	"letsgo/internal/model"
 	"strings"
 
 	"github.com/lib/pq"
 )
 
-type Repo interface {
-	CreateUser(ctx context.Context, user *User) (*User, error)
-	ReadUser(ctx context.Context, username string) (*User, error)
-	UpdateUser(ctx context.Context, username string, params *UpdateUserParams) (*User, error)
+type UserRepo interface {
+	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
+	ReadUser(ctx context.Context, username string) (*model.User, error)
+	UpdateUser(ctx context.Context, username string, params *model.UserUpdate) (*model.User, error)
 	DeleteUser(ctx context.Context, username string) error
 }
 
-type pgRepo struct {
+func newUserRepo(db *sql.DB) UserRepo {
+	return &pgUserRepo{db: db}
+}
+
+type pgUserRepo struct {
 	db *sql.DB
 }
 
-func NewPgRepo(db *sql.DB) Repo {
-	return &pgRepo{db: db}
-}
-
-func (r *pgRepo) CreateUser(ctx context.Context, user *User) (*User, error) {
-	var newUser User
+func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.User, error) {
+	var newUser model.User
 	query := `INSERT INTO users (username, displayname, passhash) VALUES ($1, $2, $3) RETURNING id, username, displayname, passhash`
 	err := r.db.QueryRowContext(ctx, query, user.Username, user.DisplayName, user.PassHash).Scan(
 		&newUser.ID,
@@ -44,8 +45,8 @@ func (r *pgRepo) CreateUser(ctx context.Context, user *User) (*User, error) {
 	return &newUser, nil
 }
 
-func (r *pgRepo) ReadUser(ctx context.Context, username string) (*User, error) {
-	var user User
+func (r *pgUserRepo) ReadUser(ctx context.Context, username string) (*model.User, error) {
+	var user model.User
 	query := `SELECT id, username, displayname, passhash FROM users WHERE username = $1`
 	err := r.db.QueryRowContext(ctx, query, username).Scan(
 		&user.ID,
@@ -62,7 +63,7 @@ func (r *pgRepo) ReadUser(ctx context.Context, username string) (*User, error) {
 	return &user, nil
 }
 
-func (r *pgRepo) UpdateUser(ctx context.Context, username string, params *UpdateUserParams) (*User, error) {
+func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *model.UserUpdate) (*model.User, error) {
 	updates := []string{}
 	args := []any{}
 	argCounter := 1
@@ -85,7 +86,7 @@ func (r *pgRepo) UpdateUser(ctx context.Context, username string, params *Update
 		strings.Join(updates, ", "), argCounter)
 	args = append(args, username)
 
-	var updatedUser User
+	var updatedUser model.User
 	err := r.db.QueryRowContext(ctx, query, args...).Scan(
 		&updatedUser.ID,
 		&updatedUser.Username,
@@ -101,7 +102,7 @@ func (r *pgRepo) UpdateUser(ctx context.Context, username string, params *Update
 	return &updatedUser, nil
 }
 
-func (r *pgRepo) DeleteUser(ctx context.Context, username string) error {
+func (r *pgUserRepo) DeleteUser(ctx context.Context, username string) error {
 	result, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE username = $1`, username)
 	if err != nil {
 		return fmt.Errorf("repo: failed to delete user: %w", err)
