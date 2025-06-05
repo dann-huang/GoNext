@@ -5,9 +5,13 @@ import (
 	"net/http"
 	"os"
 
+	"letsgo/internal/auth"
 	"letsgo/internal/db"
+	"letsgo/internal/mdw"
 	"letsgo/internal/room"
 	"letsgo/internal/static"
+	"letsgo/internal/user"
+	"letsgo/pkg/jwt/v2"
 
 	"letsgo/internal/config"
 
@@ -21,29 +25,34 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	appConfig, err := config.Load()
+	cfg, err := config.Load()
 	if err != nil {
 		panic(err)
 	}
-	postgres, _, err := db.Open(&appConfig.DB)
+	db, rdb, err := db.Open(cfg.DB)
 	if err != nil {
 		panic(err)
 	}
-	defer postgres.Close()
+	defer db.Close()
 
-	// user.InitSchema(postgres)
+	accessManager, err := jwt.NewManager(cfg.Auth.AccSecret,
+		cfg.Auth.AccTTL, cfg.Auth.Issuer, cfg.Auth.Audience, auth.AccessPayload{})
+	if err != nil {
+		panic(err)
+	}
+	refreshManager := auth.NewRefManager(rdb, cfg.Auth)
 
-	// jwtManager := jwt.NewManager(
-	// 	appConfig.Auth.AccessTokenSecret, appConfig.Auth.AccessTokenTTL,
-	// 	appConfig.Auth.Issuer, appConfig.Auth.Audience,
-	// )
+	const userCtxKey mdw.ContextKey = "userPayload"
+	userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
+	userModule := user.NewModule(db, rdb, accessManager, refreshManager, userAccMdw, userCtxKey, cfg.Auth)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Route("/api", func(api chi.Router) {
-		// api.Mount("/auth", auth.Router(postgres, redis, jwtManager, &appConfig.Auth))
+		api.Mount("/auth", userModule.AuthRouter())
+		api.Mount("/user", userModule.Router())
 		api.Mount("/room", room.Router())
 	})
 

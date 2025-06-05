@@ -15,7 +15,7 @@ type RefreshManager interface {
 	ValidateToken(ctx context.Context, token string) (string, error)
 }
 
-func NewRefreshManager(rdb *redis.Client, cfg *config.Auth) RefreshManager {
+func NewRefManager(rdb *redis.Client, cfg *config.Auth) RefreshManager {
 	return &sessionRefreshManager{
 		rdb: rdb,
 		cfg: cfg,
@@ -29,7 +29,7 @@ type sessionRefreshManager struct {
 
 func (m *sessionRefreshManager) GenerateToken(ctx context.Context, username string) (string, error) {
 	token := uuid.New().String()
-	err := m.rdb.Set(ctx, token, username, m.cfg.RefreshTokenTTL).Err()
+	err := m.rdb.Set(ctx, token, username, m.cfg.RefTTL).Err()
 	if err != nil {
 		return "", fmt.Errorf("refresh token failed to generate: %w", err)
 	}

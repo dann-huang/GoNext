@@ -45,7 +45,6 @@ func (h *Hub) AddClient(conn *websocket.Conn, name string) {
 func (h *Hub) Run() {
 	lobby := newRoom("Lobby")
 	h.Rooms[lobby.name] = lobby
-	slog.Info("Room hub started, lobby created", "lobby", lobby)
 
 	for {
 		select {

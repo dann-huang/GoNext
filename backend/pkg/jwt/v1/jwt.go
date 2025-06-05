@@ -49,11 +49,11 @@ func (m *managerImpl[T]) GenerateToken(claims T, expiryOverride ...*time.Duratio
 	rc.Issuer = m.issuer
 	rc.Audience = jwt.ClaimStrings{m.audience}
 
-	t, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(m.secret)
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(m.secret)
 	if err != nil {
 		return "", fmt.Errorf("jtw: failed to sign token: %w", err)
 	}
-	return t, nil
+	return token, nil
 }
 
 func (m *managerImpl[T]) ValidateToken(token string) (T, error) {

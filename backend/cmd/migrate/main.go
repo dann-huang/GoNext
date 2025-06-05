@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	db, _, err := db.Open(&appConfig.DB)
+	db, _, err := db.Open(appConfig.DB)
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
