@@ -18,7 +18,9 @@ type serviceImpl struct {
 }
 
 func NewService(repo Repo) Service {
-	return &serviceImpl{repo: repo}
+	return &serviceImpl{
+		repo: repo,
+	}
 }
 
 func (s *serviceImpl) CreateUser(ctx context.Context, username string, password string) (*User, error) {
@@ -57,6 +59,14 @@ func (s *serviceImpl) UpdateUser(ctx context.Context, username string, params *U
 	user, err := s.repo.UpdateUser(ctx, username, params)
 	if err != nil {
 		return nil, fmt.Errorf("service: failed to update user for username=%s: %w", username, err)
+	}
+	return user, nil
+}
+
+func (s *serviceImpl) LoginUser(ctx context.Context, username, password string) (*User, error) {
+	user, err := s.repo.ReadUser(ctx, username)
+	if err != nil {
+		return nil, fmt.Errorf("service: failed to login user for username=%s: %w", username, err)
 	}
 	return user, nil
 }

@@ -3,9 +3,7 @@ package user
 import (
 	"database/sql"
 
-	"letsgo/internal/claim"
 	"letsgo/internal/config"
-	"letsgo/pkg/jwt"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/redis/go-redis/v9"
@@ -18,17 +16,15 @@ type UserModule interface {
 type userModule struct {
 	db     *sql.DB
 	rdb    *redis.Client
-	jwt    *jwt.JWTManager[claim.UserClaims]
 	config *config.Auth
 	router chi.Router
 }
 
-func NewModule(db *sql.DB, rdb *redis.Client, jwt *jwt.JWTManager[claim.UserClaims], config *config.Auth) any {
+func NewModule(db *sql.DB, rdb *redis.Client, config *config.Auth) any {
 	r := chi.NewRouter()
 	return &userModule{
 		db:     db,
 		rdb:    rdb,
-		jwt:    jwt,
 		config: config,
 		router: r,
 	}

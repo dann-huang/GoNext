@@ -7,15 +7,25 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type JWTManager[T jwt.Claims] struct {
+type RegisterableClaims interface {
+	jwt.Claims
+	GetRegisteredClaims() *jwt.RegisteredClaims
+}
+
+type Manager[T RegisterableClaims] interface {
+	GenerateToken(claims T, expiryOverride ...*time.Duration) (string, error)
+	ValidateToken(token string) (T, error)
+}
+
+type managerImpl[T RegisterableClaims] struct {
 	secret   []byte
 	expiry   time.Duration
 	issuer   string
 	audience string
 }
 
-func NewManager[T jwt.Claims](secret string, expiry time.Duration, issuer, audience string) *JWTManager[T] {
-	return &JWTManager[T]{
+func NewManager[T RegisterableClaims](secret string, expiry time.Duration, issuer, audience string) Manager[T] {
+	return &managerImpl[T]{
 		secret:   []byte(secret),
 		expiry:   expiry,
 		issuer:   issuer,
@@ -23,36 +33,40 @@ func NewManager[T jwt.Claims](secret string, expiry time.Duration, issuer, audie
 	}
 }
 
-func (m *JWTManager[T]) GenerateToken(claims jwt.MapClaims, expiryOverride ...*time.Duration) (string, error) {
-	expiry := m.expiry
+func (m *managerImpl[T]) GenerateToken(claims T, expiryOverride ...*time.Duration) (string, error) {
+	currentExpiry := m.expiry
 	if len(expiryOverride) > 0 && expiryOverride[0] != nil {
-		expiry = *expiryOverride[0]
+		currentExpiry = *expiryOverride[0]
 	}
 
-	claims["exp"] = time.Now().Add(expiry).Unix()
-	claims["iat"] = time.Now().Unix()
-	claims["iss"] = m.issuer
-	claims["aud"] = m.audience
+	rc := claims.GetRegisteredClaims()
+	if rc == nil {
+		return "", fmt.Errorf("jwt: registered claim cannot be nil")
+	}
+
+	rc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(currentExpiry))
+	rc.IssuedAt = jwt.NewNumericDate(time.Now())
+	rc.Issuer = m.issuer
+	rc.Audience = jwt.ClaimStrings{m.audience}
 
 	t, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(m.secret)
 	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %w", err)
+		return "", fmt.Errorf("jtw: failed to sign token: %w", err)
 	}
 	return t, nil
 }
 
-func (m *JWTManager[T]) ValidateToken(tokenString string) (*T, error) {
+func (m *managerImpl[T]) ValidateToken(token string) (T, error) {
 	var claims T
-	claimsInstance := any(&claims).(jwt.Claims)
 
 	keyFunc := func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("jwt: failed to sign with method: %v", token.Header["alg"])
 		}
 		return m.secret, nil
 	}
 
-	token, err := jwt.ParseWithClaims(tokenString, claimsInstance, keyFunc,
+	parsedToken, err := jwt.ParseWithClaims(token, claims, keyFunc,
 		jwt.WithValidMethods([]string{"HS256"}),
 		jwt.WithAudience(m.audience),
 		jwt.WithIssuer(m.issuer),
@@ -60,11 +74,11 @@ func (m *JWTManager[T]) ValidateToken(tokenString string) (*T, error) {
 		jwt.WithIssuedAt())
 
 	if err != nil {
-		return nil, fmt.Errorf("token validation failed: %w", err)
+		return claims, fmt.Errorf("jwt: token parse failed: %w", err)
 	}
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
+	if !parsedToken.Valid {
+		return claims, fmt.Errorf("jwt: invalid token")
 	}
 
-	return &claims, nil
+	return claims, nil
 }
