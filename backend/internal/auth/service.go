@@ -35,36 +35,6 @@ func newService(accMngr token.UserManager, repo repo.UserRepo, kv repo.KVStore, 
 	}
 }
 
-func (s *serviceImpl) setRefreshToken(ctx context.Context, username, token string) error {
-	if err := s.kv.Set(ctx, token, username, s.config.RefTTL); err != nil {
-		return fmt.Errorf("service: set refresh token failed: %w", err)
-	}
-	if err := s.kv.ListAdd(ctx, fmt.Sprintf(s.config.RefStoredFormat,
-		username), token, s.config.RefTTL); err != nil {
-		return fmt.Errorf("service: add refresh token to list failed: %w", err)
-	}
-	if err := s.kv.ListTrim(ctx, fmt.Sprintf(s.config.RefStoredFormat,
-		username), s.config.RefTTL); err != nil {
-		return fmt.Errorf("service: trim refresh token list failed: %w", err)
-	}
-	return nil
-}
-
-func (s *serviceImpl) unsetRefreshToken(ctx context.Context, username, token string) error {
-	var errList []error
-	if err := s.kv.Del(ctx, token); err != nil {
-		errList = append(errList, fmt.Errorf("service: refresh token delete failed: %w", err))
-	}
-	if err := s.kv.ListDel(ctx, fmt.Sprintf(s.config.RefStoredFormat, username),
-		token); err != nil {
-		errList = append(errList, fmt.Errorf("service: refresh list delete failed: %w", err))
-	}
-	if len(errList) > 0 {
-		return fmt.Errorf("service: unset refresh token errors: %v", errList)
-	}
-	return nil
-}
-
 func (s *serviceImpl) createUser(ctx context.Context, username string, password string) (*model.User, error) {
 	passhash, err := util.PasswordHash(password)
 	if err != nil {
@@ -131,4 +101,34 @@ func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (str
 		return accessToken, newRefToken, err
 	}
 	return accessToken, newRefToken, nil
+}
+
+func (s *serviceImpl) setRefreshToken(ctx context.Context, username, token string) error {
+	if err := s.kv.Set(ctx, token, username, s.config.RefTTL); err != nil {
+		return fmt.Errorf("service: set refresh token failed: %w", err)
+	}
+	if err := s.kv.ListAdd(ctx, fmt.Sprintf(s.config.RefStoredFormat,
+		username), token, s.config.RefTTL); err != nil {
+		return fmt.Errorf("service: add refresh token to list failed: %w", err)
+	}
+	if err := s.kv.ListTrim(ctx, fmt.Sprintf(s.config.RefStoredFormat,
+		username), s.config.RefTTL); err != nil {
+		return fmt.Errorf("service: trim refresh token list failed: %w", err)
+	}
+	return nil
+}
+
+func (s *serviceImpl) unsetRefreshToken(ctx context.Context, username, token string) error {
+	var errList []error
+	if err := s.kv.Del(ctx, token); err != nil {
+		errList = append(errList, fmt.Errorf("service: refresh token delete failed: %w", err))
+	}
+	if err := s.kv.ListDel(ctx, fmt.Sprintf(s.config.RefStoredFormat, username),
+		token); err != nil {
+		errList = append(errList, fmt.Errorf("service: refresh list delete failed: %w", err))
+	}
+	if len(errList) > 0 {
+		return fmt.Errorf("service: unset refresh token errors: %v", errList)
+	}
+	return nil
 }

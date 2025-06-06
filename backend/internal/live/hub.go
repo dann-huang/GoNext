@@ -2,8 +2,8 @@ package live
 
 import (
 	"encoding/json"
-	"log/slog" // Import slog for structured logging
-	"sync"     // For mutexes to protect concurrent access to maps
+	"log/slog"
+	"sync"
 
 	"github.com/coder/websocket"
 )

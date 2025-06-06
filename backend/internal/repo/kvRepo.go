@@ -39,20 +39,28 @@ func (r *rdsStore) Del(ctx context.Context, key string) error {
 }
 
 func (r *rdsStore) ListAdd(ctx context.Context, key, val string, ttl time.Duration) error {
-	if err := r.rdb.SAdd(ctx, key, val).Err(); err != nil {
+	if err := r.rdb.ZAdd(ctx, key, redis.Z{
+		Score:  float64(time.Now().Unix()),
+		Member: val,
+	}).Err(); err != nil {
 		return err
 	}
 	return r.rdb.Expire(ctx, key, ttl).Err()
 }
 func (r *rdsStore) ListDel(ctx context.Context, key, val string) error {
-	return r.rdb.SRem(ctx, key, val).Err()
+	return r.rdb.ZRem(ctx, key, val).Err()
 }
 func (r *rdsStore) ListCheck(ctx context.Context, key, val string) (bool, error) {
-	r.rdb.SMembers(ctx, key).Result()
-	return r.rdb.SIsMember(ctx, key, val).Result()
+	_, err := r.rdb.ZScore(ctx, key, val).Result()
+	if err == redis.Nil {
+		return false, nil
+	} else if err == nil {
+		return true, nil
+	}
+	return false, err
 }
 func (r *rdsStore) ListGet(ctx context.Context, key string) ([]string, error) {
-	return r.rdb.SMembers(ctx, key).Result()
+	return r.rdb.ZRange(ctx, key, 0, -1).Result()
 }
 func (r *rdsStore) ListTrim(ctx context.Context, key string, age time.Duration) error {
 	cutoff := time.Now().Add(-age).Unix()

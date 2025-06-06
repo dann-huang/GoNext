@@ -2,12 +2,13 @@ package util
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
 func RespondErr(w http.ResponseWriter, status int, msg string, err error) {
 	if err != nil {
-		//todo: error handling
+		slog.Error(err.Error())
 	}
 	RespondJSON(w, status, map[string]string{"error": msg})
 }

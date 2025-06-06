@@ -36,7 +36,7 @@ func Router() chi.Router {
 			return
 		}
 
-		clientName := strconv.FormatInt(int64(rand.Intn(1000)), 10)
+		clientName := "User-" + strconv.FormatInt(int64(rand.Intn(1000)), 10)
 		hub.AddClient(conn, clientName)
 	})
 

@@ -8,7 +8,6 @@ import (
 	"letsgo/internal/auth"
 	"letsgo/internal/db"
 	"letsgo/internal/live"
-	"letsgo/internal/mdw"
 	"letsgo/internal/repo"
 	"letsgo/internal/static"
 	"letsgo/internal/token"
@@ -45,7 +44,7 @@ func main() {
 	}
 	authModule := auth.NewModule(store.User, store.KVStore, accessManager, cfg.Auth)
 
-	const userCtxKey mdw.ContextKey = "userPayload"
+	// const userCtxKey mdw.ContextKey = "userPayload"
 	// userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
 
 	r := chi.NewRouter()

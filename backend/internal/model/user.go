@@ -14,8 +14,8 @@ type User struct {
 }
 
 type UserCreate struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username" validate:"required,alphanum,min=3,max=10"`
+	Password string `json:"password" validate:"required"`
 }
 
 type UserUpdate struct {

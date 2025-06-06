@@ -7,8 +7,11 @@ import (
 	"letsgo/internal/model"
 	"letsgo/internal/repo"
 	"letsgo/pkg/util"
+	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type handler interface {
@@ -31,6 +34,13 @@ type handlerImpl struct {
 	config  *config.Auth
 }
 
+func (h *handlerImpl) indexHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message": "Auth is running"}`))
+	}
+}
+
 func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path string, expires time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:  name,
@@ -50,18 +60,15 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 	})
 }
 
-func (h *handlerImpl) indexHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "User is running"}`))
-	}
-}
-
 func (h *handlerImpl) registerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var params model.UserCreate
 		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
+			util.RespondErr(w, http.StatusBadRequest, "Bad request", err)
+			return
+		}
+		if err := validator.New(validator.WithRequiredStructEnabled()).Struct(params); err != nil {
+			util.RespondErr(w, http.StatusBadRequest, "Missing required fields", err)
 			return
 		}
 		usr, err := h.service.createUser(r.Context(), params.Username, params.Password)
@@ -115,10 +122,11 @@ func (h *handlerImpl) logoutHandler() http.HandlerFunc {
 		refreshCookie, err := r.Cookie(h.config.RefCookieName)
 		if err == nil {
 			h.service.logoutUser(r.Context(), refreshCookie.Name)
-			//todo: error handling that doesn't stop the function
 
 			h.setAuthCookie(w, h.config.AccCookieName, "", "/", time.Unix(0, 0))
 			h.setAuthCookie(w, h.config.RefCookieName, "", "/api/auth", time.Unix(0, 0))
+		} else {
+			slog.Error(err.Error())
 		}
 		util.RespondJSON(w, http.StatusOK, map[string]string{"message": "logout success"})
 	}
@@ -131,13 +139,16 @@ func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 			util.RespondErr(w, http.StatusUnauthorized, "No Refresh Token", nil)
 			return
 		}
-		accessToken, refreshToken, _ := h.service.refreshUser(r.Context(), refreshCookie.Value)
-		//todo: error handling that doesn't stop the function
+		accessToken, refreshToken, err := h.service.refreshUser(r.Context(), refreshCookie.Value)
+		if err != nil {
+			slog.Error(err.Error())
+		}
 		if accessToken == "" {
 			util.RespondErr(w, http.StatusInternalServerError, "Refresh failed", nil)
+			return
 		}
-		h.setAuthCookie(w, h.config.AccCookieName, accessToken, "/", time.Unix(0, 0))
-		h.setAuthCookie(w, h.config.RefCookieName, refreshToken, "/api/auth", time.Unix(0, 0))
+		h.setAuthCookie(w, h.config.AccCookieName, accessToken, "/", time.Now().Add(h.config.AccTTL))
+		h.setAuthCookie(w, h.config.RefCookieName, refreshToken, "/api/auth", time.Now().Add(h.config.RefTTL))
 
 		util.RespondJSON(w, http.StatusOK, map[string]string{"message": "refresh success"})
 	}
