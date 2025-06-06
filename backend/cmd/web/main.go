@@ -39,7 +39,7 @@ func main() {
 	store := repo.NewStore(postgres, redis)
 
 	accessManager, err := jwt.NewManager(cfg.Auth.AccSecret,
-		cfg.Auth.AccTTL, cfg.Auth.Issuer, cfg.Auth.Audience, token.AccessPayload{})
+		cfg.Auth.AccTTL, cfg.Auth.Issuer, cfg.Auth.Audience, token.UserPayload{})
 	if err != nil {
 		panic(err)
 	}

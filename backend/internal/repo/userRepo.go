@@ -28,13 +28,12 @@ type pgUserRepo struct {
 func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.User, error) {
 	var newUser model.User
 	query := `INSERT INTO users (username, displayname, passhash) VALUES ($1, $2, $3) RETURNING id, username, displayname, passhash`
-	err := r.db.QueryRowContext(ctx, query, user.Username, user.DisplayName, user.PassHash).Scan(
+	if err := r.db.QueryRowContext(ctx, query, user.Username, user.DisplayName, user.PassHash).Scan(
 		&newUser.ID,
 		&newUser.Username,
 		&newUser.DisplayName,
 		&newUser.PassHash,
-	)
-	if err != nil {
+	); err != nil {
 		if pqErr, ok := err.(*pq.Error); ok {
 			if pqErr.Code.Name() == "unique_violation" || pqErr.Code == "23505" {
 				err = ErrAlreadyExists

@@ -7,14 +7,15 @@ import (
 )
 
 type Auth struct {
-	AccCookieName string
-	AccSecret     string
-	AccTTL        time.Duration
-	RefCookieName string
-	RefTTL        time.Duration
-	Issuer        string
-	Audience      string
-	Domain        string
+	AccCookieName   string
+	AccSecret       string
+	AccTTL          time.Duration
+	RefCookieName   string
+	RefStoredFormat string
+	RefTTL          time.Duration
+	Issuer          string
+	Audience        string
+	Domain          string
 }
 
 type DB struct {
@@ -45,14 +46,15 @@ func Load() (*AppConfig, error) {
 	}
 
 	cfg.Auth = &Auth{
-		AccCookieName: "access_token",
-		AccSecret:     os.Getenv("JWT_ACCESS_SECRET"),
-		AccTTL:        10 * time.Minute,
-		RefCookieName: "refresh_token",
-		RefTTL:        24 * time.Hour,
-		Issuer:        "letsgo",
-		Audience:      "AuthService",
-		Domain:        os.Getenv("DOMAIN"),
+		AccCookieName:   "access_token",
+		AccSecret:       os.Getenv("JWT_ACCESS_SECRET"),
+		AccTTL:          10 * time.Minute,
+		RefCookieName:   "refresh_token",
+		RefStoredFormat: "refToken:%v",
+		RefTTL:          24 * time.Hour,
+		Issuer:          "letsgo",
+		Audience:        "AuthService",
+		Domain:          os.Getenv("DOMAIN"),
 	}
 	cfg.DB = &DB{
 		PostgresUrl:  os.Getenv("POSTGRES_URL"),

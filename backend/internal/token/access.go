@@ -4,6 +4,6 @@ import (
 	"letsgo/pkg/jwt/v2"
 )
 
-type AccessPayload struct{ Username string }
+type UserPayload struct{ Username string }
 
-type AccessTokenManager = jwt.Manager[AccessPayload]
+type UserManager = jwt.Manager[UserPayload]

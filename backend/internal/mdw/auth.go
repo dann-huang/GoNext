@@ -9,7 +9,7 @@ import (
 
 type ContextKey string
 
-func AccessMdw(jwt token.AccessTokenManager, cookieName string,
+func AccessMdw(jwt token.UserManager, cookieName string,
 	cookieTTL time.Duration, payloadKey ContextKey) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {

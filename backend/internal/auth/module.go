@@ -16,10 +16,10 @@ type authImpl struct {
 	router chi.Router
 }
 
-func NewModule(userRepo repo.UserRepo, kvStore repo.KVStore, accManager token.AccessTokenManager, config *config.Auth) AuthModule {
+func NewModule(userRepo repo.UserRepo, kvStore repo.KVStore, accMngr token.UserManager, config *config.Auth) AuthModule {
 
-	service := newService(userRepo, kvStore)
-	handler := newHandler(service)
+	service := newService(accMngr, userRepo, kvStore, config)
+	handler := newHandler(service, config)
 	router := newRouter(handler)
 
 	return &authImpl{router: router}
