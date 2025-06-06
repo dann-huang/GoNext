@@ -1,4 +1,4 @@
-package user
+package auth
 
 import (
 	"encoding/json"
@@ -18,10 +18,10 @@ type handler interface {
 }
 
 type handlerImpl struct {
-	service Service
+	service service
 }
 
-func newHandler(service Service) handler {
+func newHandler(service service) handler {
 	return &handlerImpl{
 		service: service,
 	}
@@ -41,7 +41,7 @@ func (h *handlerImpl) registerHandler() http.HandlerFunc {
 			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
 			return
 		}
-		usr, err := h.service.CreateUser(r.Context(), params.Username, params.Password)
+		usr, err := h.service.createUser(r.Context(), params.Username, params.Password)
 		if err != nil {
 			if errors.Is(err, repo.ErrAlreadyExists) {
 				util.RespondErr(w, http.StatusConflict, "Username taken", nil)

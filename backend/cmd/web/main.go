@@ -7,11 +7,11 @@ import (
 
 	"letsgo/internal/auth"
 	"letsgo/internal/db"
+	"letsgo/internal/live"
 	"letsgo/internal/mdw"
 	"letsgo/internal/repo"
-	"letsgo/internal/room"
 	"letsgo/internal/static"
-	"letsgo/internal/user"
+	"letsgo/internal/token"
 	"letsgo/pkg/jwt/v2"
 
 	"letsgo/internal/config"
@@ -30,33 +30,31 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	db, rdb, err := db.Open(cfg.DB)
+	postgres, redis, err := db.Open(cfg.DB)
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer postgres.Close()
 
-	store := repo.NewStore(db, rdb)
+	store := repo.NewStore(postgres, redis)
 
 	accessManager, err := jwt.NewManager(cfg.Auth.AccSecret,
-		cfg.Auth.AccTTL, cfg.Auth.Issuer, cfg.Auth.Audience, auth.AccessPayload{})
+		cfg.Auth.AccTTL, cfg.Auth.Issuer, cfg.Auth.Audience, token.AccessPayload{})
 	if err != nil {
 		panic(err)
 	}
-	refreshManager := auth.NewRefManager(rdb, cfg.Auth)
+	authModule := auth.NewModule(store.User, store.KVStore, accessManager, cfg.Auth)
 
 	const userCtxKey mdw.ContextKey = "userPayload"
-	userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
-	userModule := user.NewModule(store.User, accessManager, refreshManager, userAccMdw, userCtxKey, cfg.Auth)
+	// userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Route("/api", func(api chi.Router) {
-		api.Mount("/auth", userModule.AuthRouter())
-		api.Mount("/user", userModule.Router())
-		api.Mount("/room", room.Router())
+		api.Mount("/auth", authModule.Router())
+		api.Mount("/live", live.Router())
 	})
 
 	// static pages

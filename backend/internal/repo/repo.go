@@ -7,11 +7,13 @@ import (
 )
 
 type Store struct {
-	User UserRepo
+	User    UserRepo
+	KVStore KVStore
 }
 
 func NewStore(db *sql.DB, rds *redis.Client) *Store {
 	return &Store{
-		User: newUserRepo(db),
+		User:    newUserRepo(db),
+		KVStore: newKVStore(rds),
 	}
 }

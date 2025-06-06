@@ -1,4 +1,4 @@
-package room
+package live
 
 import (
 	"log/slog"
@@ -17,10 +17,10 @@ func Router() chi.Router {
 		w.Write([]byte(`{"message": "room service is running"}`))
 	})
 
-	hub := NewHub()
+	hub := newHub()
 	go hub.Run()
 
-	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/conn", func(w http.ResponseWriter, r *http.Request) {
 
 		// if r.Header.Get("Origin") != "localhost:3000" {
 		// 	util.RespondJSON(w, http.StatusForbidden, map[string]string{

@@ -1,5 +1,5 @@
 // room/client.go
-package room
+package live
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 
 type client struct {
 	ID     string
-	Hub    *Hub
+	Hub    *hub
 	Conn   *websocket.Conn
 	Send   chan []byte
 	Room   string
@@ -28,7 +28,7 @@ const (
 	maxMessageSize = 512
 )
 
-func newClient(hub *Hub, conn *websocket.Conn, name string) *client {
+func newClient(hub *hub, conn *websocket.Conn, name string) *client {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &client{
 		ID:     uuid.New().String(),
@@ -43,7 +43,7 @@ func newClient(hub *Hub, conn *websocket.Conn, name string) *client {
 
 func (c *client) readPump() {
 	defer func() {
-		c.Hub.Unregister <- c
+		c.Hub.unregister <- c
 		c.Conn.Close(websocket.StatusNormalClosure, "client leaving")
 	}()
 
@@ -89,27 +89,27 @@ func (c *client) readPump() {
 
 			switch msg.Type {
 			case msgChat, msgVidSignal, msgGameState:
-				c.Hub.Messages <- &msg
+				c.Hub.messages <- &msg
 			case msgCreateRoom:
 				if roomName, ok := msg.Payload.(string); ok && roomName != "" {
-					c.Hub.CreateRoom <- roomName
+					c.Hub.createRoom <- roomName
 				} else {
 					slog.Warn("Create room request with invalid room name payload.", "clientID", c.ID, "payload", msg.Payload)
 					c.Send <- createMsg("Invalid room name for creation.", "", msgError)
 				}
 			case msgJoinRoom:
 				if roomID, ok := msg.Payload.(string); ok && roomID != "" {
-					c.Hub.JoinRoom <- &crPair{Client: c, RoomName: roomID}
+					c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
 				} else {
 					slog.Warn("Join room request with invalid room ID payload.", "clientID", c.ID, "payload", msg.Payload)
 					c.Send <- createMsg("Invalid room ID for joining.", "", msgError)
 				}
 			case msgLeaveRoom:
 				if roomID, ok := msg.Payload.(string); ok && roomID != "" {
-					c.Hub.LeaveRoom <- &crPair{Client: c, RoomName: roomID}
+					c.Hub.leaveRoom <- &crPair{Client: c, RoomName: roomID}
 				} else {
 					// If no specific room ID is provided, assume leaving the current room
-					c.Hub.LeaveRoom <- &crPair{Client: c, RoomName: c.Room}
+					c.Hub.leaveRoom <- &crPair{Client: c, RoomName: c.Room}
 				}
 			case msgGetRooms:
 				// Client requests a list of rooms. Hub should handle this and send back.
@@ -118,7 +118,7 @@ func (c *client) readPump() {
 				// and then in the Hub's Run loop, handle it by sending a marshaled list of rooms back to client.Send.
 			case msgGetClients:
 				if c.Room != "" {
-					if room, ok := c.Hub.Rooms[c.Room]; ok {
+					if room, ok := c.Hub.rooms[c.Room]; ok {
 						c.Send <- room.getClientList()
 					}
 				}

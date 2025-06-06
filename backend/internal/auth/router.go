@@ -1,10 +1,10 @@
-package user
+package auth
 
 import (
 	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(h handler) chi.Router {
+func newRouter(h handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Get("/", h.indexHandler())

@@ -2,14 +2,14 @@ package mdw
 
 import (
 	"context"
-	"letsgo/internal/auth"
+	"letsgo/internal/token"
 	"net/http"
 	"time"
 )
 
 type ContextKey string
 
-func AccessMdw(jwt auth.AccessTokenManager, cookieName string,
+func AccessMdw(jwt token.AccessTokenManager, cookieName string,
 	cookieTTL time.Duration, payloadKey ContextKey) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
