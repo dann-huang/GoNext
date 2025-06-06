@@ -30,8 +30,9 @@ services:
 
   postgres:
     image: postgres:13
+    volumes:
+      - ./postgresInit:/docker-entrypoint-initdb.d
     # issues with permissions on linux. Somehow is fine on mac
-    # volumes:
       # - ./postgres:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}

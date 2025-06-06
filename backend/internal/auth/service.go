@@ -2,238 +2,133 @@ package auth
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
-	"log/slog"
-	"net/http"
-	"strconv"
-	"time"
-
+	"fmt"
 	"letsgo/internal/config"
-	"letsgo/internal/user"
-	"letsgo/pkg/jwt"
+	"letsgo/internal/model"
+	"letsgo/internal/repo"
+	"letsgo/internal/token"
 	"letsgo/pkg/util"
 
-	gjwt "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
-	"github.com/redis/go-redis/v9"
 )
 
-type AuthService struct {
-	db         *sql.DB
-	rdb        *redis.Client
-	jwtManager *jwt.JWTManager
-	cfg        *config.Auth
+type service interface {
+	createUser(ctx context.Context, username string, password string) (*model.User, error)
+	loginUser(ctx context.Context, username, password string) (*model.User, string, string, error)
+	logoutUser(ctx context.Context, refreshToken string) error
+	refreshUser(ctx context.Context, refreshToken string) (string, string, error)
 }
 
-func NewAuthService(db *sql.DB, rdb *redis.Client, jwt *jwt.JWTManager, cfg *config.Auth) *AuthService {
-	return &AuthService{
-		db:         db,
-		rdb:        rdb,
-		jwtManager: jwt,
-		cfg:        cfg,
+type serviceImpl struct {
+	accTokenManager token.UserManager
+	repo            repo.UserRepo
+	kv              repo.KVStore
+	config          *config.Auth
+}
+
+func newService(accMngr token.UserManager, repo repo.UserRepo, kv repo.KVStore, config *config.Auth) service {
+	return &serviceImpl{
+		accTokenManager: accMngr,
+		repo:            repo,
+		kv:              kv,
+		config:          config,
 	}
 }
 
-func (s *AuthService) setAuthCookie(w http.ResponseWriter,
-	name, value, path string, expires time.Time) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     name,
-		Value:    value,
-		Expires:  expires,
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		Domain:   s.cfg.Domain,
-		Path:     path,
-	})
-}
-
-func (s *AuthService) sendErrorResponse(w http.ResponseWriter, status int, msg string, err error) {
+func (s *serviceImpl) createUser(ctx context.Context, username string, password string) (*model.User, error) {
+	passhash, err := util.PasswordHash(password)
 	if err != nil {
-		slog.Error("AuthService error", "status", status, "message", msg)
+		return nil, fmt.Errorf("service: create user failed: %w", err)
 	}
-	util.RespondJSON(w, status, map[string]string{"error": msg})
-}
-
-type UserRequest struct {
-	Name string `json:"name"`
-	Pass string `json:"pass"`
-}
-
-type LoginResponse struct {
-	AccessToken string `json:"accessToken"`
-	Message     string `json:"message"`
-
-	//for testing
-	AccessTokenExpiresAt  string `json:"accessTokenExpiresAt"`
-	RefreshTokenExpiresAt string `json:"refreshTokenExpiresAt"`
-	UserID                string `json:"userId"`
-}
-
-func (s *AuthService) RegisterHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req UserRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			s.sendErrorResponse(w, http.StatusBadRequest, "Invalid request", err)
-			return
-		}
-
-		_, err := user.GetUserByName(r.Context(), s.db, req.Name)
-		if err == nil {
-			s.sendErrorResponse(w, http.StatusConflict, "Username already taken", nil)
-			return
-		}
-		if err != sql.ErrNoRows {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "Something went wrong", err)
-			return
-		}
-		usr, err := user.CreateUser(r.Context(), s.db, req.Name, req.Pass)
-		if err != nil {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "User creation failed", err)
-			return
-		}
-
-		util.RespondJSON(w, http.StatusOK, map[string]string{
-			"message":  "Success",
-			"userId":   strconv.FormatInt(usr.ID, 10),
-			"username": usr.Name,
-		})
+	user, err := s.repo.CreateUser(ctx, &model.User{
+		Username:    username,
+		DisplayName: username,
+		PassHash:    passhash,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("service: create user failed : %w", err)
 	}
+	return user, nil
 }
 
-func (s *AuthService) IndexHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Auth is running"}`))
+func (s *serviceImpl) loginUser(ctx context.Context, username, password string) (*model.User, string, string, error) {
+	user, err := s.repo.ReadUser(ctx, username)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("service: login user failed: %w", err)
 	}
+	if !util.PasswordCheck(password, user.PassHash) {
+		return nil, "", "", repo.ErrNotFound
+	}
+
+	accessToken, err := s.accTokenManager.GenerateToken(&token.UserPayload{
+		Username: user.Username,
+	})
+	if err != nil {
+		return nil, "", "", fmt.Errorf("service: set access token failed: %w", err)
+	}
+	refreshToken := uuid.New().String()
+	if err := s.setRefreshToken(ctx, username, refreshToken); err != nil {
+		return nil, "", "", err
+	}
+
+	return user, accessToken, refreshToken, nil
 }
 
-func (s *AuthService) LoginHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req UserRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			s.sendErrorResponse(w, http.StatusBadRequest, "Invalid request", nil)
-			return
-		}
-
-		usr, err := user.GetUserByName(r.Context(), s.db, req.Name)
-		if err == sql.ErrNoRows {
-			s.sendErrorResponse(w, http.StatusUnauthorized, "Invalid username or password", nil)
-			return
-		} else if err != nil {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "Something went wrong", err)
-			return
-		}
-		if !usr.VerifyPassword(req.Pass) {
-			s.sendErrorResponse(w, http.StatusUnauthorized, "Invalid username or password", nil)
-			return
-		}
-
-		usrId := strconv.FormatInt(usr.ID, 10)
-		claims := gjwt.MapClaims{
-			"sub": usrId,
-		}
-
-		accessToken, err := s.jwtManager.GenerateToken(claims, nil)
-		if err != nil {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "Access token generation failed", err)
-			return
-		}
-
-		refreshToken := uuid.New().String()
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-
-		err = s.rdb.Set(ctx, refreshToken, usr.ID, s.cfg.RefreshTokenTTL).Err()
-		if err != nil {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "Refresh token failed", err)
-			return
-		}
-
-		s.setAuthCookie(w, s.cfg.AccessCookieName, accessToken, "/",
-			time.Now().Add(s.cfg.AccessTokenTTL))
-		s.setAuthCookie(w, s.cfg.RefreshCookieName, refreshToken, "/api/auth",
-			time.Now().Add(s.cfg.RefreshTokenTTL))
-
-		util.RespondJSON(w, http.StatusOK, LoginResponse{
-			Message:               s.cfg.Domain + " login success",
-			AccessToken:           accessToken,
-			AccessTokenExpiresAt:  time.Now().Add(s.cfg.AccessTokenTTL).Format(time.RFC3339),
-			RefreshTokenExpiresAt: time.Now().Add(s.cfg.RefreshTokenTTL).Format(time.RFC3339),
-			UserID:                strconv.FormatInt(usr.ID, 10),
-		})
+func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error {
+	username, err := s.kv.Get(ctx, refreshToken)
+	if err != nil {
+		return fmt.Errorf("service: refresh token lookup failed: %w", err)
 	}
+	return s.unsetRefreshToken(ctx, username, refreshToken)
 }
 
-func (s *AuthService) LogoutHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		refreshTokenCookie, err := r.Cookie(s.cfg.RefreshCookieName)
-		if err == nil {
-			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-			defer cancel()
-			s.rdb.Del(ctx, refreshTokenCookie.Value).Err()
-
-			s.setAuthCookie(w, s.cfg.AccessCookieName, "", "/", time.Unix(0, 0))
-			s.setAuthCookie(w, s.cfg.RefreshCookieName, "", "/api/auth", time.Unix(0, 0))
-		}
-		util.RespondJSON(w, http.StatusOK,
-			map[string]string{"message": "Log out success"})
+func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (string, string, error) {
+	username, err := s.kv.Get(ctx, refreshToken)
+	if err != nil {
+		return "", "", fmt.Errorf("service: refresh token lookup failed: %w", err)
 	}
+
+	newRefToken := uuid.New().String()
+	if err := s.setRefreshToken(ctx, username, refreshToken); err != nil {
+		return "", "", err
+	}
+	accessToken, err := s.accTokenManager.GenerateToken(&token.UserPayload{Username: username})
+	if err != nil {
+		return "", "", fmt.Errorf("service: set access token failed: %w", err)
+	}
+
+	if err := s.unsetRefreshToken(ctx, username, refreshToken); err != nil {
+		return accessToken, newRefToken, err
+	}
+	return accessToken, newRefToken, nil
 }
 
-func (s *AuthService) RefreshHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		refreshCookie, err := r.Cookie(s.cfg.RefreshCookieName)
-		if err != nil {
-			if err == http.ErrNoCookie {
-				s.sendErrorResponse(w, http.StatusUnauthorized, "No refresh token", nil)
-				return
-			}
-			s.sendErrorResponse(w, http.StatusBadRequest, "Invalid cookie", err)
-			return
-		}
-
-		oldRefreshToken := refreshCookie.Value
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-
-		userIDStr, err := s.rdb.Get(ctx, oldRefreshToken).Result()
-		if err == redis.Nil {
-			s.sendErrorResponse(w, http.StatusUnauthorized, "Token does not exist", nil)
-			return
-		}
-		if err != nil {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "Server error", err)
-			return
-		}
-		s.rdb.Del(ctx, oldRefreshToken)
-
-		claims := gjwt.MapClaims{
-			"sub": userIDStr,
-		}
-		accessToken, err := s.jwtManager.GenerateToken(claims, nil)
-		if err != nil {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "Access token generation failed", err)
-			return
-		}
-
-		refreshToken := uuid.New().String()
-		err = s.rdb.Set(ctx, refreshToken, userIDStr, s.cfg.RefreshTokenTTL).Err()
-		if err != nil {
-			s.sendErrorResponse(w, http.StatusInternalServerError, "Failed to store new refresh token", err)
-			return
-		}
-
-		s.setAuthCookie(w, s.cfg.AccessCookieName, accessToken, "/",
-			time.Now().Add(s.cfg.AccessTokenTTL))
-		s.setAuthCookie(w, s.cfg.RefreshCookieName, refreshToken, "/api/auth",
-			time.Now().Add(s.cfg.RefreshTokenTTL))
-
-		util.RespondJSON(w, http.StatusOK, map[string]string{
-			"message":     "Tokens refreshed successfully",
-			"accessToken": accessToken,
-		})
+func (s *serviceImpl) setRefreshToken(ctx context.Context, username, token string) error {
+	if err := s.kv.Set(ctx, token, username, s.config.RefTTL); err != nil {
+		return fmt.Errorf("service: set refresh token failed: %w", err)
 	}
+	if err := s.kv.ListAdd(ctx, fmt.Sprintf(s.config.RefStoredFormat,
+		username), token, s.config.RefTTL); err != nil {
+		return fmt.Errorf("service: add refresh token to list failed: %w", err)
+	}
+	if err := s.kv.ListTrim(ctx, fmt.Sprintf(s.config.RefStoredFormat,
+		username), s.config.RefTTL); err != nil {
+		return fmt.Errorf("service: trim refresh token list failed: %w", err)
+	}
+	return nil
+}
+
+func (s *serviceImpl) unsetRefreshToken(ctx context.Context, username, token string) error {
+	var errList []error
+	if err := s.kv.Del(ctx, token); err != nil {
+		errList = append(errList, fmt.Errorf("service: refresh token delete failed: %w", err))
+	}
+	if err := s.kv.ListDel(ctx, fmt.Sprintf(s.config.RefStoredFormat, username),
+		token); err != nil {
+		errList = append(errList, fmt.Errorf("service: refresh list delete failed: %w", err))
+	}
+	if len(errList) > 0 {
+		return fmt.Errorf("service: unset refresh token errors: %v", errList)
+	}
+	return nil
 }

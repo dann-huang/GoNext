@@ -102,8 +102,8 @@
     function connectWebSocket() {
       // Determine WebSocket URL based on current host and your mounting path
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      // Connect to /api/room/ws endpoint
-      ws = new WebSocket(`${protocol}//${window.location.host}/api/room/ws`);
+      // Connect to endpoint
+      ws = new WebSocket(`${protocol}//${window.location.host}/api/live/conn`);
 
       ws.onopen = () => {
         connectionStatusSpan.textContent = 'Connected';
