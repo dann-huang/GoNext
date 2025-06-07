@@ -1,15 +1,15 @@
 services:
   go:
     build:
-      context: .
-      dockerfile: Dockerfile.dev
+      context: ./backend
+      dockerfile: ./Dockerfile.dev
     volumes:
-      - ./cmd:/app/cmd
-      - ./internal:/app/internal
-      - ./pkg:/app/pkg
-      - ./static:/app/static
-      - ./scripts:/app/scripts
-      - .air.toml:/app/.air.toml
+      - ./backend/cmd:/app/cmd
+      - ./backend/internal:/app/internal
+      - ./backend/pkg:/app/pkg
+      - ./backend/static:/app/static
+      - ./backend/scripts:/app/scripts
+      - ./backend/.air.toml:/app/.air.toml
     environment:
       - POSTGRES_URL=${POSTGRES_URL}
       - POSTGRES_USER=${POSTGRES_USER}
