@@ -35,14 +35,18 @@ func (c *DB) ConnectionStrings() (string, string) {
 }
 
 type AppConfig struct {
-	ServerPort string
-	Auth       *Auth
-	DB         *DB
+	Port        string
+	FrontendUrl string
+	StaticPages string
+	Auth        *Auth
+	DB          *DB
 }
 
 func Load() (*AppConfig, error) {
 	cfg := &AppConfig{
-		ServerPort: os.Getenv("GO_PORT"),
+		Port:        os.Getenv("GO_PORT"),
+		FrontendUrl: os.Getenv("FRONTEND"),
+		StaticPages: "/app/static",
 	}
 
 	cfg.Auth = &Auth{

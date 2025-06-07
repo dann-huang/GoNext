@@ -7,9 +7,9 @@ import (
 
 	"letsgo/internal/auth"
 	"letsgo/internal/db"
+	"letsgo/internal/external"
 	"letsgo/internal/live"
 	"letsgo/internal/repo"
-	"letsgo/internal/static"
 	"letsgo/internal/token"
 	"letsgo/pkg/jwt/v2"
 
@@ -48,18 +48,19 @@ func main() {
 	// userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Route("/api", func(api chi.Router) {
+		api.Use(middleware.Logger)
 		api.Mount("/auth", authModule.Router())
 		api.Mount("/live", live.Router())
 	})
 
 	// static pages
-	staticDir := "/app/static"
-	r.Get("/test/*", static.TestPageHandler(staticDir))
-	r.Get("/*", static.SPAHandler(staticDir))
+	r.Get("/test/*", external.TestPageHandler(cfg.StaticPages))
 
-	http.ListenAndServe(":3000", r)
+	//frontend
+	r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
+
+	http.ListenAndServe(":"+cfg.Port, r)
 }
