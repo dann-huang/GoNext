@@ -50,67 +50,55 @@ func (c *client) readPump() {
 	}()
 
 	for {
-		select {
-		case <-c.ctx.Done():
-			return
-
-		default:
-			readCtx, cancelRead := context.WithTimeout(c.ctx, c.cfg.ReadTimeout)
-			msgType, msgRaw, err := c.Conn.Read(readCtx)
-			cancelRead()
-			if err != nil {
-				if websocket.CloseStatus(err) != websocket.StatusNormalClosure &&
-					websocket.CloseStatus(err) != websocket.StatusGoingAway {
-					slog.Error("ReadPump: WebSocket read error.", "error", err, "client", c.ID)
-				}
-				return
+		msgType, msgRaw, err := c.Conn.Read(c.ctx)
+		if err != nil {
+			if websocket.CloseStatus(err) != websocket.StatusNormalClosure &&
+				websocket.CloseStatus(err) != websocket.StatusGoingAway {
+				slog.Error("readPump: WebSocket read error", "error", err, "client", c.ID)
 			}
-			if msgType != websocket.MessageText {
-				c.Send <- createMsg(msgError, "error", "Invalid message type")
-				continue
-			}
-			if len(msgRaw) > int(c.cfg.MaxMsgSize) {
-				c.Send <- createMsg(msgError, "error", "Message too large.")
-				continue
-			}
+			break
+		}
+		if msgType != websocket.MessageText {
+			slog.Error("readPump: unhandled message type", "msgType", msgType.String())
+			c.Send <- createMsg(msgError, "error", "Invalid message type")
+			continue
+		}
+		if len(msgRaw) > int(c.cfg.MaxMsgSize) {
+			c.Send <- createMsg(msgError, "error", "Message too large.")
+			continue
+		}
+		var msg roomMsg
+		if err := json.Unmarshal(msgRaw, &msg); err != nil {
+			c.Send <- createMsg(msgError, "error", "Invalid message format: "+err.Error())
+			continue
+		}
 
-			var msg roomMsg
-			if err := json.Unmarshal(msgRaw, &msg); err != nil {
-				c.Send <- createMsg(msgError, "error", "Invalid message format: "+err.Error())
-				continue
-			}
+		msg.SenderID = c.ID
 
-			msg.SenderID = c.ID
-
-			switch msg.Type {
-			case msgChat, msgVidSignal, msgGameState:
-				c.Hub.messages <- &msg
-			case msgJoinRoom:
-				if payloadMap, ok := msg.Payload.(map[string]any); ok {
-					if roomID, ok := payloadMap["roomName"].(string); ok && roomID != "" {
-						c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
-					} else {
-						slog.Warn("Join room failed: 'roomName' not found", "payload", msg.Payload)
-						c.Send <- createMsg(msgError, "error", "invalid format")
-					}
+		switch msg.Type {
+		case msgChat, msgVidSignal, msgGameState:
+			c.Hub.messages <- &msg
+		case msgJoinRoom:
+			if payloadMap, ok := msg.Payload.(map[string]any); ok {
+				if roomID, ok := payloadMap["roomName"].(string); ok && roomID != "" {
+					c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
 				} else {
-					slog.Warn("Join room failed", "client", c.ID, "payload", msg.Payload)
-					c.Send <- createMsg(msgError, "error", "invalid format")
+					c.Send <- createMsg(msgError, "error", "invalid format: missing roomName")
 				}
-			case msgLeaveRoom:
-				c.Hub.leaveRoom <- c
-			case msgGetRooms:
-				//todo: probably remove this, or think about public/private rooms
-			case msgGetClients:
-				if c.Room != "" {
-					if room, ok := c.Hub.rooms[c.Room]; ok {
-						c.Send <- room.getClientList()
-					}
-				}
-			default:
-				slog.Warn("ReadPump: Unknown message type received.", "type", msg.Type, "client", c.ID)
-				c.Send <- createMsg(msgError, "error", "Unknown message type: "+msg.Type)
+			} else {
+				c.Send <- createMsg(msgError, "error", "invalid format for join room")
 			}
+		case msgLeaveRoom:
+			c.Hub.leaveRoom <- c
+		case msgGetClients:
+			if c.Room != "" {
+				if room, ok := c.Hub.rooms[c.Room]; ok {
+					c.Send <- room.getClientList()
+				}
+			}
+		default:
+			slog.Warn("readPump: Unknown message type received", "type", msg.Type, "client", c.ID)
+			c.Send <- createMsg(msgError, "error", "Unknown message type: "+msg.Type)
 		}
 	}
 }
@@ -121,13 +109,15 @@ func (c *client) writePump() {
 		case <-c.ctx.Done():
 			return
 		case message, ok := <-c.Send:
-			writeCtx, cancelWrite := context.WithTimeout(c.ctx, c.cfg.WriteTimeout)
-			defer cancelWrite()
 			if !ok {
 				c.cancel()
 				return
 			}
-			if err := c.Conn.Write(writeCtx, websocket.MessageText, message); err != nil {
+			writeCtx, cancelWrite := context.WithTimeout(c.ctx, c.cfg.WriteTimeout)
+			err := c.Conn.Write(writeCtx, websocket.MessageText, message)
+			cancelWrite()
+			if err != nil {
+				slog.Error("writePump: WebSocket write error", "error", err, "client", c.ID)
 				c.cancel()
 				return
 			}
@@ -136,25 +126,23 @@ func (c *client) writePump() {
 }
 
 func (c *client) pingPump() {
-	ticker := time.NewTicker(c.cfg.PingPeriod)
-	defer func() {
-		ticker.Stop()
-	}()
+	ticker := time.NewTicker(c.cfg.PongTimeout)
+	defer ticker.Stop()
 
 	for {
 		select {
+		case <-c.ctx.Done():
+			return
 		case <-ticker.C:
-			writeCtx, cancelWrite := context.WithTimeout(c.ctx, c.cfg.PingPeriod)
-			err := c.Conn.Ping(writeCtx)
-			cancelWrite()
+			pingCtx, cancelPing := context.WithTimeout(c.ctx, c.cfg.PongTimeout)
+			err := c.Conn.Ping(pingCtx)
+			cancelPing()
 			if err != nil {
 				slog.Error("Client ping failed", "error", err, "client", c.ID)
 				c.cancel()
 				return
 			}
 			slog.Debug("Client pinged", "client", c.ID)
-		case <-c.ctx.Done():
-			return
 		}
 	}
 }

@@ -29,7 +29,7 @@ type DB struct {
 type WS struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
-	PingPeriod   time.Duration
+	PongTimeout  time.Duration
 	MaxMsgSize   int64
 
 	RegisterBuffer int64
@@ -82,7 +82,7 @@ func Load() (*AppConfig, error) {
 	}
 	cfg.WS = &WS{
 		ReadTimeout:  15 * time.Second,
-		PingPeriod:   10 * time.Second,
+		PongTimeout:  10 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		MaxMsgSize:   512,
 
