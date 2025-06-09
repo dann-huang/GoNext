@@ -57,7 +57,7 @@ func main() {
 	})
 
 	// static pages
-	r.Get("/test/*", external.TestPageHandler(cfg.StaticPages))
+	r.Get("/stat/*", external.StaticPageHandler(cfg.StaticPages))
 
 	//frontend
 	r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))

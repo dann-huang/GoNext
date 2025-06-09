@@ -22,14 +22,14 @@ case "$1" in
   test)
     sudo docker compose exec go sh /app/scripts/test.sh
     ;;
-  sh)
-    sudo docker compose exec go sh -i
-    ;;
-  log)
+  blog)
     sudo docker compose logs go -f
     ;;
+  flog)
+    sudo docker compose logs next -f
+    ;;
   *)
-    echo "Usage: $0 {up|build|down|lint|test|sh|log}"
+    echo "Usage: $0 {up|build|down|clear|lint|test|sh|blog|flog}"
     exit 1
     ;;
 esac
