@@ -60,9 +60,7 @@ func (s *serviceImpl) loginUser(ctx context.Context, username, password string) 
 		return nil, "", "", repo.ErrNotFound
 	}
 
-	accessToken, err := s.accTokenManager.GenerateToken(&token.UserPayload{
-		Username: user.Username,
-	})
+	accessToken, err := s.accTokenManager.GenerateToken(token.NewUserPayload(user.Username, user.DisplayName))
 	if err != nil {
 		return nil, "", "", fmt.Errorf("service: set access token failed: %w", err)
 	}
@@ -87,12 +85,16 @@ func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (str
 	if err != nil {
 		return "", "", fmt.Errorf("service: refresh token lookup failed: %w", err)
 	}
+	user, err := s.repo.ReadUser(ctx, username)
+	if err != nil {
+		return "", "", fmt.Errorf("service: read user failed: %w", err)
+	}
 
 	newRefToken := uuid.New().String()
 	if err := s.setRefreshToken(ctx, username, refreshToken); err != nil {
 		return "", "", err
 	}
-	accessToken, err := s.accTokenManager.GenerateToken(&token.UserPayload{Username: username})
+	accessToken, err := s.accTokenManager.GenerateToken(token.NewUserPayload(user.Username, user.DisplayName))
 	if err != nil {
 		return "", "", fmt.Errorf("service: set access token failed: %w", err)
 	}

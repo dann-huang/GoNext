@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
+import Chatroom from '@/components/Chatroom';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const roboto = Roboto({
+  weight: ['300', '400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-roboto',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -23,11 +21,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // anti FOUC
+            (function () {
+              try {
+                const themeStr = localStorage.getItem('theme-store');
+                const themeJson = themeStr ? JSON.parse(themeStr) : {};
+                const theme = themeJson.state ? themeJson.state.theme : 'system';
+
+                const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+                if (theme === 'dark' || (theme === 'system' && darkMode)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) { console.error('Theme script failed:', e); }
+            })()`,
+        }} />
+      </head>
+      <body className={`${roboto.variable} antialiased`}>
         {children}
+        <Chatroom />
       </body>
     </html>
   );

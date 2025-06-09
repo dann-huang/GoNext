@@ -2,6 +2,7 @@ package live
 
 import (
 	"encoding/json"
+	"letsgo/internal/token"
 	"log/slog"
 	"sync"
 
@@ -15,7 +16,6 @@ type hub struct {
 
 	register   chan *client
 	unregister chan *client
-	createRoom chan string
 	joinRoom   chan *crPair
 	leaveRoom  chan *crPair
 
@@ -29,14 +29,13 @@ func newHub() *hub {
 		messages:   make(chan *roomMsg, 256),
 		register:   make(chan *client, 10),
 		unregister: make(chan *client, 10),
-		createRoom: make(chan string, 10),
 		joinRoom:   make(chan *crPair, 20),
 		leaveRoom:  make(chan *crPair, 20),
 	}
 }
 
-func (h *hub) AddClient(conn *websocket.Conn, name string) {
-	client := newClient(h, conn, name)
+func (h *hub) AddClient(conn *websocket.Conn, user *token.UserPayload) {
+	client := newClient(h, conn, user)
 	h.register <- client
 	go client.writePump()
 	go client.readPump()
@@ -51,12 +50,7 @@ func (h *hub) Run() {
 		case client := <-h.register:
 			h.mu.Lock()
 			h.clients[client.ID] = client
-			if room, ok := h.rooms[lobby.name]; ok {
-				room.addClient(client)
-			} else {
-				errMsg := createMsg("Lobby broke", lobby.name, msgError)
-				client.Send <- errMsg
-			}
+			lobby.addClient(client)
 			h.mu.Unlock()
 			slog.Debug("Registered: ", "client", client.ID)
 
@@ -76,48 +70,47 @@ func (h *hub) Run() {
 		case msg := <-h.messages:
 			slog.Debug("Sending msg", "message", msg)
 			h.mu.RLock()
-			room, ok := h.rooms[msg.RoomName]
-			h.mu.RUnlock()
-			if ok {
-				jsonMessage, err := json.Marshal(msg)
-				if err != nil {
-					continue
-				}
-				room.broadcast(jsonMessage)
-			} else {
-				if client, ok := h.clients[msg.SenderID]; ok {
-					errMsg := createMsg("Room not found", "", msgError)
-					client.Send <- errMsg
-				}
+			client, ok := h.clients[msg.SenderID]
+			if !ok {
+				h.mu.RUnlock()
+				continue
 			}
-
-		case roomName := <-h.createRoom:
-			h.mu.Lock()
-			newRoom := newRoom(roomName)
-			h.rooms[newRoom.name] = newRoom
-			h.mu.Unlock()
-			slog.Debug("Room created:", "roomName", newRoom.name)
+			room, ok := h.rooms[client.Room]
+			h.mu.RUnlock()
+			if !ok {
+				errMsg := createMsg("Room not found, kicking back to lobby", msgError)
+				client.Send <- errMsg
+				h.joinRoom <- &crPair{client, lobby.name}
+				lobby.addClient(client)
+				continue
+			}
+			jsonMessage, err := json.Marshal(msg)
+			if err != nil {
+				slog.Error("Failed to marshal message", "error", err, "message", msg)
+				continue
+			}
+			room.broadcast(jsonMessage)
 
 		case pair := <-h.joinRoom:
 			slog.Debug("join room")
 			h.mu.Lock()
 			client := pair.Client
 			roomID := pair.RoomName
-
-			if client.Room != "" && client.Room != roomID {
-				if oldRoom, ok := h.rooms[client.Room]; ok {
-					oldRoom.removeClient(client)
-				}
+			if client.Room == "" || client.Room == roomID {
+				h.mu.Unlock()
+				continue
 			}
-			if room, ok := h.rooms[roomID]; ok {
-				room.addClient(client)
-				slog.Info("Client joined room successfully.", "clientID", client.ID, "roomID", roomID)
-			} else {
-				slog.Warn("Attempted to join non-existent room.", "clientID", client.ID, "roomID", roomID)
-				errMsg := createMsg("Room not found: "+roomID, "", msgError)
-				client.Send <- errMsg
+			if oldRoom, ok := h.rooms[client.Room]; ok {
+				oldRoom.removeClient(client)
 			}
+			room, ok := h.rooms[roomID]
+			if !ok {
+				room = newRoom(roomID)
+				h.rooms[room.name] = room
+			}
+			room.addClient(client)
 			h.mu.Unlock()
+			slog.Debug("Client joined room successfully.", "clientID", client.ID, "roomID", roomID)
 
 		case pair := <-h.leaveRoom:
 			h.mu.Lock()
@@ -126,7 +119,10 @@ func (h *hub) Run() {
 
 			if room, ok := h.rooms[roomID]; ok {
 				room.removeClient(client)
-				slog.Info("Client left room.", "clientID", client.ID, "roomID", roomID)
+				slog.Debug("Client left room.", "clientID", client.ID, "roomID", roomID)
+				statusMsg := createMsg("Back to lobby", msgStatus)
+				client.Send <- statusMsg
+				lobby.addClient(client)
 			}
 			h.mu.Unlock()
 		}

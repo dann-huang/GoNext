@@ -4,271 +4,326 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Go Chat Room Test</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Go Live Chat Test</title>
   <style>
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f4;
+      color: #333;
     }
 
-    .message-container {
-      max-height: 400px;
-      overflow-y: auto;
-      scroll-behavior: smooth;
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1,
+    h2 {
+      color: #0056b3;
+    }
+
+    input[type="text"],
+    textarea {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 5px;
+    }
+
+    button.connect {
+      background-color: #28a745;
+      color: white;
+    }
+
+    button.disconnect {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    button.send,
+    button.join,
+    button.leave,
+    button.getClients {
+      background-color: #007bff;
+      color: white;
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    #chat-window {
+      border: 1px solid #ddd;
+      height: 300px;
+      overflow-y: scroll;
+      padding: 10px;
+      margin-bottom: 10px;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+
+    #chat-window p {
+      margin: 5px 0;
+      line-height: 1.4;
+    }
+
+    .message-chat {
+      color: #333;
+    }
+
+    .message-status {
+      color: #0056b3;
+      font-style: italic;
+    }
+
+    .message-error {
+      color: #dc3545;
+      font-weight: bold;
+    }
+
+    #client-list {
+      border: 1px solid #ddd;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
     }
   </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800 p-4 min-h-screen flex items-center justify-center">
-  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-    <h1 class="text-3xl font-bold text-center text-blue-600 mb-6">Go Chat Room</h1>
+<body>
+  <div class="container">
+    <h1>Go Live Chat Tester</h1>
 
-    <div class="mb-4 flex items-center justify-between text-sm text-gray-600">
-      <p>Connection Status: <span id="connectionStatus" class="font-semibold text-red-500">Disconnected</span></p>
-      <p>Your Name: <span id="clientName" class="font-semibold text-blue-700">Connecting...</span></p>
-      <p>Current Room: <span id="currentRoom" class="font-semibold text-purple-700">Lobby</span></p>
-    </div>
+    <section>
+      <h2>Connection</h2>
+      <p>Status: <strong id="connectionStatus" style="color: red;">Disconnected</strong></p>
+      <button id="connectBtn" class="connect">Connect</button>
+      <button id="disconnectBtn" class="disconnect" disabled>Disconnect</button>
+    </section>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="md:col-span-2">
-        <div class="message-container bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
-          <div id="messages" class="space-y-2">
-          </div>
-        </div>
+    <section>
+      <h2>Chat</h2>
+      <div id="chat-window"></div>
+      <input type="text" id="chatInput" placeholder="Type your message..." disabled>
+      <button id="sendChatBtn" class="send" disabled>Send Message</button>
+    </section>
 
-        <div class="flex space-x-2">
-          <input type="text" id="chatInput" placeholder="Type your message..."
-            class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-          <button id="sendButton"
-            class="px-5 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out">
-            Send
-          </button>
-        </div>
+    <section>
+      <h2>Room Management</h2>
+      <input type="text" id="roomNameInput" placeholder="Enter room name (e.g., General, Gaming)">
+      <button id="joinRoomBtn" class="join" disabled>Join Room</button>
+      <button id="leaveRoomBtn" class="leave" disabled>Leave Current Room</button>
+      <p>Current Room: <strong id="currentRoomName">Lobby</strong></p>
+    </section>
+
+    <section>
+      <h2>Clients in Room</h2>
+      <button id="getClientsBtn" class="getClients" disabled>Get Clients in Room</button>
+      <div id="client-list">
+        <p>No clients listed yet.</p>
       </div>
-
-      <div class="md:col-span-1 bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h2 class="text-xl font-semibold mb-3 text-gray-700">Room Management</h2>
-        <div class="space-y-3">
-          <div>
-            <label for="newRoomName" class="block text-sm font-medium text-gray-700 mb-1">New Room Name:</label>
-            <input type="text" id="newRoomName" placeholder="e.g., Gaming Lounge"
-              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400">
-            <button id="createRoomButton"
-              class="mt-2 w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 transition duration-200 ease-in-out">
-              Create Room
-            </button>
-          </div>
-          <div>
-            <label for="joinRoomId" class="block text-sm font-medium text-gray-700 mb-1">Join Room ID:</label>
-            <input type="text" id="joinRoomId" placeholder="Enter Room ID"
-              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400">
-            <button id="joinRoomButton"
-              class="mt-2 w-full px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 transition duration-200 ease-in-out">
-              Join Room
-            </button>
-          </div>
-          <div>
-            <button id="leaveRoomButton"
-              class="mt-2 w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 transition duration-200 ease-in-out">
-              Leave Current Room
-            </button>
-          </div>
-        </div>
-
-        <h2 class="text-xl font-semibold mt-6 mb-3 text-gray-700">Clients in Room</h2>
-        <ul id="clientList" class="space-y-1 text-sm text-gray-700">
-        </ul>
-      </div>
-    </div>
+    </section>
   </div>
 
   <script>
-    const connectionStatusSpan = document.getElementById('connectionStatus');
-    const clientNameSpan = document.getElementById('clientName');
-    const currentRoomSpan = document.getElementById('currentRoom');
-    const messagesDiv = document.getElementById('messages');
-    const chatInput = document.getElementById('chatInput');
-    const sendButton = document.getElementById('sendButton');
-    const newRoomNameInput = document.getElementById('newRoomName');
-    const createRoomButton = document.getElementById('createRoomButton');
-    const joinRoomIdInput = document.getElementById('joinRoomId');
-    const joinRoomButton = document.getElementById('joinRoomButton');
-    const leaveRoomButton = document.getElementById('leaveRoomButton');
-    const clientListUl = document.getElementById('clientList');
-
+    const wsUrl = "/api/live"; // Adjust if your server is on a different port/domain
     let ws;
-    let currentRoomId = ''; // To store the current room ID
+    let currentRoom = "Lobby"; // Default room
 
-    function connectWebSocket() {
-      // Determine WebSocket URL based on current host and your mounting path
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const connectionStatus = document.getElementById("connectionStatus");
+    const chatWindow = document.getElementById("chat-window");
+    const chatInput = document.getElementById("chatInput");
+    const sendChatBtn = document.getElementById("sendChatBtn");
+    const roomNameInput = document.getElementById("roomNameInput");
+    const joinRoomBtn = document.getElementById("joinRoomBtn");
+    const leaveRoomBtn = document.getElementById("leaveRoomBtn");
+    const currentRoomNameDisplay = document.getElementById("currentRoomName");
+    const getClientsBtn = document.getElementById("getClientsBtn");
+    const clientListDiv = document.getElementById("client-list");
+
+    function setConnected(isConnected) {
+      connectBtn.disabled = isConnected;
+      disconnectBtn.disabled = !isConnected;
+      chatInput.disabled = !isConnected;
+      sendChatBtn.disabled = !isConnected;
+      joinRoomBtn.disabled = !isConnected;
+      leaveRoomBtn.disabled = !isConnected;
+      getClientsBtn.disabled = !isConnected;
+      connectionStatus.textContent = isConnected ? "Connected" : "Disconnected";
+      connectionStatus.style.color = isConnected ? "green" : "red";
+
+      if (!isConnected) {
+        currentRoom = "Lobby"; // Reset current room on disconnect
+        currentRoomNameDisplay.textContent = currentRoom;
+        clientListDiv.innerHTML = "<p>No clients listed yet.</p>";
+      }
+    }
+
+    function appendMessage(message, type = 'chat') {
+      const p = document.createElement('p');
+      p.classList.add(`message-${type}`);
+      p.textContent = message;
+      chatWindow.appendChild(p);
+      chatWindow.scrollTop = chatWindow.scrollHeight; // Auto-scroll to bottom
+    }
+
+    connectBtn.addEventListener("click", () => {
+      // This will attempt to connect without sending any explicit JWT via query param or header.
+      // Your Go backend's `authMdw` must handle the authentication process
+      // (e.g., from cookies, session, or pre-existing headers set by an initial HTTP request).
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       // Connect to endpoint
-      ws = new WebSocket(`${protocol}//${window.location.host}/api/live/conn`);
+      ws = new WebSocket(`${protocol}//${window.location.host}/api/live/`);
 
-      ws.onopen = () => {
-        connectionStatusSpan.textContent = 'Connected';
-        connectionStatusSpan.classList.remove('text-red-500');
-        connectionStatusSpan.classList.add('text-green-500');
-        appendMessage('Status', 'Connected to chat server.', 'blue');
+      ws.onopen = (event) => {
+        appendMessage("Connected to WebSocket.", "status");
+        setConnected(true);
+        // Immediately get client list on connect to update UI
+        sendGetClientsRequest();
       };
 
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          console.log('Received:', msg); // Log for debugging
-
           switch (msg.type) {
-            case 'chat':
-              appendMessage(msg.name || 'Anonymous', msg.payload, 'black');
+            case "chat":
+            case "video_signal":
+            case "game_state":
+              appendMessage(`[${msg.senderId ? msg.senderId.substring(0, 8) : 'Unknown'}]: ${msg.payload}`, "chat");
               break;
-            case 'status':
-              appendMessage('Status', msg.payload.status, 'gray');
+            case "status":
+              appendMessage(`${msg.payload.status}`, "status");
               break;
-            case 'error':
-              appendMessage('Error', msg.payload.error, 'red');
+            case "error":
+              appendMessage(`ERROR: ${msg.payload.status || JSON.stringify(msg.payload)}`, "error");
               break;
-            case 'client_list':
-              updateClientList(msg.payload.clientIDs);
-              currentRoomSpan.textContent = msg.payload.roomName || 'Unknown';
-              currentRoomId = msg.payload.roomID || '';
-              // When the client list arrives, if our name is still default, update it.
-              // The server sends a random name, so we can't know it until a message is received.
-              // This assumes the first name in the client list is ours, which might not always be true,
-              // but is generally okay for this simple test page.
-              if (clientNameSpan.textContent === 'Connecting...' && msg.payload.clientIDs && msg.payload.clientIDs.length > 0) {
-                // Find the first client name in the list that isn't already displayed
-                // (e.g., if "Guest_XYZ" was already shown by the previous logic)
-                const uniqueClientName = msg.payload.clientIDs.find(name => name !== clientNameSpan.textContent);
-                if (uniqueClientName) {
-                  clientNameSpan.textContent = uniqueClientName;
-                } else {
-                  // Fallback: if no unique name, just use the first one as a proxy
-                  clientNameSpan.textContent = msg.payload.clientIDs[0];
-                }
-              }
+            case "get_clients":
+              updateClientList(msg.payload);
               break;
-            case 'room_list':
-              console.log('Available Rooms:', msg.payload);
-              // You could extend the UI to display a list of available rooms here
-              break;
+            // Add more cases for other message types (video_signal, game_state, etc.)
             default:
-              console.warn('Unknown message type:', msg.type, msg);
+              appendMessage(`Received unknown message type: ${msg.type} - ${JSON.stringify(msg.payload)}`, "status");
+              break;
           }
         } catch (e) {
-          console.error('Failed to parse message:', event.data, e);
-          appendMessage('Error', 'Failed to parse incoming message.', 'red');
+          appendMessage(`Failed to parse message: ${event.data} - ${e.message}`, "error");
         }
       };
 
       ws.onclose = (event) => {
-        connectionStatusSpan.textContent = 'Disconnected';
-        connectionStatusSpan.classList.remove('text-green-500');
-        connectionStatusSpan.classList.add('text-red-500');
-        appendMessage('Status', 'Disconnected from chat server. Code: ' + event.code + ' Reason: ' + event.reason, 'orange');
-        // Attempt to reconnect after a delay
-        setTimeout(connectWebSocket, 3000);
+        appendMessage(`Disconnected from WebSocket. Code: ${event.code}, Reason: ${event.reason}`, "status");
+        setConnected(false);
       };
 
-      ws.onerror = (err) => {
-        console.error('WebSocket Error:', err);
-        appendMessage('Error', 'WebSocket error occurred.', 'red');
+      ws.onerror = (event) => {
+        appendMessage("WebSocket error!", "error");
+        console.error("WebSocket error:", event);
       };
-    }
+    });
 
-    function appendMessage(sender, text, color) {
-      const messageElement = document.createElement('div');
-      messageElement.classList.add('p-2', 'rounded-md');
-      // Basic sanitization: Convert HTML entities to prevent XSS (for displaying user input)
-      const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-      messageElement.innerHTML = `<span class="font-semibold text-${color}-700">${sender}:</span> ${safeText}`;
-      messagesDiv.appendChild(messageElement);
-      // Scroll to the bottom
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    function sendMessage(type, payload, roomId = currentRoomId) {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        const message = {
-          type: type,
-          roomId: roomId,
-          payload: payload
-        };
-        ws.send(JSON.stringify(message));
-      } else {
-        appendMessage('System', 'Not connected to server.', 'red');
-      }
-    }
-
-    function sendChat() {
-      const text = chatInput.value.trim();
-      if (text) {
-        sendMessage('chat', text);
-        chatInput.value = ''; // Clear input after sending
-      }
-    }
-
-    function createRoom() {
-      const roomName = newRoomNameInput.value.trim();
-      if (roomName) {
-        sendMessage('create_room', roomName, ''); // RoomID is empty for creation
-        newRoomNameInput.value = '';
-        appendMessage('System', `Requesting to create room: "${roomName}"`, 'blue');
-      } else {
-        appendMessage('System', 'Please enter a room name.', 'red');
-      }
-    }
-
-    function joinRoom() {
-      const roomId = joinRoomIdInput.value.trim();
-      if (roomId) {
-        sendMessage('join_room', roomId, ''); // RoomID is the payload for joining
-        joinRoomIdInput.value = '';
-        appendMessage('System', `Requesting to join room: "${roomId}"`, 'blue');
-      } else {
-        appendMessage('System', 'Please enter a Room ID.', 'red');
-      }
-    }
-
-    function leaveRoom() {
-      // Send a leave_room message for the current room
-      if (currentRoomId && currentRoomId !== "Lobby") { // Prevent leaving the default Lobby room
-        sendMessage('leave_room', currentRoomId, '');
-        appendMessage('System', `Requesting to leave room: "${currentRoomId}"`, 'blue');
-      } else {
-        appendMessage('System', 'You are not in a specific room to leave (or already in Lobby).', 'red');
-      }
-    }
-
-
-    function updateClientList(clientNames) {
-      clientListUl.innerHTML = ''; // Clear existing list
-      if (clientNames && clientNames.length > 0) {
-        clientNames.forEach(name => {
-          const li = document.createElement('li');
-          li.textContent = name;
-          clientListUl.appendChild(li);
-        });
-      } else {
-        const li = document.createElement('li');
-        li.textContent = 'No other clients in room.';
-        clientListUl.appendChild(li);
-      }
-    }
-
-    // Event Listeners
-    sendButton.addEventListener('click', sendChat);
-    chatInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        sendChat();
+    disconnectBtn.addEventListener("click", () => {
+      if (ws) {
+        ws.close(1000, "User initiated disconnect"); // 1000 is for normal closure
       }
     });
-    createRoomButton.addEventListener('click', createRoom);
-    joinRoomButton.addEventListener('click', joinRoom);
-    leaveRoomButton.addEventListener('click', leaveRoom);
 
+    sendChatBtn.addEventListener("click", () => {
+      const message = chatInput.value.trim();
+      if (message && ws && ws.readyState === WebSocket.OPEN) {
+        const chatMsg = {
+          type: "chat",
+          payload: message,
+        };
+        ws.send(JSON.stringify(chatMsg));
+        chatInput.value = "";
+      }
+    });
 
-    // Initial connection
-    connectWebSocket();
+    chatInput.addEventListener("keypress", (event) => {
+      if (event.key === "Enter") {
+        sendChatBtn.click();
+      }
+    });
+
+    joinRoomBtn.addEventListener("click", () => {
+      const roomName = roomNameInput.value.trim();
+      if (roomName && ws && ws.readyState === WebSocket.OPEN) {
+        const joinMsg = {
+          type: "join_room",
+          payload: roomName,
+        };
+        ws.send(JSON.stringify(joinMsg));
+        currentRoom = roomName; // Optimistic update
+        currentRoomNameDisplay.textContent = currentRoom;
+      } else if (!roomName) {
+        appendMessage("Please enter a room name to join.", "error");
+      }
+    });
+
+    leaveRoomBtn.addEventListener("click", () => {
+      const leaveMsg = {
+        type: "leave_room",
+        payload: currentRoom, // Can be empty or actual room name
+      };
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(leaveMsg));
+        currentRoom = "Lobby"; // Optimistic update to Lobby
+        currentRoomNameDisplay.textContent = currentRoom;
+      }
+    });
+
+    getClientsBtn.addEventListener("click", sendGetClientsRequest);
+
+    function sendGetClientsRequest() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const getClientsMsg = {
+          type: "get_clients",
+          payload: null, // Payload can be null for this type
+        };
+        ws.send(JSON.stringify(getClientsMsg));
+      }
+    }
+
+    function updateClientList(payload) {
+      if (payload && payload.roomName && payload.clientIDs) {
+        clientListDiv.innerHTML = `<h4>Clients in ${payload.roomName}:</h4>`;
+        if (payload.clientIDs.length > 0) {
+          const ul = document.createElement('ul');
+          payload.clientIDs.forEach(clientName => {
+            const li = document.createElement('li');
+            li.textContent = clientName;
+            ul.appendChild(li);
+          });
+          clientListDiv.appendChild(ul);
+        } else {
+          clientListDiv.innerHTML += "<p>No other clients in this room.</p>";
+        }
+      } else {
+        clientListDiv.innerHTML = "<p>Failed to get client list.</p>";
+      }
+    }
+
+    // Initialize button states
+    setConnected(false);
+
   </script>
 </body>
 

@@ -10,7 +10,6 @@ const (
 	msgChat       = "chat"
 	msgVidSignal  = "video_signal"
 	msgGameState  = "game_state"
-	msgCreateRoom = "create_room"
 	msgJoinRoom   = "join_room"
 	msgLeaveRoom  = "leave_room"
 	msgGetRooms   = "get_rooms"
@@ -19,8 +18,6 @@ const (
 
 type roomMsg struct {
 	Type     string `json:"type"`
-	RoomName string `json:"roomId,omitempty"`
-	Sender   string `json:"name,omitempty"`
 	SenderID string `json:"senderId,omitempty"`
 	Payload  any    `json:"payload"`
 }
@@ -30,11 +27,10 @@ type crPair struct {
 	RoomName string
 }
 
-func createMsg(msg, roomName string, msgType string) []byte {
+func createMsg(msg, msgType string) []byte {
 	statusMsg := &roomMsg{
-		Type:     msgType,
-		RoomName: roomName,
-		Payload:  map[string]string{"status": msg},
+		Type:    msgType,
+		Payload: map[string]string{"status": msg},
 	}
 	jsonMessage, err := json.Marshal(statusMsg)
 	if err != nil {

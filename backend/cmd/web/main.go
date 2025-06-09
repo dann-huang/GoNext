@@ -9,6 +9,7 @@ import (
 	"letsgo/internal/db"
 	"letsgo/internal/external"
 	"letsgo/internal/live"
+	"letsgo/internal/mdw"
 	"letsgo/internal/repo"
 	"letsgo/internal/token"
 	"letsgo/pkg/jwt/v2"
@@ -44,8 +45,8 @@ func main() {
 	}
 	authModule := auth.NewModule(store.User, store.KVStore, accessManager, cfg.Auth)
 
-	// const userCtxKey mdw.ContextKey = "userPayload"
-	// userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
+	const userCtxKey mdw.ContextKey = "userPayload"
+	userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
@@ -53,7 +54,7 @@ func main() {
 	r.Route("/api", func(api chi.Router) {
 		api.Use(middleware.Logger)
 		api.Mount("/auth", authModule.Router())
-		api.Mount("/live", live.Router())
+		api.Mount("/live", live.Router(userAccMdw, userCtxKey))
 	})
 
 	// static pages

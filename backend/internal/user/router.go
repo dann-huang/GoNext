@@ -1,31 +1,24 @@
-package live
+package user
 
 import (
 	"letsgo/internal/mdw"
 	"letsgo/internal/token"
-	"log/slog"
+	"letsgo/pkg/util"
 	"net/http"
 
-	"github.com/coder/websocket"
 	"github.com/go-chi/chi/v5"
 )
 
 func Router(authMdw mdw.Middleware, ctxKey mdw.ContextKey) chi.Router {
-	hub := newHub()
-	go hub.Run()
-
 	r := chi.NewRouter()
 	r.Use(authMdw)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		slog.Info("123")
-		conn, err := websocket.Accept(w, r, nil)
-		if err != nil {
-			slog.Error("Failed to accept WebSocket connection.", "error", err)
-			return
-		}
 		user := r.Context().Value(ctxKey).(*token.UserPayload)
-		slog.Debug("321")
-		hub.AddClient(conn, user)
+		util.RespondJSON(w, http.StatusOK, map[string]string{
+			"message":     "Success",
+			"username":    user.Username,
+			"displayname": user.Displayname,
+		})
 	})
 
 	return r

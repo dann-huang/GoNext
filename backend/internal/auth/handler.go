@@ -62,7 +62,7 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 
 func (h *handlerImpl) registerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var params model.UserCreate
+		var params model.UserReq
 		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 			util.RespondErr(w, http.StatusBadRequest, "Bad request", err)
 			return
@@ -90,7 +90,7 @@ func (h *handlerImpl) registerHandler() http.HandlerFunc {
 
 func (h *handlerImpl) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.UserCreate
+		var req model.UserReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			util.RespondErr(w, http.StatusBadRequest, "Invalid request", nil)
 		}
@@ -111,6 +111,7 @@ func (h *handlerImpl) loginHandler() http.HandlerFunc {
 		util.RespondJSON(w, http.StatusOK, map[string]string{
 			"message":         "login success",
 			"username":        usr.Username,
+			"displayname":     usr.DisplayName,
 			"access expires":  time.Now().Add(h.config.AccTTL).Format(time.RFC3339),
 			"refresh expires": time.Now().Add(h.config.RefTTL).Format(time.RFC3339),
 		})

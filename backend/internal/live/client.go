@@ -4,11 +4,11 @@ package live
 import (
 	"context"
 	"encoding/json"
+	"letsgo/internal/token"
 	"log/slog"
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/google/uuid"
 )
 
 type client struct {
@@ -17,7 +17,7 @@ type client struct {
 	Conn   *websocket.Conn
 	Send   chan []byte
 	Room   string
-	Name   string
+	User   *token.UserPayload
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -28,14 +28,14 @@ const (
 	maxMessageSize = 512
 )
 
-func newClient(hub *hub, conn *websocket.Conn, name string) *client {
+func newClient(hub *hub, conn *websocket.Conn, user *token.UserPayload) *client {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &client{
-		ID:     uuid.New().String(),
+		ID:     user.Username,
 		Hub:    hub,
 		Conn:   conn,
 		Send:   make(chan []byte, 256),
-		Name:   name,
+		User:   user,
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -64,58 +64,43 @@ func (c *client) readPump() {
 				return
 			}
 			if msgType != websocket.MessageText {
-				errMsg := createMsg("Invalid message type", "", msgError)
+				errMsg := createMsg("Invalid message type", msgError)
 				c.Send <- errMsg
 				continue
 			}
 			if len(msgRaw) > maxMessageSize {
-				errMsg := createMsg("Message too large.", "", msgError)
+				errMsg := createMsg("Message too large.", msgError)
 				c.Send <- errMsg
 				continue
 			}
 
 			var msg roomMsg
 			if err := json.Unmarshal(msgRaw, &msg); err != nil {
-				errMsg := createMsg("Invalid message format: "+err.Error(), "", msgError)
+				errMsg := createMsg("Invalid message format: "+err.Error(), msgError)
 				c.Send <- errMsg
 				continue
 			}
 
 			msg.SenderID = c.ID
-			msg.Sender = c.Name
-			if msg.RoomName == "" {
-				msg.RoomName = c.Room
-			}
 
 			switch msg.Type {
 			case msgChat, msgVidSignal, msgGameState:
 				c.Hub.messages <- &msg
-			case msgCreateRoom:
-				if roomName, ok := msg.Payload.(string); ok && roomName != "" {
-					c.Hub.createRoom <- roomName
-				} else {
-					slog.Warn("Create room request with invalid room name payload.", "clientID", c.ID, "payload", msg.Payload)
-					c.Send <- createMsg("Invalid room name for creation.", "", msgError)
-				}
 			case msgJoinRoom:
 				if roomID, ok := msg.Payload.(string); ok && roomID != "" {
 					c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
 				} else {
-					slog.Warn("Join room request with invalid room ID payload.", "clientID", c.ID, "payload", msg.Payload)
-					c.Send <- createMsg("Invalid room ID for joining.", "", msgError)
+					slog.Warn("Join room failed", "clientID", c.ID, "payload", msg.Payload)
+					c.Send <- createMsg("Join room failed", msgError)
 				}
 			case msgLeaveRoom:
 				if roomID, ok := msg.Payload.(string); ok && roomID != "" {
 					c.Hub.leaveRoom <- &crPair{Client: c, RoomName: roomID}
 				} else {
-					// If no specific room ID is provided, assume leaving the current room
 					c.Hub.leaveRoom <- &crPair{Client: c, RoomName: c.Room}
 				}
 			case msgGetRooms:
-				// Client requests a list of rooms. Hub should handle this and send back.
-				slog.Info("Client requested room list. Hub needs to implement sending this back.", "clientID", c.ID)
-				// To implement this, you'd add a new channel to your Hub like `GetRoomListRequests chan *Client`
-				// and then in the Hub's Run loop, handle it by sending a marshaled list of rooms back to client.Send.
+				//todo: hand back list of rooms
 			case msgGetClients:
 				if c.Room != "" {
 					if room, ok := c.Hub.rooms[c.Room]; ok {
@@ -125,7 +110,7 @@ func (c *client) readPump() {
 
 			default:
 				slog.Warn("ReadPump: Unknown message type received.", "type", msg.Type, "clientID", c.ID)
-				c.Send <- createMsg("Unknown message type: "+msg.Type, "", msgError)
+				c.Send <- createMsg("Unknown message type: "+msg.Type, msgError)
 			}
 		}
 	}

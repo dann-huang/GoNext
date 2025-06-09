@@ -9,8 +9,10 @@ import (
 
 type ContextKey string
 
+type Middleware = func(http.Handler) http.Handler
+
 func AccessMdw(jwt token.UserManager, cookieName string,
-	cookieTTL time.Duration, payloadKey ContextKey) func(http.Handler) http.Handler {
+	cookieTTL time.Duration, payloadKey ContextKey) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
