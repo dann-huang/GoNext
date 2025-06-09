@@ -58,6 +58,9 @@ func (h *hub) Run() {
 			h.mu.Lock()
 			if room, ok := h.rooms[client.Room]; ok {
 				room.removeClient(client)
+				if room != lobby && len(room.clients) == 0 {
+					delete(h.rooms, room.name)
+				}
 			}
 			if _, ok := h.clients[client.ID]; ok {
 				delete(h.clients, client.ID)
@@ -102,6 +105,9 @@ func (h *hub) Run() {
 			}
 			if oldRoom, ok := h.rooms[client.Room]; ok {
 				oldRoom.removeClient(client)
+				if oldRoom != lobby && len(oldRoom.clients) == 0 {
+					delete(h.rooms, oldRoom.name)
+				}
 			}
 			room, ok := h.rooms[roomID]
 			if !ok {
@@ -118,7 +124,13 @@ func (h *hub) Run() {
 			roomID := pair.RoomName
 
 			if room, ok := h.rooms[roomID]; ok {
+				if room == lobby {
+					continue
+				}
 				room.removeClient(client)
+				if len(room.clients) == 0 {
+					delete(h.rooms, room.name)
+				}
 				slog.Debug("Client left room.", "clientID", client.ID, "roomID", roomID)
 				statusMsg := createMsg("Back to lobby", msgStatus)
 				client.Send <- statusMsg
