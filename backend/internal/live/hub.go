@@ -2,7 +2,7 @@ package live
 
 import (
 	"encoding/json"
-	"letsgo/internal/token"
+	"letsgo/internal/config"
 	"log/slog"
 	"sync"
 
@@ -17,28 +17,21 @@ type hub struct {
 	register   chan *client
 	unregister chan *client
 	joinRoom   chan *crPair
-	leaveRoom  chan *crPair
+	leaveRoom  chan *client
 
 	mu sync.RWMutex
 }
 
-func newHub() *hub {
+func newHub(cfg *config.WS) *hub {
 	return &hub{
-		rooms:      make(map[string]*room, 10),
-		clients:    make(map[string]*client, 10),
-		messages:   make(chan *roomMsg, 256),
-		register:   make(chan *client, 10),
-		unregister: make(chan *client, 10),
-		joinRoom:   make(chan *crPair, 20),
-		leaveRoom:  make(chan *crPair, 20),
+		rooms:      make(map[string]*room),
+		clients:    make(map[string]*client),
+		messages:   make(chan *roomMsg, cfg.MsgBuffer),
+		register:   make(chan *client, cfg.RegisterBuffer),
+		unregister: make(chan *client, cfg.RegisterBuffer),
+		joinRoom:   make(chan *crPair, cfg.RoomBuffer),
+		leaveRoom:  make(chan *client, cfg.RoomBuffer),
 	}
-}
-
-func (h *hub) AddClient(conn *websocket.Conn, user *token.UserPayload) {
-	client := newClient(h, conn, user)
-	h.register <- client
-	go client.writePump()
-	go client.readPump()
 }
 
 func (h *hub) Run() {
@@ -66,6 +59,7 @@ func (h *hub) Run() {
 				delete(h.clients, client.ID)
 				close(client.Send)
 				client.cancel()
+				client.Conn.Close(websocket.StatusNormalClosure, "client leaving")
 				slog.Debug("Unregistered: ", "client", client.ID)
 			}
 			h.mu.Unlock()
@@ -81,8 +75,7 @@ func (h *hub) Run() {
 			room, ok := h.rooms[client.Room]
 			h.mu.RUnlock()
 			if !ok {
-				errMsg := createMsg("Room not found, kicking back to lobby", msgError)
-				client.Send <- errMsg
+				client.Send <- createMsg(msgError, "error", "Room not found, kicking back to lobby")
 				h.joinRoom <- &crPair{client, lobby.name}
 				lobby.addClient(client)
 				continue
@@ -116,12 +109,11 @@ func (h *hub) Run() {
 			}
 			room.addClient(client)
 			h.mu.Unlock()
-			slog.Debug("Client joined room successfully.", "clientID", client.ID, "roomID", roomID)
+			slog.Debug("Client joined room successfully.", "client", client.ID, "roomID", roomID)
 
-		case pair := <-h.leaveRoom:
+		case client := <-h.leaveRoom:
 			h.mu.Lock()
-			client := pair.Client
-			roomID := pair.RoomName
+			roomID := client.Room
 
 			if room, ok := h.rooms[roomID]; ok {
 				if room == lobby {
@@ -131,9 +123,7 @@ func (h *hub) Run() {
 				if len(room.clients) == 0 {
 					delete(h.rooms, room.name)
 				}
-				slog.Debug("Client left room.", "clientID", client.ID, "roomID", roomID)
-				statusMsg := createMsg("Back to lobby", msgStatus)
-				client.Send <- statusMsg
+				slog.Debug("Client left room.", "client", client.ID, "roomID", roomID)
 				lobby.addClient(client)
 			}
 			h.mu.Unlock()

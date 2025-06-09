@@ -219,6 +219,8 @@
               updateClientList(msg.payload);
               break;
             // Add more cases for other message types (video_signal, game_state, etc.)
+            case "join_room":
+              break;
             default:
               appendMessage(`Received unknown message type: ${msg.type} - ${JSON.stringify(msg.payload)}`, "status");
               break;
@@ -268,7 +270,7 @@
       if (roomName && ws && ws.readyState === WebSocket.OPEN) {
         const joinMsg = {
           type: "join_room",
-          payload: roomName,
+          payload: { roomName },
         };
         ws.send(JSON.stringify(joinMsg));
         currentRoom = roomName; // Optimistic update
@@ -281,7 +283,6 @@
     leaveRoomBtn.addEventListener("click", () => {
       const leaveMsg = {
         type: "leave_room",
-        payload: currentRoom, // Can be empty or actual room name
       };
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(leaveMsg));
@@ -303,11 +304,11 @@
     }
 
     function updateClientList(payload) {
-      if (payload && payload.roomName && payload.clientIDs) {
+      if (payload && payload.roomName && payload.clients) {
         clientListDiv.innerHTML = `<h4>Clients in ${payload.roomName}:</h4>`;
-        if (payload.clientIDs.length > 0) {
+        if (payload.clients.length > 0) {
           const ul = document.createElement('ul');
-          payload.clientIDs.forEach(clientName => {
+          payload.clients.forEach(clientName => {
             const li = document.createElement('li');
             li.textContent = clientName;
             ul.appendChild(li);

@@ -19,7 +19,7 @@ export default function CardsPage() {
 
       <main className="flex-grow container mx-auto p-8 flex flex-col items-center justify-center text-center">
         <h1 className="text-5xl font-extrabold mb-6 text-primary">
-          Let's Play Cards!
+          Let&aps;s Play Cards!
         </h1>
         <p className="text-lg mb-8 max-w-2xl text-text">
           Shuffle the deck, draw your hand, and may the best player win.

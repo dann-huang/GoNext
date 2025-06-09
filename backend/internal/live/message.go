@@ -27,10 +27,11 @@ type crPair struct {
 	RoomName string
 }
 
-func createMsg(msg, msgType string) []byte {
+func createMsg(msgType, key, msg string) []byte {
 	statusMsg := &roomMsg{
-		Type:    msgType,
-		Payload: map[string]string{"status": msg},
+		Type:     msgType,
+		SenderID: "_server",
+		Payload:  map[string]string{key: msg},
 	}
 	jsonMessage, err := json.Marshal(statusMsg)
 	if err != nil {

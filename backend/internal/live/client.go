@@ -4,6 +4,7 @@ package live
 import (
 	"context"
 	"encoding/json"
+	"letsgo/internal/config"
 	"letsgo/internal/token"
 	"log/slog"
 	"time"
@@ -12,6 +13,7 @@ import (
 )
 
 type client struct {
+	cfg    *config.WS
 	ID     string
 	Hub    *hub
 	Conn   *websocket.Conn
@@ -22,29 +24,29 @@ type client struct {
 	cancel context.CancelFunc
 }
 
-const (
-	readTimeout    = 1 * time.Minute
-	writeTimeout   = 10 * time.Second
-	maxMessageSize = 512
-)
-
-func newClient(hub *hub, conn *websocket.Conn, user *token.UserPayload) *client {
+func newClient(hub *hub, conn *websocket.Conn, user *token.UserPayload, cfg *config.WS) *client {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &client{
+		cfg:    cfg,
 		ID:     user.Username,
 		Hub:    hub,
 		Conn:   conn,
-		Send:   make(chan []byte, 256),
+		Send:   make(chan []byte, cfg.SendBuffer),
 		User:   user,
 		ctx:    ctx,
 		cancel: cancel,
 	}
 }
 
+func (c *client) start() {
+	go c.writePump()
+	go c.readPump()
+	go c.pingPump()
+}
+
 func (c *client) readPump() {
 	defer func() {
 		c.Hub.unregister <- c
-		c.Conn.Close(websocket.StatusNormalClosure, "client leaving")
 	}()
 
 	for {
@@ -53,31 +55,28 @@ func (c *client) readPump() {
 			return
 
 		default:
-			readCtx, cancelRead := context.WithTimeout(c.ctx, readTimeout)
+			readCtx, cancelRead := context.WithTimeout(c.ctx, c.cfg.ReadTimeout)
 			msgType, msgRaw, err := c.Conn.Read(readCtx)
 			cancelRead()
 			if err != nil {
 				if websocket.CloseStatus(err) != websocket.StatusNormalClosure &&
 					websocket.CloseStatus(err) != websocket.StatusGoingAway {
-					slog.Error("ReadPump: WebSocket read error.", "error", err, "clientID", c.ID)
+					slog.Error("ReadPump: WebSocket read error.", "error", err, "client", c.ID)
 				}
 				return
 			}
 			if msgType != websocket.MessageText {
-				errMsg := createMsg("Invalid message type", msgError)
-				c.Send <- errMsg
+				c.Send <- createMsg(msgError, "error", "Invalid message type")
 				continue
 			}
-			if len(msgRaw) > maxMessageSize {
-				errMsg := createMsg("Message too large.", msgError)
-				c.Send <- errMsg
+			if len(msgRaw) > int(c.cfg.MaxMsgSize) {
+				c.Send <- createMsg(msgError, "error", "Message too large.")
 				continue
 			}
 
 			var msg roomMsg
 			if err := json.Unmarshal(msgRaw, &msg); err != nil {
-				errMsg := createMsg("Invalid message format: "+err.Error(), msgError)
-				c.Send <- errMsg
+				c.Send <- createMsg(msgError, "error", "Invalid message format: "+err.Error())
 				continue
 			}
 
@@ -87,54 +86,75 @@ func (c *client) readPump() {
 			case msgChat, msgVidSignal, msgGameState:
 				c.Hub.messages <- &msg
 			case msgJoinRoom:
-				if roomID, ok := msg.Payload.(string); ok && roomID != "" {
-					c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
+				if payloadMap, ok := msg.Payload.(map[string]any); ok {
+					if roomID, ok := payloadMap["roomName"].(string); ok && roomID != "" {
+						c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
+					} else {
+						slog.Warn("Join room failed: 'roomName' not found", "payload", msg.Payload)
+						c.Send <- createMsg(msgError, "error", "invalid format")
+					}
 				} else {
-					slog.Warn("Join room failed", "clientID", c.ID, "payload", msg.Payload)
-					c.Send <- createMsg("Join room failed", msgError)
+					slog.Warn("Join room failed", "client", c.ID, "payload", msg.Payload)
+					c.Send <- createMsg(msgError, "error", "invalid format")
 				}
 			case msgLeaveRoom:
-				if roomID, ok := msg.Payload.(string); ok && roomID != "" {
-					c.Hub.leaveRoom <- &crPair{Client: c, RoomName: roomID}
-				} else {
-					c.Hub.leaveRoom <- &crPair{Client: c, RoomName: c.Room}
-				}
+				c.Hub.leaveRoom <- c
 			case msgGetRooms:
-				//todo: hand back list of rooms
+				//todo: probably remove this, or think about public/private rooms
 			case msgGetClients:
 				if c.Room != "" {
 					if room, ok := c.Hub.rooms[c.Room]; ok {
 						c.Send <- room.getClientList()
 					}
 				}
-
 			default:
-				slog.Warn("ReadPump: Unknown message type received.", "type", msg.Type, "clientID", c.ID)
-				c.Send <- createMsg("Unknown message type: "+msg.Type, msgError)
+				slog.Warn("ReadPump: Unknown message type received.", "type", msg.Type, "client", c.ID)
+				c.Send <- createMsg(msgError, "error", "Unknown message type: "+msg.Type)
 			}
 		}
 	}
 }
 
 func (c *client) writePump() {
-	defer func() {
-		c.Conn.Close(websocket.StatusNormalClosure, "shutting down")
-	}()
-
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
 		case message, ok := <-c.Send:
-			writeCtx, cancelWrite := context.WithTimeout(c.ctx, writeTimeout)
+			writeCtx, cancelWrite := context.WithTimeout(c.ctx, c.cfg.WriteTimeout)
 			defer cancelWrite()
-
 			if !ok {
+				c.cancel()
 				return
 			}
 			if err := c.Conn.Write(writeCtx, websocket.MessageText, message); err != nil {
+				c.cancel()
 				return
 			}
+		}
+	}
+}
+
+func (c *client) pingPump() {
+	ticker := time.NewTicker(c.cfg.PingPeriod)
+	defer func() {
+		ticker.Stop()
+	}()
+
+	for {
+		select {
+		case <-ticker.C:
+			writeCtx, cancelWrite := context.WithTimeout(c.ctx, c.cfg.PingPeriod)
+			err := c.Conn.Ping(writeCtx)
+			cancelWrite()
+			if err != nil {
+				slog.Error("Client ping failed", "error", err, "client", c.ID)
+				c.cancel()
+				return
+			}
+			slog.Debug("Client pinged", "client", c.ID)
+		case <-c.ctx.Done():
+			return
 		}
 	}
 }

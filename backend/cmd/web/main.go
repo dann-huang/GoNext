@@ -54,7 +54,7 @@ func main() {
 	r.Route("/api", func(api chi.Router) {
 		api.Use(middleware.Logger)
 		api.Mount("/auth", authModule.Router())
-		api.Mount("/live", live.Router(userAccMdw, userCtxKey))
+		api.Mount("/live", live.Router(userAccMdw, userCtxKey, cfg.WS))
 	})
 
 	// static pages

@@ -28,8 +28,9 @@ func (r *room) addClient(client *client) {
 
 	r.clients[client.ID] = client
 	client.Room = r.name
+	client.Send <- createMsg(msgJoinRoom, "roomName", r.name)
 
-	r.broadcast(createMsg(client.User.Displayname+" has joined "+r.name, msgStatus))
+	r.broadcast(createMsg(msgStatus, "status", client.User.Displayname+" has joined "+r.name))
 	r.broadcast(r.getClientList())
 }
 
@@ -40,7 +41,7 @@ func (r *room) removeClient(client *client) {
 	if _, ok := r.clients[client.ID]; ok {
 		delete(r.clients, client.ID)
 		client.Room = ""
-		r.broadcast(createMsg(client.User.Displayname+" has left "+r.name, msgStatus))
+		r.broadcast(createMsg(msgStatus, "status", client.User.Displayname+" has left "+r.name))
 		r.broadcast(r.getClientList())
 	}
 }
@@ -50,9 +51,7 @@ func (r *room) broadcast(message []byte) {
 		select {
 		case client.Send <- message:
 		default:
-			// delete(r.clients, client.ID)
-			// client.Room = ""
-			slog.Warn("Removing invalid client.", "clientID", client.ID, "roomID", r.name)
+			slog.Warn("Invalid client.", "client", client.ID, "roomID", r.name)
 		}
 	}
 }
@@ -63,16 +62,14 @@ func (r *room) getClientList() []byte {
 		clientNames = append(clientNames, client.User.Displayname)
 	}
 
-	payload := map[string]interface{}{
-		"roomName":  r.name,
-		"clientIDs": clientNames,
+	payload := map[string]any{
+		"roomName": r.name,
+		"clients":  clientNames,
 	}
-
 	msg := &roomMsg{
 		Type:    msgGetClients,
 		Payload: payload,
 	}
-
 	jsonMessage, err := json.Marshal(msg)
 	if err != nil {
 		slog.Error("Error marshaling client list message.", "error", err)

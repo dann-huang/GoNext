@@ -1,277 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Go Live Chat Test</title>
+    <title>Auth API Tester</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1, h2 { color: #0056b3; }
-        input[type="text"], textarea { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-right: 5px; }
-        button.connect { background-color: #28a745; color: white; }
-        button.disconnect { background-color: #dc3545; color: white; }
-        button.send, button.join, button.leave, button.getClients { background-color: #007bff; color: white; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-        #chat-window { border: 1px solid #ddd; height: 300px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background-color: #e9ecef; border-radius: 4px; }
-        #chat-window p { margin: 5px 0; line-height: 1.4; }
-        .message-chat { color: #333; }
-        .message-status { color: #0056b3; font-style: italic; }
-        .message-error { color: #dc3545; font-weight: bold; }
-        #client-list { border: 1px solid #ddd; padding: 10px; background-color: #f8f9fa; border-radius: 4px; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1,
+        h2 {
+            color: #333;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .output {
+            background-color: #e2e2e2;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .status-message {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status-message.success {
+            color: green;
+        }
+
+        .status-message.error {
+            color: red;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>Go Live Chat Tester</h1>
+        <h1>Auth API Tester</h1>
 
-        <section>
-            <h2>Authentication</h2>
-            <p>Paste your JWT token here. This will be sent as a `Bearer` token in the WebSocket upgrade request.</p>
-            <input type="text" id="jwtToken" placeholder="Your JWT token here">
-            <p><strong>Note:</strong> Your `authMdw` must extract and validate this token during the WebSocket handshake.</p>
-        </section>
+        <div class="section">
+            <h2>User Credentials</h2>
+            <label for="username">Username:</label>
+            <input type="text" id="username" value="test">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="pass123">
+        </div>
 
-        <section>
-            <h2>Connection</h2>
-            <p>Status: <strong id="connectionStatus" style="color: red;">Disconnected</strong></p>
-            <button id="connectBtn" class="connect">Connect</button>
-            <button id="disconnectBtn" class="disconnect" disabled>Disconnect</button>
-        </section>
+        <div class="section">
+            <h2>Actions</h2>
+            <button id="registerBtn">Register</button>
+            <button id="loginBtn">Login</button>
+            <button id="logoutBtn">Logout</button>
+            <button id="refreshBtn">Refresh Token</button>
+        </div>
 
-        <section>
-            <h2>Chat</h2>
-            <div id="chat-window"></div>
-            <input type="text" id="chatInput" placeholder="Type your message..." disabled>
-            <button id="sendChatBtn" class="send" disabled>Send Message</button>
-        </section>
+        <div class="section">
+            <h2>API Response</h2>
+            <div id="responseStatus" class="status-message"></div>
+            <div id="responseOutput" class="output">Waiting for action...</div>
+        </div>
 
-        <section>
-            <h2>Room Management</h2>
-            <input type="text" id="roomNameInput" placeholder="Enter room name (e.g., General, Gaming)">
-            <button id="joinRoomBtn" class="join" disabled>Join Room</button>
-            <button id="leaveRoomBtn" class="leave" disabled>Leave Current Room</button>
-            <p>Current Room: <strong id="currentRoomName">Lobby</strong></p>
-        </section>
-
-        <section>
-            <h2>Clients in Room</h2>
-            <button id="getClientsBtn" class="getClients" disabled>Get Clients in Room</button>
-            <div id="client-list">
-                <p>No clients listed yet.</p>
-            </div>
-        </section>
+        <div class="section">
+            <h2>Current Session Info (from last API response)</h2>
+            <p><strong>Access Token Expires At:</strong> <span id="accessTokenExpiresAt">N/A</span></p>
+            <p><strong>Refresh Token Expires At:</strong> <span id="refreshTokenExpiresAt">N/A</span></p>
+            <p><strong>User ID (from Access Token):</strong> <span id="decodedUserId">N/A</span></p>
+            <p>
+                *Note: Access and Refresh tokens are HttpOnly cookies and cannot be read by JavaScript directly.
+                The expiry times above are provided by the server in the login/refresh response body.
+            </p>
+        </div>
     </div>
 
     <script>
-        const wsUrl = "ws://localhost:8080/api/live"; // Adjust if your server is on a different port/domain
-        let ws;
-        let currentRoom = "Lobby"; // Default room
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const registerBtn = document.getElementById('registerBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const responseStatusDiv = document.getElementById('responseStatus');
+        const responseOutputDiv = document.getElementById('responseOutput');
+        const accessTokenExpiresAtSpan = document.getElementById('accessTokenExpiresAt');
+        const refreshTokenExpiresAtSpan = document.getElementById('refreshTokenExpiresAt');
+        const decodedUserIdSpan = document.getElementById('decodedUserId');
 
-        const jwtTokenInput = document.getElementById("jwtToken");
-        const connectBtn = document.getElementById("connectBtn");
-        const disconnectBtn = document.getElementById("disconnectBtn");
-        const connectionStatus = document.getElementById("connectionStatus");
-        const chatWindow = document.getElementById("chat-window");
-        const chatInput = document.getElementById("chatInput");
-        const sendChatBtn = document.getElementById("sendChatBtn");
-        const roomNameInput = document.getElementById("roomNameInput");
-        const joinRoomBtn = document.getElementById("joinRoomBtn");
-        const leaveRoomBtn = document.getElementById("leaveRoomBtn");
-        const currentRoomNameDisplay = document.getElementById("currentRoomName");
-        const getClientsBtn = document.getElementById("getClientsBtn");
-        const clientListDiv = document.getElementById("client-list");
-
-        function setConnected(isConnected) {
-            connectBtn.disabled = isConnected;
-            disconnectBtn.disabled = !isConnected;
-            chatInput.disabled = !isConnected;
-            sendChatBtn.disabled = !isConnected;
-            joinRoomBtn.disabled = !isConnected;
-            leaveRoomBtn.disabled = !isConnected;
-            getClientsBtn.disabled = !isConnected;
-            connectionStatus.textContent = isConnected ? "Connected" : "Disconnected";
-            connectionStatus.style.color = isConnected ? "green" : "red";
-
-            if (!isConnected) {
-                currentRoom = "Lobby"; // Reset current room on disconnect
-                currentRoomNameDisplay.textContent = currentRoom;
-                clientListDiv.innerHTML = "<p>No clients listed yet.</p>";
+        // Helper function to decode JWT (simplified, just for 'sub' claim)
+        function decodeJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error("Failed to decode JWT:", e);
+                return null;
             }
         }
 
-        function appendMessage(message, type = 'chat') {
-            const p = document.createElement('p');
-            p.classList.add(`message-${type}`);
-            p.textContent = message;
-            chatWindow.appendChild(p);
-            chatWindow.scrollTop = chatWindow.scrollHeight; // Auto-scroll to bottom
-        }
+        async function makeRequest(url, method, body = null) {
+            responseStatusDiv.textContent = '';
+            responseOutputDiv.textContent = 'Loading...';
+            responseStatusDiv.className = 'status-message';
+            accessTokenExpiresAtSpan.textContent = 'N/A';
+            refreshTokenExpiresAtSpan.textContent = 'N/A';
+            decodedUserIdSpan.textContent = 'N/A';
 
-        connectBtn.addEventListener("click", () => {
-            const token = jwtTokenInput.value.trim();
-            if (!token) {
-                appendMessage("Please enter a JWT token.", "error");
-                return;
-            }
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    // Important: Credentials must be included for cookies to be sent/received
+                    credentials: 'include' // 'same-origin', 'include', 'omit'
+                };
 
-            // Append the token as a query parameter for WebSocket connection
-            // The `github.com/coder/websocket` library (and standard WebSockets)
-            // supports sending headers, but in browser JS, it's often easier
-            // to pass an auth token via a query parameter or cookies.
-            // Your `mdw.Middleware` would need to check query params or cookies.
-            // A more robust solution for browsers is to send a header, which requires
-            // using a library like `sockette` or `socket.io-client` that allows
-            // custom headers in the WebSocket handshake. For simplicity with native WS:
-            // A more direct way to send JWT is via the `Authorization` header, but `new WebSocket()`
-            // does not directly support custom headers. You'd need to send it via a cookie
-            // or as a query parameter, or use a JS library that provides this.
-            // For this example, we'll assume your Go server can read the JWT from a query param.
-            // If your `authMdw` only checks `Authorization: Bearer` header, this client won't work.
-            // For testing, you might need to temporarily modify `mdw.Middleware` to check for `token`
-            // query parameter for `/api/live`.
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
 
-            // For a simple test, let's just use the query parameter.
-            // If your `authMdw` relies on the `Authorization` header, this will fail.
-            // In a real application, you'd likely use a library that supports custom headers for WS.
-            const urlWithToken = `${wsUrl}?token=${encodeURIComponent(token)}`;
-            ws = new WebSocket(urlWithToken);
+                const response = await fetch(url, options);
+                const data = await response.json();
 
-            ws.onopen = (event) => {
-                appendMessage("Connected to WebSocket.", "status");
-                setConnected(true);
-                // Immediately get client list on connect to update UI
-                sendGetClientsRequest();
-            };
+                responseOutputDiv.textContent = JSON.stringify(data, null, 2);
 
-            ws.onmessage = (event) => {
-                try {
-                    const msg = JSON.parse(event.data);
-                    switch (msg.type) {
-                        case "chat":
-                        case "video_signal":
-                        case "game_state":
-                            appendMessage(`[${msg.senderId ? msg.senderId.substring(0, 8) : 'Unknown'}]: ${msg.payload}`, "chat");
-                            break;
-                        case "status":
-                            appendMessage(`${msg.payload.status}`, "status");
-                            break;
-                        case "error":
-                            appendMessage(`ERROR: ${msg.payload.status || JSON.stringify(msg.payload)}`, "error");
-                            break;
-                        case "get_clients":
-                            updateClientList(msg.payload);
-                            break;
-                        // Add more cases for other message types (video_signal, game_state, etc.)
-                        default:
-                            appendMessage(`Received unknown message type: ${msg.type} - ${JSON.stringify(msg.payload)}`, "status");
-                            break;
+                if (response.ok) {
+                    responseStatusDiv.textContent = `Success: ${response.status} ${response.statusText}`;
+                    responseStatusDiv.classList.add('success');
+
+                    console.log("Response Data:", data);
+
+                    // Update session info from response if available
+                    if (data.accessTokenExpiresAt) {
+                        accessTokenExpiresAtSpan.textContent = data.accessTokenExpiresAt;
                     }
-                } catch (e) {
-                    appendMessage(`Failed to parse message: ${event.data} - ${e.message}`, "error");
-                }
-            };
+                    if (data.refreshTokenExpiresAt) {
+                        refreshTokenExpiresAtSpan.textContent = data.refreshTokenExpiresAt;
+                    }
+                    if (data.accessToken) { // Try to decode userId from AccessToken if it's in the response body
+                        const decodedToken = decodeJwt(data.accessToken);
+                        if (decodedToken && decodedToken.sub) {
+                            decodedUserIdSpan.textContent = decodedToken.sub;
+                        }
+                    } else if (data.userId) { // Fallback if accessToken isn't in response but userId is (e.g., from Register)
+                        decodedUserIdSpan.textContent = data.userId;
+                    }
 
-            ws.onclose = (event) => {
-                appendMessage(`Disconnected from WebSocket. Code: ${event.code}, Reason: ${event.reason}`, "status");
-                setConnected(false);
-            };
-
-            ws.onerror = (event) => {
-                appendMessage("WebSocket error!", "error");
-                console.error("WebSocket error:", event);
-            };
-        });
-
-        disconnectBtn.addEventListener("click", () => {
-            if (ws) {
-                ws.close(1000, "User initiated disconnect"); // 1000 is for normal closure
-            }
-        });
-
-        sendChatBtn.addEventListener("click", () => {
-            const message = chatInput.value.trim();
-            if (message && ws && ws.readyState === WebSocket.OPEN) {
-                const chatMsg = {
-                    type: "chat",
-                    payload: message,
-                };
-                ws.send(JSON.stringify(chatMsg));
-                chatInput.value = "";
-            }
-        });
-
-        chatInput.addEventListener("keypress", (event) => {
-            if (event.key === "Enter") {
-                sendChatBtn.click();
-            }
-        });
-
-        joinRoomBtn.addEventListener("click", () => {
-            const roomName = roomNameInput.value.trim();
-            if (roomName && ws && ws.readyState === WebSocket.OPEN) {
-                const joinMsg = {
-                    type: "join_room",
-                    payload: roomName,
-                };
-                ws.send(JSON.stringify(joinMsg));
-                currentRoom = roomName; // Optimistic update
-                currentRoomNameDisplay.textContent = currentRoom;
-            } else if (!roomName) {
-                appendMessage("Please enter a room name to join.", "error");
-            }
-        });
-
-        leaveRoomBtn.addEventListener("click", () => {
-            // Send the current room name to leave, or let the server decide if payload is empty
-            const leaveMsg = {
-                type: "leave_room",
-                payload: currentRoom, // Can be empty or actual room name
-            };
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(leaveMsg));
-                // Server should send a status message back about leaving
-                // and then implicitly joining Lobby.
-                currentRoom = "Lobby"; // Optimistic update to Lobby
-                currentRoomNameDisplay.textContent = currentRoom;
-            }
-        });
-
-        getClientsBtn.addEventListener("click", sendGetClientsRequest);
-
-        function sendGetClientsRequest() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                const getClientsMsg = {
-                    type: "get_clients",
-                    payload: null, // Payload can be null for this type
-                };
-                ws.send(JSON.stringify(getClientsMsg));
-            }
-        }
-
-        function updateClientList(payload) {
-            if (payload && payload.roomName && payload.clientIDs) {
-                clientListDiv.innerHTML = `<h4>Clients in ${payload.roomName}:</h4>`;
-                if (payload.clientIDs.length > 0) {
-                    const ul = document.createElement('ul');
-                    payload.clientIDs.forEach(clientName => {
-                        const li = document.createElement('li');
-                        li.textContent = clientName;
-                        ul.appendChild(li);
-                    });
-                    clientListDiv.appendChild(ul);
                 } else {
-                    clientListDiv.innerHTML += "<p>No other clients in this room.</p>";
+                    responseStatusDiv.textContent = `Error: ${response.status} ${response.statusText}`;
+                    responseStatusDiv.classList.add('error');
                 }
-            } else {
-                clientListDiv.innerHTML = "<p>Failed to get client list.</p>";
+            } catch (error) {
+                responseStatusDiv.textContent = `Network Error: ${error.message}`;
+                responseStatusDiv.classList.add('error');
+                responseOutputDiv.textContent = `Failed to connect to API: ${error.message}`;
             }
         }
 
-        // Initialize button states
-        setConnected(false);
+        registerBtn.addEventListener('click', () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+            makeRequest('/api/auth/register', 'POST', { username, password });
+        });
 
+        loginBtn.addEventListener('click', () => {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+            makeRequest('/api/auth/login', 'POST', { username, password });
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            // Note: Logout only sends the request; HttpOnly cookies are cleared by the server.
+            makeRequest('/api/auth/logout', 'POST');
+            // Optimistically clear display, as client cannot confirm cookie deletion
+            accessTokenExpiresAtSpan.textContent = 'N/A';
+            refreshTokenExpiresAtSpan.textContent = 'N/A';
+            decodedUserIdSpan.textContent = 'N/A';
+        });
+
+        refreshBtn.addEventListener('click', () => {
+            makeRequest('/api/auth/refresh', 'POST');
+        });
     </script>
 </body>
+
 </html>
