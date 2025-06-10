@@ -1,20 +1,11 @@
 import Link from 'next/link';
-import ThemeToggle from '@/components/ThemeToggle'; // We'll create this component
+import NavBar from '@/components/ui/NavBar';
+import Footer from '@/components/ui/Footer';
 
 export default function HomePage() {
   return (
     <>
-      <header className="bg-primary text-white p-4 shadow-md">
-        <nav className="container mx-auto flex justify-between items-center">
-          <Link href="/" className="text-xl font-bold">My Awesome Site</Link>
-          <div className="space-x-4 flex items-center">
-            <Link href="/" className="text-white hover:text-secondary">Home</Link>
-            <Link href="/game/chess" className="text-white hover:text-secondary">Chess Game</Link>
-            <Link href="/game/cards" className="text-white hover:text-secondary">Cards Game</Link>
-            <ThemeToggle />
-          </div>
-        </nav>
-      </header>
+      <NavBar />
 
       <main className="flex-grow container mx-auto p-8 flex flex-col items-center justify-center text-center">
         <h1 className="text-5xl font-extrabold mb-6 text-primary">
@@ -36,9 +27,7 @@ export default function HomePage() {
         </p>
       </main>
 
-      <footer className="bg-primary text-white text-center p-4 text-sm">
-        &copy; 2025 My Awesome Site. All rights reserved.
-      </footer>
+      <Footer />
     </>
   );
 }

@@ -79,7 +79,7 @@ export interface OutgoingChat {
   Type: typeof msgChat;
   Payload: {
     text: string;
-    displayname: string;
+    displayName: string;
   };
 }
 
