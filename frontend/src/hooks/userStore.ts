@@ -107,7 +107,7 @@ export const useUserStore = create<UserState>()(
           return false;
         }
       },
-      loggedin: () => get().accessExp <= Date.now(),
+      loggedin: () => (get().accessExp > Date.now()),
     }),
     {
       name: 'user-storage',

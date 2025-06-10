@@ -1,16 +1,61 @@
-import Link from 'next/link';
-import ThemeToggle from '@/components/ThemeToggle';
+'use client';
 
-export default function NavBar() {
-  return <header className="bg-primary text-text p-4 shadow-md">
-    <nav className="container mx-auto flex justify-between items-center">
-      <Link href="/" className="text-xl font-bold">My Awesome Site</Link>
-      <div className="space-x-4 flex items-center">
-        <Link href="/" className="text-text hover:text-secondary">Home</Link>
-        <Link href="/game/chess" className="text-text hover:text-secondary">Chess Game</Link>
-        <Link href="/game/cards" className="text-text hover:text-secondary">Cards Game</Link>
-        <ThemeToggle />
+import React from 'react';
+import Link from 'next/link';
+import Dropdown from './Dropdown';
+import ThemeSwitcher from './ThemeSwitcher';
+
+
+const Logo: React.FC = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className="w-8 h-8 text-secondary"
+  >
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.93-2.5l-2.41-2.41c-.6-.6-.93-1.41-.93-2.29V9h-1V6.07c3.95.49 7 3.85 7 7.93 0 .62-.08 1.21-.21 1.79z" />
+  </svg>
+);
+
+const NavBar: React.FC = () => {
+  return (
+    <nav className="bg-primary text-text shadow-md py-3 px-6 flex justify-between items-center w-full font-sans">
+      <div className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center">
+          <Logo />
+          <span className="text-xl font-bold ml-2 hidden sm:block">My App</span>
+        </Link>
+      </div>
+
+      <div className="flex space-x-4 md:space-x-8">
+        <Dropdown
+          title="Category One"
+          links={[
+            { href: "/products", label: "Products" },
+            { href: "/services", label: "Services" },
+            { href: "/features", label: "Features" },
+            { href: "/pricing", label: "Pricing" },
+            { href: "/about", label: "About Us" },
+          ]}
+        />
+
+        <Dropdown
+          title="Category Two"
+          links={[
+            { href: "/support", label: "Support" },
+            { href: "/docs", label: "Docs" },
+            { href: "/api", label: "API" },
+            { href: "/blog", label: "Blog" },
+            { href: "/contact", label: "Contact" },
+          ]}
+        />
+      </div>
+
+      <div className="flex items-center">
+        <ThemeSwitcher />
       </div>
     </nav>
-  </header>
+  );
 };
+
+export default NavBar;
