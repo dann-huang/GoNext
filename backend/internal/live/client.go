@@ -60,20 +60,20 @@ func (c *client) readPump() {
 		}
 		if msgType != websocket.MessageText {
 			slog.Error("readPump: unhandled message type", "msgType", msgType.String())
-			c.Send <- createMsg(msgError, "error", "Invalid message type")
+			c.Send <- createMsg(msgError, "message", "Invalid message type")
 			continue
 		}
 		if len(msgRaw) > int(c.cfg.MaxMsgSize) {
-			c.Send <- createMsg(msgError, "error", "Message too large.")
+			c.Send <- createMsg(msgError, "message", "Message too large.")
 			continue
 		}
 		var msg roomMsg
 		if err := json.Unmarshal(msgRaw, &msg); err != nil {
-			c.Send <- createMsg(msgError, "error", "Invalid message format: "+err.Error())
+			c.Send <- createMsg(msgError, "message", "Invalid message format: "+err.Error())
 			continue
 		}
 
-		msg.SenderID = c.ID
+		msg.Sender = c.ID
 
 		switch msg.Type {
 		case msgChat, msgVidSignal, msgGameState:
@@ -83,10 +83,10 @@ func (c *client) readPump() {
 				if roomID, ok := payloadMap["roomName"].(string); ok && roomID != "" {
 					c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
 				} else {
-					c.Send <- createMsg(msgError, "error", "invalid format: missing roomName")
+					c.Send <- createMsg(msgError, "message", "invalid format: missing roomName")
 				}
 			} else {
-				c.Send <- createMsg(msgError, "error", "invalid format for join room")
+				c.Send <- createMsg(msgError, "message", "invalid format for join room")
 			}
 		case msgLeaveRoom:
 			c.Hub.leaveRoom <- c
@@ -98,7 +98,7 @@ func (c *client) readPump() {
 			}
 		default:
 			slog.Warn("readPump: Unknown message type received", "type", msg.Type, "client", c.ID)
-			c.Send <- createMsg(msgError, "error", "Unknown message type: "+msg.Type)
+			c.Send <- createMsg(msgError, "message", "Unknown message type: "+msg.Type)
 		}
 	}
 }

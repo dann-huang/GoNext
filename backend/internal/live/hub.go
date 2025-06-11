@@ -67,7 +67,7 @@ func (h *hub) Run() {
 		case msg := <-h.messages:
 			slog.Debug("Sending msg", "message", msg)
 			h.mu.RLock()
-			client, ok := h.clients[msg.SenderID]
+			client, ok := h.clients[msg.Sender]
 			if !ok {
 				h.mu.RUnlock()
 				continue
@@ -75,7 +75,7 @@ func (h *hub) Run() {
 			room, ok := h.rooms[client.Room]
 			h.mu.RUnlock()
 			if !ok {
-				client.Send <- createMsg(msgError, "error", "Room not found, kicking back to lobby")
+				client.Send <- createMsg(msgError, "message", "Room not found, kicking back to lobby")
 				h.joinRoom <- &crPair{client, lobby.name}
 				lobby.addClient(client)
 				continue

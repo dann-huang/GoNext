@@ -207,7 +207,7 @@
             case "chat":
             case "video_signal":
             case "game_state":
-              appendMessage(`[${msg.senderId ? msg.senderId.substring(0, 8) : 'Unknown'}]: ${msg.payload}`, "chat");
+              appendMessage(`[${msg.sender ? msg.sender.substring(0, 8) : 'Unknown'}]: ${msg.payload}`, "chat");
               break;
             case "status":
               appendMessage(`${msg.payload.status}`, "status");

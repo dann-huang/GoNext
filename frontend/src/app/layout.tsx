@@ -39,7 +39,7 @@ export default function RootLayout({
                 } else {
                   document.documentElement.classList.remove('dark');
                 }
-              } catch (e) { console.error('Theme script failed:', e); }
+              } catch (e) { console.error('theme script failed', e); }
             })()`,
         }} />
       </head>

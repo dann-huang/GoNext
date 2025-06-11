@@ -17,9 +17,9 @@ const (
 )
 
 type roomMsg struct {
-	Type     string `json:"type"`
-	SenderID string `json:"senderId,omitempty"`
-	Payload  any    `json:"payload"`
+	Type    string `json:"type"`
+	Sender  string `json:"sender,omitempty"`
+	Payload any    `json:"payload"`
 }
 
 type crPair struct {
@@ -29,9 +29,9 @@ type crPair struct {
 
 func createMsg(msgType, key, msg string) []byte {
 	statusMsg := &roomMsg{
-		Type:     msgType,
-		SenderID: "_server",
-		Payload:  map[string]string{key: msg},
+		Type:    msgType,
+		Sender:  "_server",
+		Payload: map[string]string{key: msg},
 	}
 	jsonMessage, err := json.Marshal(statusMsg)
 	if err != nil {

@@ -1,107 +1,99 @@
 export type WsStatus = 'disconnected' | 'connecting' | 'connected';
 
-export const msgChat = 'chat' as const;
-export const msgVidSignal = 'video_signal' as const;
-export const msgGameState = 'game_state' as const;
-export const msgJoinRoom = 'join_room' as const;
-export const msgLeaveRoom = 'leave_room' as const;
-export const msgGetRooms = 'get_rooms' as const;
-export const msgGetClients = 'get_clients' as const;
-export const msgError = 'error' as const;
-export const msgStatus = 'status' as const;
+export const Chat = 'chat' as const;
+export const VidSignal = 'video_signal' as const;
+export const GameState = 'game_state' as const;
+export const JoinRoom = 'join_room' as const;
+export const LeaveRoom = 'leave_room' as const;
+export const GetRoom = 'get_rooms' as const;
+export const GetClients = 'get_clients' as const;
+export const Error = 'error' as const;
+export const Status = 'status' as const;
 
-
-export interface IncomingChat {
-  Type: typeof msgChat;
-  Sender: string;
-  Payload: {
-    text: string;
-    displayname: string;
+export interface ErrorMsg {
+  type: typeof Error;
+  sender: '_server';
+  payload: {
+    message: string;
   };
 }
 
-export interface IncomingVidSignal {
-  Type: typeof msgVidSignal;
-  Sender: string;
-  Payload: unknown; //todo
+export interface StatusMsg {
+  type: typeof Status;
+  sender: '_server';
+  payload: {
+    message: string;
+  };
 }
 
-export interface IncomingGameState {
-  Type: typeof msgGameState;
-  Sender: string;
-  Payload: unknown; //todo
-}
-
-export interface IncomingJoinRoom {
-  Type: typeof msgJoinRoom;
-  Sender: '_server';
-  Payload: {
+export interface JoinRoomMsg {
+  type: typeof JoinRoom;
+  sender: string;
+  payload: {
     roomName: string;
   };
 }
 
-export interface IncomingGetClients {
-  Type: typeof msgGetClients;
-  Sender: '_server';
-  Payload: {
+export interface LeaveRoomMsg {
+  type: typeof LeaveRoom;
+  // Payload: {};
+}
+
+export interface ChatMsg {
+  type: typeof Chat;
+  sender: string;
+  payload: {
+    message: string;
+    displayName: string;
+  };
+}
+
+export interface VidSignalMsg {
+  type: typeof VidSignal;
+  sender: string;
+  payload: unknown; //todo
+}
+
+export interface GameStateMsg {
+  type: typeof GameState;
+  sender: string;
+  payload: unknown; //todo
+}
+
+
+export interface GetClientRes {
+  type: typeof GetClients;
+  sender: '_server';
+  payload: {
     roomName: string;
     clients: string[];
   };
 }
 
-export interface IncomingError {
-  Type: typeof msgError;
-  Sender: '_server';
-  Payload: {
-    error: string;
-  };
+export interface GetClientsReq {
+  type: typeof GetClients;
+  // Payload: {};
 }
 
-export interface IncomingStatus {
-  Type: typeof msgStatus;
-  Sender: '_server';
-  Payload: {
-    status: string;
-  };
-}
 
 export type IncomingMsg =
-  | IncomingChat
-  | IncomingVidSignal
-  | IncomingGameState
-  | IncomingJoinRoom
-  | IncomingGetClients
-  | IncomingError
-  | IncomingStatus;
-
-
-export interface OutgoingChat {
-  Type: typeof msgChat;
-  Payload: {
-    text: string;
-    displayName: string;
-  };
-}
-
-export interface OutgoingJoinRoom {
-  Type: typeof msgJoinRoom;
-  Payload: {
-    roomName: string;
-  };
-}
-
-export interface OutgoingLeaveRoom {
-  Type: typeof msgLeaveRoom;
-  // Payload: {};
-}
-
-export interface OutgoingGetClientsRequest {
-  Type: typeof msgGetClients;
-  // Payload: {};
-}
+  | ChatMsg
+  | VidSignalMsg
+  | GameStateMsg
+  | JoinRoomMsg
+  | GetClientRes
+  | ErrorMsg
+  | StatusMsg;
 
 export type OutgoingMsg =
-  | OutgoingChat
-  | OutgoingJoinRoom
-  | OutgoingLeaveRoom
-  | OutgoingGetClientsRequest;
+  | ChatMsg
+  | VidSignalMsg
+  | GameStateMsg
+  | JoinRoomMsg
+  | LeaveRoomMsg
+  | GetClientsReq;
+
+export type DisplayableMsg =
+  | ChatMsg
+  | ErrorMsg
+  | StatusMsg

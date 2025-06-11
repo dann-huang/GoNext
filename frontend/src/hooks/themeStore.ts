@@ -63,7 +63,7 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: 'theme-store',
       storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => state => {
         if (state) {
           state.applyTheme(state.theme);
         }

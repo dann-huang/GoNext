@@ -4,23 +4,27 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '@/hooks/webSocket';
 import { useUserStore } from '@/hooks/userStore';
 
-const ChatView: React.FC = () => {
+export default function ChatBox() {
   const [message, setMessage] = useState('');
-  const msgLog = useWebSocket((state) => state.msgLog);
-  const sendChat = useWebSocket((state) => state.sendChat);
-  const currentRoom = useWebSocket((state) => state.currentRoom);
-  const clients = useWebSocket((state) => state.clients);
+  const { msgLog, currentRoom, clients, sendChat, connect, disconnect } = useWebSocket(); //todo: take error from here and display
   const username = useUserStore((state) => state.username);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null); // Ref to scroll to bottom
+  const expire = useUserStore((state) => state.accessExp);
+  const loggedIn = expire > Date.now();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom(); // Scroll to bottom on new messages
+    //todo: only scroll if user isn't reading higher up
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgLog]);
+
+  useEffect(() => {
+    if (loggedIn) {
+      connect()
+    }
+    return disconnect;
+  }, [loggedIn, connect, disconnect]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,40 +34,37 @@ const ChatView: React.FC = () => {
     }
   };
 
+  console.log(msgLog)
   return (
     <div className="flex flex-col h-full bg-background text-text">
-      {/* Chat Info Header */}
-      <div className="p-3 bg-secondary text-text border-b border-secondary">
+      <div className="p-3 bg-primary text-text border-b border-secondary">
         <p className="text-sm font-semibold">Room: {currentRoom || 'N/A'}</p>
         <p className="text-xs">Clients: {clients.length}</p>
       </div>
 
-      {/* Message Log */}
-      <div className="flex-grow overflow-y-auto p-4 space-y-2 custom-scrollbar">
+      <div className="flex-grow overflow-y-auto p-4 space-y-2 scrollbar">
         {msgLog.length === 0 ? (
           <p className="text-center text-secondary text-sm">No messages yet.</p>
         ) : (
-          msgLog.map((msg, index) => (
-            <div key={index} className={`flex ${msg.sender === username ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`
-                  max-w-[75%] p-2 rounded-lg text-sm break-words
+          msgLog.map((msg, index) => <div key={index} className={`flex ${msg.sender === "_server" ? 'justify-center'
+            : msg.sender === username ? 'justify-end' : 'justify-start'}`}>
+            <div
+              className={`
+                  max-w-[75%] p-2 rounded-lg text-sm break-words justify
                   ${msg.sender === username
-                    ? 'bg-primary text-background rounded-br-none'
-                    : 'bg-secondary text-text rounded-bl-none'
-                  }
+                  ? 'bg-primary text-background rounded-br-none'
+                  : 'bg-secondary text-text rounded-bl-none'
+                }
                 `}
-              >
-                <span className="font-semibold block text-xs mb-1 opacity-80">{msg.sender}</span>
-                {msg.text}
-              </div>
+            >
+              <span className="font-semibold block text-xs mb-1 opacity-80">{msg.sender}</span>
+              {msg.payload.message}
             </div>
-          ))
-        )}
-        <div ref={messagesEndRef} /> {/* Dummy div for scrolling */}
+          </div>
+          ))}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
       <form onSubmit={handleSendMessage} className="p-3 border-t border-secondary bg-background flex">
         <input
           type="text"
@@ -74,7 +75,7 @@ const ChatView: React.FC = () => {
         />
         <button
           type="submit"
-          className="bg-primary text-background py-2 px-4 rounded-r-md font-semibold hover:bg-accent transition-colors duration-200"
+          className="bg-primary text-background py-2 px-4 rounded-r-md font-semibold hover:bg-accent transition-colors"
         >
           Send
         </button>
@@ -82,5 +83,3 @@ const ChatView: React.FC = () => {
     </div>
   );
 };
-
-export default ChatView;

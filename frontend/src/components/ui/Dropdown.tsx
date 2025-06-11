@@ -10,10 +10,10 @@ interface DropdownLink {
 
 interface DropdownProps {
   title: string;
-  links: DropdownLink[]; // A single array of links
+  links: DropdownLink[];
 }
 
-const Dropdown: React.FC<DropdownProps> = ({ title, links }) => {
+export default function Dropdown({ title, links }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -62,19 +62,16 @@ const Dropdown: React.FC<DropdownProps> = ({ title, links }) => {
           }
         `}
       >
-        {links.map((link, index) => (
-          <Link
-            key={index}
-            href={link.href}
-            className="block py-1 text-lg text-text hover:text-primary transition-colors duration-200"
-            onClick={() => setIsOpen(false)}
-          >
-            {link.label}
-          </Link>
-        ))}
+        {links.map((link, index) => <Link
+          key={index}
+          href={link.href}
+          className="block py-1 text-lg text-text hover:text-primary transition-colors duration-200"
+          onClick={() => setIsOpen(false)}
+        >
+          {link.label}
+        </Link>
+        )}
       </div>
     </div>
   );
 };
-
-export default Dropdown;

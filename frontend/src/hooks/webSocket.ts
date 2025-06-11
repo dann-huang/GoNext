@@ -10,10 +10,10 @@ interface WSState {
   error: string;
   currentRoom: string;
 
-  msgLog: t.IncomingMsg[];
+  msgLog: t.DisplayableMsg[];
   clients: string[];
 
-  gameStates: t.IncomingGameState[];
+  gameStates: t.GameStateMsg[];
 
   getStatus: () => t.WsStatus,
   connect: () => void;
@@ -71,37 +71,33 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     ws.onmessage = e => {
       try {
         const msg: t.IncomingMsg = JSON.parse(e.data)
-        console.debug('recieved', msg)
+        console.debug('recieved', msg.type, t.Chat, msg.type==t.Chat)
 
         //todo: lots
-        switch (msg.Type) {
-          case t.msgChat:
-          case t.msgStatus:
-          case t.msgError:
+        switch (msg.type) {
+          case t.Chat:
+          case t.Status:
+          case t.Error:
             set(state => ({ msgLog: [...state.msgLog, msg] }));
             break;
-          case t.msgVidSignal:
+          case t.VidSignal:
             if (vidSigHandler === null) {
               console.warn("WS recieved vid signal, but no handler")
             } else {
-              vidSigHandler(msg.Payload)
+              vidSigHandler(msg.payload)
             }
             break;
-          case t.msgGameState:
+          case t.GameState:
             set(state => ({ gameStates: [...state.gameStates, msg] }));
             break;
-          case t.msgJoinRoom:
-            set(state => ({ msgLog: [...state.msgLog, msg], currentRoom: msg.Payload.roomName }));
+          case t.JoinRoom:
+            set({ currentRoom: msg.payload.roomName });
             break;
-          case t.msgGetClients:
-            set(state => ({
-              msgLog: [...state.msgLog, msg],
-              clients: msg.Payload.clients,
-              currentRoom: msg.Payload.roomName
-            }))
+          case t.GetClients:
+            set({ clients: msg.payload.clients, currentRoom: msg.payload.roomName })
             break;
           default:
-            console.warn('Unknown message type received:', msg);
+            console.warn('Unknown message', msg);
         }
       } catch (err) {
         console.error("WS onmessage failed", e.data, err)
@@ -157,20 +153,21 @@ export const useWebSocket = create<WSState>()((set, get) => ({
       set({ error: 'WS failed to send' });
     }
   },
-  sendChat: (text: string) => {
-    const displayName = useUserStore.getState().displayName;
-    const msg: t.OutgoingChat = {
-      Type: t.msgChat,
-      Payload: { text, displayName }
+  sendChat: (message: string) => {
+    const { username, displayName } = useUserStore.getState();
+    const msg: t.ChatMsg = {
+      type: t.Chat,
+      sender: username,
+      payload: { message, displayName }
     }
     get().sendMessage(msg);
   },
   joinRoom: (roomName: string) => {
-    const msg: t.OutgoingJoinRoom = { Type: t.msgJoinRoom, Payload: { roomName } }
+    const msg: t.JoinRoomMsg = { type: t.JoinRoom, sender: "", payload: { roomName } }
     get().sendMessage(msg);
   },
   leaveRoom: () => {
-    const msg: t.OutgoingLeaveRoom = { Type: t.msgLeaveRoom }
+    const msg: t.LeaveRoomMsg = { type: t.LeaveRoom }
     get().sendMessage(msg);
   },
   setVideoSignalHandler: handler => { vidSigHandler = handler },

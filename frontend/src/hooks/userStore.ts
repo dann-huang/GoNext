@@ -39,7 +39,7 @@ export const useUserStore = create<UserState>()(
           const json: RegisterSuccessResponse = await res.json();
           set({ username: json.username, loading: false, })
         } catch (err: unknown) {
-          console.error(err)
+          console.error("userstore err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
         }
@@ -57,11 +57,11 @@ export const useUserStore = create<UserState>()(
             username: json.username,
             displayName: json.displayname,
             loading: false,
-            accessExp: json.accessExpire,
-            refreshExp: json.refreshExpire,
+            accessExp: json.accessExpires,
+            refreshExp: json.refreshExpires,
           })
         } catch (err: unknown) {
-          console.error(err)
+          console.error("userstore err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
         }
@@ -76,7 +76,7 @@ export const useUserStore = create<UserState>()(
           }
           set({ username: '', displayName: '', loading: false, accessExp: 0, refreshExp: 0 })
         } catch (err: unknown) {
-          console.error(err)
+          console.error("userstore err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
         }
@@ -98,16 +98,16 @@ export const useUserStore = create<UserState>()(
             throw new Error(err.message)
           }
           const json: RefreshSuccessResponse = await res.json();
-          set({ accessExp: json.accessExpire, refreshExp: json.refreshExpire, loading: false })
+          set({ accessExp: json.accessExpires, refreshExp: json.refreshExpires, loading: false })
           return true;
         } catch (err: unknown) {
-          console.error(err)
+          console.error("userstore err ", err)
           const msgErr = err as { message: string }
-          set({ error: msgErr.message, loading: false })
+          set({ error: msgErr.message, loading: false, accessExp: 0, refreshExp: 0 })
           return false;
         }
       },
-      loggedin: () => (get().accessExp > Date.now()),
+      loggedin: () => get().accessExp > Date.now(),
     }),
     {
       name: 'user-storage',
