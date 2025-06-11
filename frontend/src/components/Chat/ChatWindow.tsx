@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useUserStore } from '@/hooks/userStore';
 import LoginBox from './LoginBox';
 import ChatBox from './ChatBox';
+import Button from '../ui/Button';
 
 export default function ChatWindow() {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,33 +25,30 @@ export default function ChatWindow() {
       `}
     >
       {!isOpen && (
-        <button
+        <Button
           onClick={toggleChat}
           aria-label="Open Chat"
-          className="
-            w-full h-full bg-primary text-background rounded-full shadow-lg
-            flex items-center justify-center text-2xl font-bold cursor-pointer
-            hover:bg-accent hover:scale-105 active:scale-95
-          "
+          className="w-full h-full text-2xl"
+          rounded='rounded-full'
         >
           💬
-        </button>
+        </Button>
       )}
       {isOpen && (
         <div
-          className="
-            w-full h-full bg-background border border-secondary rounded-lg
-            shadow-2xl flex flex-col relative
-          "
+          className="w-full h-full border border-secondary rounded-lg shadow-2xl relative"
         >
-          <button className="absolute -top-3 -right-3 bg-secondary hover:bg-accent shadow-lg
-            hover:scale-105 text-white rounded-full p-2 transition-colors transform "
-            onClick={toggleChat}>
+          <Button
+            className="absolute -top-3 -right-3"
+            padding='p-2'
+            rounded='rounded-full'
+            onClick={toggleChat}
+          >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
-          </button>
-          <div className="flex-grow">
+          </Button>
+          <div className="w-full h-full rounded-lg overflow-hidden">
             {loggedIn ? <ChatBox /> : <LoginBox />}
           </div>
         </div>

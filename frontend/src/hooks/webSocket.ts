@@ -71,7 +71,6 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     ws.onmessage = e => {
       try {
         const msg: t.IncomingMsg = JSON.parse(e.data)
-        console.debug('recieved', msg.type, t.Chat, msg.type==t.Chat)
 
         //todo: lots
         switch (msg.type) {
@@ -111,20 +110,20 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     };
 
     ws.onclose = async (event) => {
-      console.log('WS closed:', event.code, event.reason);
+      console.debug('WS closed:', event.code, event.reason);
       set({ error: `WS disconnected: code ${event.code}, reason: ${event.reason || 'Unknown'}.` });
 
       if (event.code === 1000 || event.code === 1001)
-        return console.log("WS closed gracefully");
+        return console.debug("WS closed gracefully");
 
       const loggedIn = await useUserStore.getState().refresh();
       if (!loggedIn) return console.error("WS died; require auth to reconnect");
 
       if (++reconnAttempt > RECONNECT_MAX_ATTEMPTS)
-        return console.log("WS died; reconnect unsuccessful");
+        return console.debug("WS died; reconnect unsuccessful");
 
       reconnDelay = Math.min(reconnDelay * 2, RECONNECT_MAX_DELAY);
-      console.log(`WS reconnect in ${reconnDelay / 1000}s...`);
+      console.debug(`WS reconnect in ${reconnDelay / 1000}s...`);
       reconnTimeout = setTimeout(get().connect, reconnDelay);
     }
   },
@@ -135,7 +134,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     }
 
     if (ws) {
-      console.log("Closing WS");
+      console.debug("Closing WS");
       ws.close(1000, "Client wants to leave");
       ws = null;
     }

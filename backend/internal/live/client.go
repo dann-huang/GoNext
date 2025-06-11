@@ -142,7 +142,6 @@ func (c *client) pingPump() {
 				c.cancel()
 				return
 			}
-			slog.Debug("Client pinged", "client", c.ID)
 		}
 	}
 }

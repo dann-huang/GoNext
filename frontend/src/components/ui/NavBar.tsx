@@ -21,7 +21,7 @@ export default function NavBar() {
       <div className="flex items-center space-x-2">
         <Link href="/" className="flex items-center">
           <Logo />
-          <span className="text-xl font-bold ml-2 hidden sm:block">My App</span>
+          <span className="text-xl text-on-primary font-bold ml-2 hidden sm:block">My App</span>
         </Link>
       </div>
 
