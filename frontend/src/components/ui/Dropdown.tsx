@@ -36,8 +36,7 @@ export default function Dropdown({ title, links }: DropdownProps) {
       onClick={() => setIsOpen(!isOpen)}
       aria-expanded={isOpen}
       aria-haspopup="true"
-      bg='bg-secondary'
-      text='text-on-secondary'
+      color='secondary'
     >
       {title}
       <svg

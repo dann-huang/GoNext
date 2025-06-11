@@ -20,7 +20,7 @@ export default function ChatWindow() {
       className={`
         fixed bottom-5 right-5 z-[1000] font-sans
         transition-all duration-300 ease-in-out
-        ${isOpen ? 'w-[600px] h-[800px] rounded-lg' : 'w-[64px] h-[64px] rounded-full'}
+        ${isOpen ? 'w-[400px] h-[600px] rounded-lg' : 'w-[64px] h-[64px] rounded-full'}
         max-w-[calc(100vw-40px)] max-h-[calc(100vh-40px)]
       `}
     >
@@ -43,6 +43,7 @@ export default function ChatWindow() {
             padding='p-2'
             rounded='rounded-full'
             onClick={toggleChat}
+            color='secondary'
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
