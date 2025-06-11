@@ -1,10 +1,9 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
-import Dropdown from './Dropdown';
-import ThemeSwitcher from './ThemeSwitcher';
+import dynamic from 'next/dynamic';
 
+const Dropdown = dynamic(() => import('./Dropdown'), { ssr: false });
+const ThemeSwitcher = dynamic(() => import('./ThemeSwitcher'), { ssr: false });
 
 const Logo = () => <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -28,8 +27,8 @@ export default function NavBar() {
       <div className="flex space-x-4 md:space-x-8">
         <Dropdown
           title="Stuff"
-          links={[
-            { href: "/video", label: "Video call" },
+        links={[
+            { href: "/live/video", label: "Video call" },
             { href: "/", label: "thing2" },
             { href: "/", label: "thing3" },
             { href: "/", label: "thing1" },
@@ -40,4 +39,4 @@ export default function NavBar() {
       </div>
     </nav>
   );
-};
+}

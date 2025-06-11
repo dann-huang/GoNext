@@ -4,6 +4,7 @@ import "./globals.css";
 import NavBar from '@/components/ui/NavBar';
 import Footer from '@/components/ui/Footer';
 import ChatWindow from '@/components/Chat/ChatWindow';
+import ThemeInitializer from '@/components/ui/ThemeInitializer';
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -25,25 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            // anti FOUC
-            (function () {
-              try {
-                const themeStr = localStorage.getItem('theme-store');
-                const themeJson = themeStr ? JSON.parse(themeStr) : {};
-                const theme = themeJson.state ? themeJson.state.theme : 'system';
-
-                const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-                if (theme === 'dark' || (theme === 'system' && darkMode)) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
-              } catch (e) { console.error('theme script failed', e); }
-            })()`,
-        }} />
+        <ThemeInitializer />
       </head>
       <body className={`${roboto.variable} antialiased`}>
         <div className="min-h-screen flex flex-col">
