@@ -25,6 +25,7 @@ interface WSState {
   leaveRoom: () => void;
 
   setVideoSignalHandler: (handler: (signal: unknown) => void) => void;
+  sendVidSignal: (signal: unknown) => void;
 }
 
 let ws: WebSocket | null = null; //causes problems when defined in store
@@ -170,6 +171,10 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     get().sendMessage(msg);
   },
   setVideoSignalHandler: handler => { vidSigHandler = handler },
+  sendVidSignal: (payload: unknown) => {
+    const msg: t.VidSignalMsg = { type: t.VidSignal, sender: "", payload }
+    get().sendMessage(msg);
+  },
 }))
 
 

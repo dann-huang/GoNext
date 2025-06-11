@@ -84,7 +84,7 @@ func Load() (*AppConfig, error) {
 		ReadTimeout:  15 * time.Second,
 		PongTimeout:  10 * time.Second,
 		WriteTimeout: 5 * time.Second,
-		MaxMsgSize:   512,
+		MaxMsgSize:   65536, // 64kb, for sdp offer/answer mostly
 
 		RegisterBuffer: 20,
 		RoomBuffer:     20,

@@ -29,7 +29,7 @@ export default function NavBar() {
         <Dropdown
           title="Stuff"
           links={[
-            { href: "/", label: "thing1" },
+            { href: "/video", label: "Video call" },
             { href: "/", label: "thing2" },
             { href: "/", label: "thing3" },
             { href: "/", label: "thing1" },
