@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
+import NavBar from '@/components/ui/NavBar';
+import Footer from '@/components/ui/Footer';
 import ChatWindow from '@/components/Chat/ChatWindow';
 
 const roboto = Roboto({
@@ -44,7 +46,13 @@ export default function RootLayout({
         }} />
       </head>
       <body className={`${roboto.variable} antialiased`}>
-        {children}
+        <div className="min-h-screen flex flex-col">
+          <NavBar />
+          <main className="flex-grow flex flex-col items-center justify-center">
+            {children}
+          </main>
+          <Footer />
+        </div>
         <ChatWindow />
       </body>
     </html>
