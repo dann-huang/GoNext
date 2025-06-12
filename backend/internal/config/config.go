@@ -56,8 +56,8 @@ type AppConfig struct {
 
 func Load() (*AppConfig, error) {
 	cfg := &AppConfig{
-		Port:        os.Getenv("GO_PORT"),
-		FrontendUrl: os.Getenv("FRONTEND"),
+		// Port:        os.Getenv("GO_PORT"),
+		// FrontendUrl: os.Getenv("FRONTEND"),
 		StaticPages: "/app/static",
 	}
 

@@ -33,7 +33,6 @@ services:
       - POSTGRES_DB=letsgo
       - REDIS_URL=redis:6379
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
-      - GO_PORT=3333
     expose:
       - "3333"
     depends_on:

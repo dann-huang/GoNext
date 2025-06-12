@@ -14,15 +14,11 @@ services:
 
   frontend:
     image: ${DOCKERHUB_NAME}/letsgo-frontend:${TAG}
-    expose:
-      - "3000"
     environment:
       - NODE_ENV=production
 
   backend:
     image: ${DOCKERHUB_NAME}/letsgo-backend:${TAG}
-    expose:
-      - "3000"
     environment:
       - POSTGRES_URL=${POSTGRES_URL}
       - POSTGRES_USER=${POSTGRES_USER}

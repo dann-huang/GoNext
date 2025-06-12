@@ -67,7 +67,7 @@ func main() {
 	r.Get("/stat/*", external.StaticPageHandler(cfg.StaticPages))
 
 	//frontend
-	r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
+	// r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
 
-	http.ListenAndServe(":"+cfg.Port, r)
+	http.ListenAndServe(":3333", r)
 }

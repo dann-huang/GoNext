@@ -5,7 +5,7 @@ on:
     branches: [ feature/cicd ]
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
           docker push $IMG:$TAG
 
   deploy:
-    needs: build-and-push
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -52,39 +52,35 @@ jobs:
             set -e
             echo "Starting deployment..."
             
-            # Backup current deployment
-            cd /root/git/server || { echo "Directory does not exist"; exit 1; }
+            cd /root/git/server || { echo "❌ Directory does not exist"; exit 1; }
             if [ -f docker-compose.prod.yml ]; then
               cp docker-compose.prod.yml docker-compose.prod.yml.backup
-              # Save current image versions
               docker compose -f docker-compose.prod.yml config | grep "image:" | awk '{print $2}' > current_images.txt
             fi
             
-            # Pull latest changes
-            git pull origin feature/cicd || { echo "Git pull failed"; exit 1; }
+            echo "Pulling changes..."
+            git pull origin feature/cicd || { echo "❌ Git pull failed"; exit 1; }
             
-            # Get the current commit SHA
+            echo "Setting envs..."
             CURRENT_SHA=$(git rev-parse --short HEAD)
-            
-            # Update .env with the new TAG, replacing any existing TAG line
-            if [ -f .env ]; then
-              sed -i '/^TAG=/d' .env
+            if [ ! -f .env ]; then
+              echo "❌ .env not found."
+              exit 1
             fi
+            sed -i '/^TAG=/d' .env
             echo "TAG=$CURRENT_SHA" >> .env
             
-            # Pull new images
-            docker compose -f docker-compose.prod.yml pull || { echo "Docker compose pull failed"; exit 1; }
+            echo "Pulling images..."
+            docker compose -f docker-compose.prod.yml pull || { echo "❌ Docker compose pull failed"; exit 1; }
             
-            # Deploy new version
+            echo "Docker composing..."
             docker compose -f docker-compose.prod.yml up -d --remove-orphans || { 
-              echo "Deployment failed, rolling back..."
+              echo "❌ Deployment failed, rolling back..."
               if [ -f docker-compose.prod.yml.backup ]; then
-                # Restore previous compose file
                 mv docker-compose.prod.yml.backup docker-compose.prod.yml
-                # Restore previous image versions
                 if [ -f current_images.txt ]; then
                   while read -r image; do
-                    docker pull "$image" || echo "Warning: Could not pull $image"
+                    docker pull "$image" || echo "⚠️ Could not pull $image"
                   done < current_images.txt
                 fi
                 docker compose -f docker-compose.prod.yml up -d --remove-orphans
@@ -92,18 +88,15 @@ jobs:
               exit 1
             }
             
-            # Health check
             echo "Performing health check..."
-            sleep 10  # Give services time to start
+            sleep 10
             if ! curl -f http://localhost/health || ! curl -f http://localhost/api/health; then
               echo "Health check failed, rolling back..."
               if [ -f docker-compose.prod.yml.backup ]; then
-                # Restore previous compose file
                 mv docker-compose.prod.yml.backup docker-compose.prod.yml
-                # Restore previous image versions
                 if [ -f current_images.txt ]; then
                   while read -r image; do
-                    docker pull "$image" || echo "Warning: Could not pull $image"
+                    docker pull "$image" || echo "⚠️ Could not pull $image"
                   done < current_images.txt
                 fi
                 docker compose -f docker-compose.prod.yml up -d --remove-orphans
@@ -111,11 +104,8 @@ jobs:
               exit 1
             fi
             
-            # Cleanup old images (keep last 5 versions)
-            echo "Cleaning up old images..."
+            echo "Cleaning up..."
             docker image prune -f --filter "until=24h"
-            
-            # Remove backup files
             rm -f docker-compose.prod.yml.backup current_images.txt
             
-            echo "Deployment completed successfully!"
+            echo "Deployment success!"
