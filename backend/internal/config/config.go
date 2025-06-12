@@ -39,7 +39,6 @@ type WS struct {
 }
 
 func (c *DB) ConnectionStrings() (string, string) {
-
 	pString := fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable",
 		c.PostgresUser, c.PostgresPass, c.PostgresUrl, c.PostgresDB)
 	rString := fmt.Sprintf("redis://%s", c.RedisURL)
@@ -57,8 +56,8 @@ type AppConfig struct {
 
 func Load() (*AppConfig, error) {
 	cfg := &AppConfig{
-		Port:        os.Getenv("GO_PORT"),
-		FrontendUrl: os.Getenv("FRONTEND"),
+		// Port:        os.Getenv("GO_PORT"),
+		// FrontendUrl: os.Getenv("FRONTEND"),
 		StaticPages: "/app/static",
 	}
 

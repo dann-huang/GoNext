@@ -47,7 +47,7 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 		Value: value,
 		// Quoted,
 		Path:    path,
-		Domain:  h.config.Domain,
+		// Domain:  h.config.Domain, // not needed when share domains apparently
 		Expires: expires,
 		// RawExpires,
 		// MaxAge,

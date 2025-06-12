@@ -51,17 +51,23 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 
+
 	r.Route("/api", func(api chi.Router) {
 		api.Use(middleware.Logger)
 		api.Mount("/auth", authModule.Router())
 		api.Mount("/live", live.Router(userAccMdw, userCtxKey, cfg.WS))
+		api.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"ok"}`))
+		})
 	})
 
 	// static pages
 	r.Get("/stat/*", external.StaticPageHandler(cfg.StaticPages))
 
 	//frontend
-	r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
+	// r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
 
-	http.ListenAndServe(":"+cfg.Port, r)
+	http.ListenAndServe(":3333", r)
 }

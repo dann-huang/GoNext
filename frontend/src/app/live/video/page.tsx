@@ -87,7 +87,7 @@ export default function VideoPage() {
           <div className="relative bg-secondary rounded-lg overflow-hidden">
             <div className="w-full pt-[56.25%] relative">
               <div className="absolute inset-0 flex items-center justify-center text-text/50">
-                Click "Join Call" to start
+                Click &quot;Join Call&quot; to start
               </div>
             </div>
           </div>

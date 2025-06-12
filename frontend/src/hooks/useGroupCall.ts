@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useWebSocket } from './webSocket';
 import { useUserStore } from './userStore';
 
@@ -21,29 +21,10 @@ export function useGroupCall() {
   const [peerVideos, setPeerVideos] = useState<PeerVideo[]>([]);
   
   // Keep track of all peer connections by their username
-  const peerConnections = useRef<Map<string, PeerConnection>>(new Map());
-
-  // Initialize or clean up media devices
-  useEffect(() => {
-    if (!localStream && isInCall) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-          setLocalStream(stream);
-        })
-        .catch(err => console.error('Error accessing media devices:', err));
-    }
-
-    return () => {
-      localStream?.getTracks().forEach(track => track.stop());
-      // Close all peer connections
-      peerConnections.current.forEach(({ pc }) => pc.close());
-      peerConnections.current.clear();
-      setPeerVideos([]);
-    };
-  }, [localStream, isInCall]);
+  const peerConns = useRef<Map<string, PeerConnection>>(new Map());
 
   // Create a new peer connection for a specific user
-  const createPeerConnection = (targetUser: string) => {
+  const createPeerConnection = useCallback((targetUser: string) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
@@ -83,17 +64,41 @@ export function useGroupCall() {
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         // Remove peer from connections and videos
-        peerConnections.current.delete(targetUser);
+        peerConns.current.delete(targetUser);
         setPeerVideos(prev => prev.filter(p => p.username !== targetUser));
       }
     };
 
-    peerConnections.current.set(targetUser, { pc, stream: remoteStream });
+    peerConns.current.set(targetUser, { pc, stream: remoteStream });
     return pc;
-  };
+  }, [localStream, sendVidSignal]);
+
+  // Initialize or clean up media devices
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!localStream && isInCall) {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+          setLocalStream(stream);
+        })
+        .catch(err => console.error('Error accessing media devices:', err));
+    }
+
+    const Conns = peerConns.current;
+    return () => {
+      localStream?.getTracks().forEach(track => track.stop());
+      // Close all peer connections
+      Conns.forEach(({ pc }) => pc.close());
+      Conns.clear();
+      setPeerVideos([]);
+    };
+  }, [localStream, isInCall]);
 
   // Join the video call
   const joinCall = async () => {
+    if (typeof window === 'undefined') return;
+
     if (!localStream) {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
@@ -111,14 +116,17 @@ export function useGroupCall() {
     setIsInCall(false);
     localStream?.getTracks().forEach(track => track.stop());
     setLocalStream(null);
-    peerConnections.current.forEach(({ pc }) => pc.close());
-    peerConnections.current.clear();
+    peerConns.current.forEach(({ pc }) => pc.close());
+    peerConns.current.clear();
     setPeerVideos([]);
   };
 
   // Handle incoming WebRTC signals
   useEffect(() => {
-    const handleVidSignal = async (signal: any) => {
+    if (typeof window === 'undefined') return;
+
+    const handleVidSignal = async (signal: unknown) => {
+      if (!isValidSignal(signal)) return;
       const { type, sender, target } = signal;
 
       // Ignore our own messages
@@ -143,6 +151,7 @@ export function useGroupCall() {
           }
 
           case 'offer': {
+            if (!signal.offer) return;
             // We received an offer, create answer
             const pc = createPeerConnection(sender);
             await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
@@ -158,9 +167,10 @@ export function useGroupCall() {
           }
 
           case 'answer': {
-            const peerConn = peerConnections.current.get(sender);
-            if (peerConn) {
-              await peerConn.pc.setRemoteDescription(
+            if (!signal.answer) return;
+            const senderConn = peerConns.current.get(sender);
+            if (senderConn) {
+              await senderConn.pc.setRemoteDescription(
                 new RTCSessionDescription(signal.answer)
               );
             }
@@ -168,9 +178,10 @@ export function useGroupCall() {
           }
 
           case 'ice-candidate': {
-            const peerConn = peerConnections.current.get(sender);
-            if (peerConn) {
-              await peerConn.pc.addIceCandidate(
+            if (!signal.candidate) return;
+            const senderConn = peerConns.current.get(sender);
+            if (senderConn) {
+              await senderConn.pc.addIceCandidate(
                 new RTCIceCandidate(signal.candidate)
               );
             }
@@ -187,7 +198,7 @@ export function useGroupCall() {
     return () => {
       setVideoSignalHandler(() => {});
     };
-  }, [setVideoSignalHandler, sendVidSignal, isInCall, localStream]);
+  }, [setVideoSignalHandler, sendVidSignal, isInCall, localStream, createPeerConnection]);
 
   return {
     localStream,
@@ -196,4 +207,23 @@ export function useGroupCall() {
     joinCall,
     leaveCall
   };
+}
+
+// Type guard for signal validation
+function isValidSignal(signal: unknown): signal is {
+  type: 'join-call' | 'offer' | 'answer' | 'ice-candidate';
+  sender: string;
+  target?: string;
+  offer?: RTCSessionDescriptionInit;
+  answer?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
+} {
+  if (!signal || typeof signal !== 'object') return false;
+  const s = signal as Record<string, unknown>;
+  return (
+    typeof s.type === 'string' &&
+    ['join-call', 'offer', 'answer', 'ice-candidate'].includes(s.type) &&
+    typeof s.sender === 'string' &&
+    (!s.target || typeof s.target === 'string')
+  );
 } 
