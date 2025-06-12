@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useWebSocket } from './webSocket';
 import { useUserStore } from './userStore';
 
@@ -23,28 +23,8 @@ export function useGroupCall() {
   // Keep track of all peer connections by their username
   const peerConns = useRef<Map<string, PeerConnection>>(new Map());
 
-  // Initialize or clean up media devices
-  useEffect(() => {
-    if (!localStream && isInCall) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-          setLocalStream(stream);
-        })
-        .catch(err => console.error('Error accessing media devices:', err));
-    }
-
-    const Conns = peerConns.current;
-    return () => {
-      localStream?.getTracks().forEach(track => track.stop());
-      // Close all peer connections
-      Conns.forEach(({ pc }) => pc.close());
-      Conns.clear();
-      setPeerVideos([]);
-    };
-  }, [localStream, isInCall]);
-
   // Create a new peer connection for a specific user
-  const createPeerConnection = (targetUser: string) => {
+  const createPeerConnection = useCallback((targetUser: string) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
@@ -91,10 +71,34 @@ export function useGroupCall() {
 
     peerConns.current.set(targetUser, { pc, stream: remoteStream });
     return pc;
-  };
+  }, [localStream, sendVidSignal]);
+
+  // Initialize or clean up media devices
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!localStream && isInCall) {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+          setLocalStream(stream);
+        })
+        .catch(err => console.error('Error accessing media devices:', err));
+    }
+
+    const Conns = peerConns.current;
+    return () => {
+      localStream?.getTracks().forEach(track => track.stop());
+      // Close all peer connections
+      Conns.forEach(({ pc }) => pc.close());
+      Conns.clear();
+      setPeerVideos([]);
+    };
+  }, [localStream, isInCall]);
 
   // Join the video call
   const joinCall = async () => {
+    if (typeof window === 'undefined') return;
+
     if (!localStream) {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
@@ -119,6 +123,8 @@ export function useGroupCall() {
 
   // Handle incoming WebRTC signals
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const handleVidSignal = async (signal: unknown) => {
       if (!isValidSignal(signal)) return;
       const { type, sender, target } = signal;
