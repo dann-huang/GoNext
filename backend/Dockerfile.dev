@@ -7,4 +7,6 @@ RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 COPY go.mod go.sum .
 RUN go mod download
 
+COPY . .
+
 CMD ["air"]

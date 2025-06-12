@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go Live Chat Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1,
+    h2 {
+      color: #0056b3;
+    }
+
+    input[type="text"],
+    textarea {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 5px;
+    }
+
+    button.connect {
+      background-color: #28a745;
+      color: white;
+    }
+
+    button.disconnect {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    button.send,
+    button.join,
+    button.leave,
+    button.getClients {
+      background-color: #007bff;
+      color: white;
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    #chat-window {
+      border: 1px solid #ddd;
+      height: 300px;
+      overflow-y: scroll;
+      padding: 10px;
+      margin-bottom: 10px;
+      background-color: #e9ecef;
+      border-radius: 4px;
+    }
+
+    #chat-window p {
+      margin: 5px 0;
+      line-height: 1.4;
+    }
+
+    .message-chat {
+      color: #333;
+    }
+
+    .message-status {
+      color: #0056b3;
+      font-style: italic;
+    }
+
+    .message-error {
+      color: #dc3545;
+      font-weight: bold;
+    }
+
+    #client-list {
+      border: 1px solid #ddd;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Go Live Chat Tester</h1>
+
+    <section>
+      <h2>Connection</h2>
+      <p>Status: <strong id="connectionStatus" style="color: red;">Disconnected</strong></p>
+      <button id="connectBtn" class="connect">Connect</button>
+      <button id="disconnectBtn" class="disconnect" disabled>Disconnect</button>
+    </section>
+
+    <section>
+      <h2>Chat</h2>
+      <div id="chat-window"></div>
+      <input type="text" id="chatInput" placeholder="Type your message..." disabled>
+      <button id="sendChatBtn" class="send" disabled>Send Message</button>
+    </section>
+
+    <section>
+      <h2>Room Management</h2>
+      <input type="text" id="roomNameInput" placeholder="Enter room name (e.g., General, Gaming)">
+      <button id="joinRoomBtn" class="join" disabled>Join Room</button>
+      <button id="leaveRoomBtn" class="leave" disabled>Leave Current Room</button>
+      <p>Current Room: <strong id="currentRoomName">Lobby</strong></p>
+    </section>
+
+    <section>
+      <h2>Clients in Room</h2>
+      <button id="getClientsBtn" class="getClients" disabled>Get Clients in Room</button>
+      <div id="client-list">
+        <p>No clients listed yet.</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const wsUrl = "/api/live"; // Adjust if your server is on a different port/domain
+    let ws;
+    let currentRoom = "Lobby"; // Default room
+
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const connectionStatus = document.getElementById("connectionStatus");
+    const chatWindow = document.getElementById("chat-window");
+    const chatInput = document.getElementById("chatInput");
+    const sendChatBtn = document.getElementById("sendChatBtn");
+    const roomNameInput = document.getElementById("roomNameInput");
+    const joinRoomBtn = document.getElementById("joinRoomBtn");
+    const leaveRoomBtn = document.getElementById("leaveRoomBtn");
+    const currentRoomNameDisplay = document.getElementById("currentRoomName");
+    const getClientsBtn = document.getElementById("getClientsBtn");
+    const clientListDiv = document.getElementById("client-list");
+
+    function setConnected(isConnected) {
+      connectBtn.disabled = isConnected;
+      disconnectBtn.disabled = !isConnected;
+      chatInput.disabled = !isConnected;
+      sendChatBtn.disabled = !isConnected;
+      joinRoomBtn.disabled = !isConnected;
+      leaveRoomBtn.disabled = !isConnected;
+      getClientsBtn.disabled = !isConnected;
+      connectionStatus.textContent = isConnected ? "Connected" : "Disconnected";
+      connectionStatus.style.color = isConnected ? "green" : "red";
+
+      if (!isConnected) {
+        currentRoom = "Lobby"; // Reset current room on disconnect
+        currentRoomNameDisplay.textContent = currentRoom;
+        clientListDiv.innerHTML = "<p>No clients listed yet.</p>";
+      }
+    }
+
+    function appendMessage(message, type = 'chat') {
+      const p = document.createElement('p');
+      p.classList.add(`message-${type}`);
+      p.textContent = message;
+      chatWindow.appendChild(p);
+      chatWindow.scrollTop = chatWindow.scrollHeight; // Auto-scroll to bottom
+    }
+
+    connectBtn.addEventListener("click", () => {
+      // This will attempt to connect without sending any explicit JWT via query param or header.
+      // Your Go backend's `authMdw` must handle the authentication process
+      // (e.g., from cookies, session, or pre-existing headers set by an initial HTTP request).
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // Connect to endpoint
+      ws = new WebSocket(`${protocol}//${window.location.host}/api/live/`);
+
+      ws.onopen = (event) => {
+        appendMessage("Connected to WebSocket.", "status");
+        setConnected(true);
+        // Immediately get client list on connect to update UI
+        sendGetClientsRequest();
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          switch (msg.type) {
+            case "chat":
+            case "video_signal":
+            case "game_state":
+              appendMessage(`[${msg.sender ? msg.sender.substring(0, 8) : 'Unknown'}]: ${msg.payload}`, "chat");
+              break;
+            case "status":
+              appendMessage(`${msg.payload.status}`, "status");
+              break;
+            case "error":
+              appendMessage(`ERROR: ${msg.payload.status || JSON.stringify(msg.payload)}`, "error");
+              break;
+            case "get_clients":
+              updateClientList(msg.payload);
+              break;
+            // Add more cases for other message types (video_signal, game_state, etc.)
+            case "join_room":
+              break;
+            default:
+              appendMessage(`Received unknown message type: ${msg.type} - ${JSON.stringify(msg.payload)}`, "status");
+              break;
+          }
+        } catch (e) {
+          appendMessage(`Failed to parse message: ${event.data} - ${e.message}`, "error");
+        }
+      };
+
+      ws.onclose = (event) => {
+        appendMessage(`Disconnected from WebSocket. Code: ${event.code}, Reason: ${event.reason}`, "status");
+        setConnected(false);
+      };
+
+      ws.onerror = (event) => {
+        appendMessage("WebSocket error!", "error");
+        console.error("WebSocket error:", event);
+      };
+    });
+
+    disconnectBtn.addEventListener("click", () => {
+      if (ws) {
+        ws.close(1000, "User initiated disconnect"); // 1000 is for normal closure
+      }
+    });
+
+    sendChatBtn.addEventListener("click", () => {
+      const message = chatInput.value.trim();
+      if (message && ws && ws.readyState === WebSocket.OPEN) {
+        const chatMsg = {
+          type: "chat",
+          payload: message,
+        };
+        ws.send(JSON.stringify(chatMsg));
+        chatInput.value = "";
+      }
+    });
+
+    chatInput.addEventListener("keypress", (event) => {
+      if (event.key === "Enter") {
+        sendChatBtn.click();
+      }
+    });
+
+    joinRoomBtn.addEventListener("click", () => {
+      const roomName = roomNameInput.value.trim();
+      if (roomName && ws && ws.readyState === WebSocket.OPEN) {
+        const joinMsg = {
+          type: "join_room",
+          payload: { roomName },
+        };
+        ws.send(JSON.stringify(joinMsg));
+        currentRoom = roomName; // Optimistic update
+        currentRoomNameDisplay.textContent = currentRoom;
+      } else if (!roomName) {
+        appendMessage("Please enter a room name to join.", "error");
+      }
+    });
+
+    leaveRoomBtn.addEventListener("click", () => {
+      const leaveMsg = {
+        type: "leave_room",
+      };
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(leaveMsg));
+        currentRoom = "Lobby"; // Optimistic update to Lobby
+        currentRoomNameDisplay.textContent = currentRoom;
+      }
+    });
+
+    getClientsBtn.addEventListener("click", sendGetClientsRequest);
+
+    function sendGetClientsRequest() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const getClientsMsg = {
+          type: "get_clients",
+          payload: null, // Payload can be null for this type
+        };
+        ws.send(JSON.stringify(getClientsMsg));
+      }
+    }
+
+    function updateClientList(payload) {
+      if (payload && payload.roomName && payload.clients) {
+        clientListDiv.innerHTML = `<h4>Clients in ${payload.roomName}:</h4>`;
+        if (payload.clients.length > 0) {
+          const ul = document.createElement('ul');
+          payload.clients.forEach(clientName => {
+            const li = document.createElement('li');
+            li.textContent = clientName;
+            ul.appendChild(li);
+          });
+          clientListDiv.appendChild(ul);
+        } else {
+          clientListDiv.innerHTML += "<p>No other clients in this room.</p>";
+        }
+      } else {
+        clientListDiv.innerHTML = "<p>Failed to get client list.</p>";
+      }
+    }
+
+    // Initialize button states
+    setConnected(false);
+
+  </script>
+</body>
+
+</html>

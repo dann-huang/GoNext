@@ -1,29 +1,33 @@
 services:
+  next:
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:${NEXT_PORT}"
+
   go:
     build:
-      context: .
-      dockerfile: Dockerfile.dev
+      context: ./backend
+      dockerfile: ./Dockerfile.dev
     volumes:
-      - ./cmd:/app/cmd
-      - ./internal:/app/internal
-      - ./pkg:/app/pkg
-      - ./static:/app/static
-      - ./scripts:/app/scripts
-      - .air.toml:/app/.air.toml
+      - ./backend:/app
     environment:
       - POSTGRES_URL=${POSTGRES_URL}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
-
       - REDIS_URL=${REDIS_URL}
-
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
-
       - DOMAIN=${DOMAIN}
       - GO_PORT=${GO_PORT}
+      - FRONTEND=http://${NEXT_URL}:${NEXT_PORT}
     ports:
-      - "80:${GO_PORT}"
+      - "${PORT}:${GO_PORT}"
     depends_on:
       - postgres
       - redis
@@ -32,8 +36,7 @@ services:
     image: postgres:13
     volumes:
       - ./postgresInit:/docker-entrypoint-initdb.d
-    # issues with permissions on linux. Somehow is fine on mac
-      # - ./postgres:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

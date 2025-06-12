@@ -26,6 +26,18 @@ type DB struct {
 	RedisURL     string
 }
 
+type WS struct {
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	PongTimeout  time.Duration
+	MaxMsgSize   int64
+
+	RegisterBuffer int64
+	RoomBuffer     int64
+	MsgBuffer      int64
+	SendBuffer     int64
+}
+
 func (c *DB) ConnectionStrings() (string, string) {
 
 	pString := fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable",
@@ -35,14 +47,19 @@ func (c *DB) ConnectionStrings() (string, string) {
 }
 
 type AppConfig struct {
-	ServerPort string
-	Auth       *Auth
-	DB         *DB
+	Port        string
+	FrontendUrl string
+	StaticPages string
+	Auth        *Auth
+	DB          *DB
+	WS          *WS
 }
 
 func Load() (*AppConfig, error) {
 	cfg := &AppConfig{
-		ServerPort: os.Getenv("GO_PORT"),
+		Port:        os.Getenv("GO_PORT"),
+		FrontendUrl: os.Getenv("FRONTEND"),
+		StaticPages: "/app/static",
 	}
 
 	cfg.Auth = &Auth{
@@ -62,6 +79,17 @@ func Load() (*AppConfig, error) {
 		PostgresPass: os.Getenv("POSTGRES_PASSWORD"),
 		PostgresDB:   os.Getenv("POSTGRES_DB"),
 		RedisURL:     os.Getenv("REDIS_URL"),
+	}
+	cfg.WS = &WS{
+		ReadTimeout:  15 * time.Second,
+		PongTimeout:  10 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		MaxMsgSize:   65536, // 64kb, for sdp offer/answer mostly
+
+		RegisterBuffer: 20,
+		RoomBuffer:     20,
+		MsgBuffer:      256,
+		SendBuffer:     64,
 	}
 
 	return cfg, nil

@@ -10,7 +10,7 @@ func RespondErr(w http.ResponseWriter, status int, msg string, err error) {
 	if err != nil {
 		slog.Error(err.Error())
 	}
-	RespondJSON(w, status, map[string]string{"error": msg})
+	RespondJSON(w, status, map[string]string{"message": msg})
 }
 
 func RespondJSON(w http.ResponseWriter, status int, payload any) {

@@ -62,7 +62,7 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 
 func (h *handlerImpl) registerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var params model.UserCreate
+		var params model.UserReq
 		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 			util.RespondErr(w, http.StatusBadRequest, "Bad request", err)
 			return
@@ -90,7 +90,7 @@ func (h *handlerImpl) registerHandler() http.HandlerFunc {
 
 func (h *handlerImpl) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.UserCreate
+		var req model.UserReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			util.RespondErr(w, http.StatusBadRequest, "Invalid request", nil)
 		}
@@ -105,14 +105,17 @@ func (h *handlerImpl) loginHandler() http.HandlerFunc {
 			return
 		}
 
-		h.setAuthCookie(w, h.config.AccCookieName, access, "/", time.Now().Add(h.config.AccTTL))
-		h.setAuthCookie(w, h.config.RefCookieName, refresh, "/api/auth", time.Now().Add(h.config.RefTTL))
+		accExpire := time.Now().Add(h.config.AccTTL)
+		refExpire := time.Now().Add(h.config.RefTTL)
+		h.setAuthCookie(w, h.config.AccCookieName, access, "/", accExpire)
+		h.setAuthCookie(w, h.config.RefCookieName, refresh, "/api/auth", refExpire)
 
-		util.RespondJSON(w, http.StatusOK, map[string]string{
-			"message":         "login success",
-			"username":        usr.Username,
-			"access expires":  time.Now().Add(h.config.AccTTL).Format(time.RFC3339),
-			"refresh expires": time.Now().Add(h.config.RefTTL).Format(time.RFC3339),
+		util.RespondJSON(w, http.StatusOK, map[string]any{
+			"message":        "login success",
+			"username":       usr.Username,
+			"displayname":    usr.DisplayName,
+			"accessExpires":  accExpire.UnixMilli(),
+			"refreshExpires": refExpire.UnixMilli(),
 		})
 	}
 }
@@ -139,17 +142,24 @@ func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 			util.RespondErr(w, http.StatusUnauthorized, "No Refresh Token", nil)
 			return
 		}
-		accessToken, refreshToken, err := h.service.refreshUser(r.Context(), refreshCookie.Value)
+		access, refresh, err := h.service.refreshUser(r.Context(), refreshCookie.Value)
 		if err != nil {
 			slog.Error(err.Error())
 		}
-		if accessToken == "" {
+		if access == "" {
 			util.RespondErr(w, http.StatusInternalServerError, "Refresh failed", nil)
 			return
 		}
-		h.setAuthCookie(w, h.config.AccCookieName, accessToken, "/", time.Now().Add(h.config.AccTTL))
-		h.setAuthCookie(w, h.config.RefCookieName, refreshToken, "/api/auth", time.Now().Add(h.config.RefTTL))
 
-		util.RespondJSON(w, http.StatusOK, map[string]string{"message": "refresh success"})
+		accExpire := time.Now().Add(h.config.AccTTL)
+		refExpire := time.Now().Add(h.config.RefTTL)
+		h.setAuthCookie(w, h.config.AccCookieName, access, "/", accExpire)
+		h.setAuthCookie(w, h.config.RefCookieName, refresh, "/api/auth", refExpire)
+
+		util.RespondJSON(w, http.StatusOK, map[string]any{
+			"message":        "refresh success",
+			"accessExpires":  accExpire.UnixMilli(),
+			"refreshExpires": refExpire.UnixMilli(),
+		})
 	}
 }

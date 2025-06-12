@@ -16,20 +16,20 @@ case "$1" in
   clear)
     sudo docker compose down --volumes --rmi local
     ;;
-  lint)
-    sudo docker compose exec go sh /app/scripts/lint.sh
+  fsh)
+    sudo docker compose exec next sh -i
     ;;
-  test)
-    sudo docker compose exec go sh /app/scripts/test.sh
-    ;;
-  sh)
+  bsh)
     sudo docker compose exec go sh -i
     ;;
-  log)
+  flog)
+    sudo docker compose logs next -f
+    ;;
+  blog)
     sudo docker compose logs go -f
     ;;
   *)
-    echo "Usage: $0 {up|build|down|lint|test|sh|log}"
+    echo "Usage: $0 {up|build|down|clear|fsh|bsh|flog|blog}"
     exit 1
     ;;
 esac

@@ -7,9 +7,10 @@ import (
 
 	"letsgo/internal/auth"
 	"letsgo/internal/db"
+	"letsgo/internal/external"
 	"letsgo/internal/live"
+	"letsgo/internal/mdw"
 	"letsgo/internal/repo"
-	"letsgo/internal/static"
 	"letsgo/internal/token"
 	"letsgo/pkg/jwt/v2"
 
@@ -44,22 +45,23 @@ func main() {
 	}
 	authModule := auth.NewModule(store.User, store.KVStore, accessManager, cfg.Auth)
 
-	// const userCtxKey mdw.ContextKey = "userPayload"
-	// userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
+	const userCtxKey mdw.ContextKey = "userPayload"
+	userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	r.Route("/api", func(api chi.Router) {
+		api.Use(middleware.Logger)
 		api.Mount("/auth", authModule.Router())
-		api.Mount("/live", live.Router())
+		api.Mount("/live", live.Router(userAccMdw, userCtxKey, cfg.WS))
 	})
 
 	// static pages
-	staticDir := "/app/static"
-	r.Get("/test/*", static.TestPageHandler(staticDir))
-	r.Get("/*", static.SPAHandler(staticDir))
+	r.Get("/stat/*", external.StaticPageHandler(cfg.StaticPages))
 
-	http.ListenAndServe(":3000", r)
+	//frontend
+	r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
+
+	http.ListenAndServe(":"+cfg.Port, r)
 }

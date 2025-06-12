@@ -13,7 +13,7 @@ type User struct {
 	UpdatedAt   time.Time `db:"updated_at"`
 }
 
-type UserCreate struct {
+type UserReq struct {
 	Username string `json:"username" validate:"required,alphanum,min=3,max=10"`
 	Password string `json:"password" validate:"required"`
 }

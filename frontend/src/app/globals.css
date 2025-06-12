@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-primary: #6A0DAD;
+  --color-secondary: #C792DF;
+  --color-accent: #FFD700;
+  --color-background: #FFFFFF;
+  --color-error: #DC3545;
+
+  --color-text: #333333;
+  --color-on-primary: #FFFFFF;
+  --color-on-secondary: #333333;
+  --color-on-accent: #333333;
+  --color-on-error: #FFFFFF;
+
+  --font-sans: var(--font-roboto);
+
+  --tw-duration: 300ms
+}
+
+.dark {
+  --color-primary: #9370DB;
+  --color-secondary: #DDA0DD;
+  --color-accent: #FFA500;
+  --color-background: #171717;
+  --color-error: #EF476F;
+
+  --color-text: #E0E0E0;
+  --color-on-primary: #E0E0E0;
+  --color-on-secondary: #171717;
+  --color-on-accent: #171717;
+  --color-on-error: #171717;
+}
+
+@theme {
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-accent: var(--color-accent);
+  --color-background: var(--color-background);
+  --color-error: var(--color-error);
+
+  --color-text: var(--color-text);
+  --color-on-primary: var(--color-on-primary);
+  --color-on-secondary: var(--color-on-secondary);
+  --color-on-accent: var(--color-on-accent);
+  --color-on-error: var(--color-on-error);
+
+  --font-sans: var(--font-sans);
+  --tw-duration: var(--tw-duration);
+}
+
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  @apply font-sans;
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-secondary);
+  border-radius: 4px;
+}
+
+.scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
