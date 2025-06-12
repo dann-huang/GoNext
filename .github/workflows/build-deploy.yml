@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -21,23 +22,33 @@ jobs:
         run: echo "version=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
       - name: Build and push frontend
-        run: |
-          IMG=${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend
-          TAG=${{ steps.tag.outputs.version }}
-          docker build -t $IMG:$TAG -f frontend/Dockerfile frontend
-          docker push $IMG:$TAG
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ steps.tag.outputs.version }}
+          cache-from: |
+            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:buildcache
+            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:latest
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:buildcache,mode=max
 
       - name: Build and push backend
-        run: |
-          IMG=${{ secrets.DOCKERHUB_NAME }}/letsgo-backend
-          TAG=${{ steps.tag.outputs.version }}
-          docker build -t $IMG:$TAG -f backend/Dockerfile backend
-          docker push $IMG:$TAG
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
+          cache-from: |
+            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:buildcache
+            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:latest
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:buildcache,mode=max
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,9 +59,17 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
+          command_timeout: "10m"
           script: |
+            #!/bin/bash
             set -e
             echo "Starting deployment..."
+            
+            # Check disk space
+            if [ $(df -h / | awk 'NR==2 {print $5}' | sed 's/%//') -gt 90 ]; then
+              echo "❌ Low disk space, aborting deployment"
+              exit 1
+            fi
             
             cd /root/git/server || { echo "❌ Directory does not exist"; exit 1; }
             if [ -f docker-compose.prod.yml ]; then
@@ -84,17 +103,26 @@ jobs:
             }
             
             echo "Performing health check..."
-            sleep 10
-            if ! curl -f http://localhost/health || ! curl -f http://localhost/api/health; then
-              echo "Health check failed, rolling back..."
-              if [ -f docker-compose.prod.yml.backup ]; then
-                mv docker-compose.prod.yml.backup docker-compose.prod.yml
-                docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            for i in {1..5}; do
+              if curl -f http://localhost/health && curl -f http://localhost/api/health; then
+                echo "Health check passed!"
+                break
               fi
-              exit 1
-            }
+              if [ $i -eq 5 ]; then
+                echo "Health check failed after 5 attempts, rolling back..."
+                if [ -f docker-compose.prod.yml.backup ]; then
+                  mv docker-compose.prod.yml.backup docker-compose.prod.yml
+                  docker compose -f docker-compose.prod.yml up -d --remove-orphans
+                fi
+                exit 1
+              fi
+              echo "Health check attempt $i failed, retrying in 10s..."
+              sleep 10
+            done
             
             echo "Cleaning up..."
+            echo "Current images before cleanup:"
+            docker images | grep letsgo
             docker image prune -f --filter "until=24h"
             rm -f docker-compose.prod.yml.backup current_images.txt
             

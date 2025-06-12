@@ -27,11 +27,11 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - POSTGRES_URL=postgres:5432
-      - POSTGRES_USER=pgUser
-      - POSTGRES_PASSWORD=pgPass
-      - POSTGRES_DB=letsgo
       - REDIS_URL=redis:6379
+      - POSTGRES_URL=postgres:5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
     expose:
       - "3333"
@@ -45,9 +45,9 @@ services:
       - ./postgresInit:/docker-entrypoint-initdb.d
       - db_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=pgUser
-      - POSTGRES_PASSWORD=pgPass
-      - POSTGRES_DB=letsgo
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "5432:5432"
 
