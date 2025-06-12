@@ -17,6 +17,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_NAME }}
           password: ${{ secrets.DOCKERHUB_PAT }}
 
+      - name: Set version tag
+        id: tag
+        run: echo "version=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
@@ -24,7 +28,7 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:$(git rev-parse --short HEAD)
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ steps.tag.outputs.version }}
             ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:latest
 
       - name: Build and push backend
@@ -34,7 +38,7 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:$(git rev-parse --short HEAD)
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
             ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:latest
 
   deploy:
