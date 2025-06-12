@@ -78,11 +78,6 @@ jobs:
               echo "❌ Deployment failed, rolling back..."
               if [ -f docker-compose.prod.yml.backup ]; then
                 mv docker-compose.prod.yml.backup docker-compose.prod.yml
-                if [ -f current_images.txt ]; then
-                  while read -r image; do
-                    docker pull "$image" || echo "⚠️ Could not pull $image"
-                  done < current_images.txt
-                fi
                 docker compose -f docker-compose.prod.yml up -d --remove-orphans
               fi
               exit 1
@@ -94,15 +89,10 @@ jobs:
               echo "Health check failed, rolling back..."
               if [ -f docker-compose.prod.yml.backup ]; then
                 mv docker-compose.prod.yml.backup docker-compose.prod.yml
-                if [ -f current_images.txt ]; then
-                  while read -r image; do
-                    docker pull "$image" || echo "⚠️ Could not pull $image"
-                  done < current_images.txt
-                fi
                 docker compose -f docker-compose.prod.yml up -d --remove-orphans
               fi
               exit 1
-            fi
+            }
             
             echo "Cleaning up..."
             docker image prune -f --filter "until=24h"
