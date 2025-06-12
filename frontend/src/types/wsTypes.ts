@@ -9,6 +9,7 @@ export const GetRoom = 'get_rooms' as const;
 export const GetClients = 'get_clients' as const;
 export const Error = 'error' as const;
 export const Status = 'status' as const;
+export const Draw = 'draw' as const;
 
 export interface ErrorMsg {
   type: typeof Error;
@@ -54,13 +55,6 @@ export interface VidSignalMsg {
   payload: unknown; //todo
 }
 
-export interface GameStateMsg {
-  type: typeof GameState;
-  sender: string;
-  payload: unknown; //todo
-}
-
-
 export interface GetClientRes {
   type: typeof GetClients;
   sender: '_server';
@@ -75,6 +69,28 @@ export interface GetClientsReq {
   // Payload: {};
 }
 
+//------------------------------Game state stuff--------------------------------
+export interface DrawPayload {
+  type: 'draw';
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  width: number;
+}
+
+export interface ChessPayload {
+  type: 'chess';
+  move: string;
+  piece: string;
+}
+
+export type GameStatePayload = DrawPayload | ChessPayload;
+
+export interface GameStateMsg {
+  type: typeof GameState;
+  sender: string;
+  payload: GameStatePayload;
+}
+//------------------------------------------------------------------------------
 
 export type IncomingMsg =
   | ChatMsg

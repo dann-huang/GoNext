@@ -1,9 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-
-const Dropdown = dynamic(() => import('./Dropdown'), { ssr: false });
-const ThemeSwitcher = dynamic(() => import('./ThemeSwitcher'), { ssr: false });
+import Dropdown from './Dropdown';
+import ThemeSwitcher from './ThemeSwitcher';
 
 const Logo = () => <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -26,13 +24,19 @@ export default function NavBar() {
 
       <div className="flex space-x-4 md:space-x-8">
         <Dropdown
-          title="Stuff"
-        links={[
-            { href: "/live/video", label: "Video call" },
-            { href: "/", label: "thing2" },
-            { href: "/", label: "thing3" },
-            { href: "/", label: "thing1" },
+          title="Static"
+          links={[
+            { href: "/", label: "Thing 1" },
+            { href: "/", label: "Thing 2" },
             { href: "/about", label: "About Me" },
+          ]}
+        />
+        <Dropdown
+          title="Live"
+          links={[
+            { href: "/live/video", label: "Video call" },
+            { href: "/live/draw", label: "Drawing" },
+            { href: "/", label: "thing3" },
           ]}
         />
         <ThemeSwitcher />

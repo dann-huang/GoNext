@@ -26,6 +26,8 @@ interface WSState {
 
   setVideoSignalHandler: (handler: (signal: unknown) => void) => void;
   sendVidSignal: (signal: unknown) => void;
+
+  setDrawHandler: (handler: (data: t.DrawPayload) => void) => void;
 }
 
 let ws: WebSocket | null = null; //causes problems when defined in store
@@ -34,6 +36,7 @@ let reconnAttempt = 0;
 let reconnDelay = RECONNECT_INITIAL_DELAY;
 
 let vidSigHandler: ((signal: unknown) => void) | null = null; //also causes rerendering issues
+let drawHandler: ((data: t.DrawPayload) => void) | null = null;
 
 export const useWebSocket = create<WSState>()((set, get) => ({
   currentRoom: "",
@@ -80,15 +83,19 @@ export const useWebSocket = create<WSState>()((set, get) => ({
           case t.Error:
             set(state => ({ msgLog: [...state.msgLog, msg] }));
             break;
+          case t.GameState:
+            if (msg.payload.type === 'draw' && drawHandler) {
+              drawHandler(msg.payload);
+            } else {
+              set(state => ({ gameStates: [...state.gameStates, msg] }));
+            }
+            break;
           case t.VidSignal:
             if (vidSigHandler === null) {
               console.warn("WS recieved vid signal, but no handler")
             } else {
               vidSigHandler(msg.payload)
             }
-            break;
-          case t.GameState:
-            set(state => ({ gameStates: [...state.gameStates, msg] }));
             break;
           case t.JoinRoom:
             set({ currentRoom: msg.payload.roomName });
@@ -175,6 +182,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     const msg: t.VidSignalMsg = { type: t.VidSignal, sender: "", payload }
     get().sendMessage(msg);
   },
+  setDrawHandler: (handler: (data: t.DrawPayload) => void) => { drawHandler = handler },
 }))
 
 
