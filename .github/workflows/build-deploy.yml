@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main ]
 
+env:
+  VERSION: ${{ github.sha[0,7] }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,10 +20,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_NAME }}
           password: ${{ secrets.DOCKERHUB_PAT }}
 
-      - name: Set version tag
-        id: tag
-        run: echo "version=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
@@ -28,7 +27,7 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ steps.tag.outputs.version }}
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ env.VERSION }}
             ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:latest
 
       - name: Build and push backend
@@ -38,17 +37,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ env.VERSION }}
             ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:latest
-
-      - name: Save version
-        run: echo "${{ steps.tag.outputs.version }}" > version.txt
-
-      - name: Upload version
-        uses: actions/upload-artifact@v4
-        with:
-          name: version
-          path: version.txt
 
   deploy:
     needs: build
@@ -57,12 +47,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Download version
-        uses: actions/download-artifact@v4
-        with:
-          name: version
-          path: .
 
       - name: Deploy to Digital Ocean
         uses: appleboy/ssh-action@v1.0.0
@@ -95,7 +79,7 @@ jobs:
 
             # Update to new tag
             sed -i '/^TAG=/d' .env
-            echo "TAG=$(cat version.txt)" >> .env
+            echo "TAG=${{ env.VERSION }}" >> .env
             
             echo "Cleaning up old deployment..."
             docker compose -f docker-compose.prod.yml down --remove-orphans
