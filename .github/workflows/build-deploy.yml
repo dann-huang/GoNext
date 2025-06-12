@@ -41,6 +41,15 @@ jobs:
             ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
             ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:latest
 
+      - name: Save version
+        run: echo "${{ steps.tag.outputs.version }}" > version.txt
+
+      - name: Upload version
+        uses: actions/upload-artifact@v3
+        with:
+          name: version
+          path: version.txt
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -48,6 +57,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download version
+        uses: actions/download-artifact@v3
+        with:
+          name: version
+          path: .
 
       - name: Deploy to Digital Ocean
         uses: appleboy/ssh-action@master
@@ -68,37 +83,38 @@ jobs:
             fi
             
             cd /root/git/server || { echo "❌ Directory does not exist"; exit 1; }
-            if [ -f docker-compose.prod.yml ]; then
-              cp docker-compose.prod.yml docker-compose.prod.yml.backup
-              docker compose -f docker-compose.prod.yml config | grep "image:" | awk '{print $2}' > current_images.txt
-            fi
             
             echo "Pulling changes..."
             git pull || { echo "❌ Git pull failed"; exit 1; }
             
             echo "Setting envs..."
-            CURRENT_SHA=$(git rev-parse --short HEAD)
             if [ ! -f .env ]; then
               echo "❌ .env not found"
               exit 1
             fi
+
+            # Update to new tag
             sed -i '/^TAG=/d' .env
-            echo "TAG=$CURRENT_SHA" >> .env
+            echo "TAG=$(cat version.txt)" >> .env
             
             echo "Cleaning up old deployment..."
-            docker compose -f docker-compose.prod.yml down --remove-orphans || true
-            docker network prune -f || true
+            docker compose -f docker-compose.prod.yml down --remove-orphans
             
             echo "Pulling images..."
             docker compose -f docker-compose.prod.yml pull || { echo "❌ Docker compose pull failed"; exit 1; }
             
             echo "Docker composing..."
             docker compose -f docker-compose.prod.yml up -d --remove-orphans || { 
-              echo "❌ Deployment failed, rolling back..."
-              if [ -f docker-compose.prod.yml.backup ]; then
-                mv docker-compose.prod.yml.backup docker-compose.prod.yml
-                docker compose -f docker-compose.prod.yml up -d --remove-orphans
+              echo "❌ Deployment failed"
+              if ! grep -q "^LAST_WORKING_TAG=" .env; then
+                echo "⚠️ No last working version"
+                exit 1
               fi
+              LAST_WORKING=$(grep "^LAST_WORKING_TAG=" .env | cut -d'=' -f2)
+              echo "Rolling back to last working version: $LAST_WORKING"
+              git checkout $LAST_WORKING
+              sed -i "s/^TAG=.*/TAG=$LAST_WORKING/" .env
+              docker compose -f docker-compose.prod.yml up -d --remove-orphans
               exit 1
             }
             
@@ -109,11 +125,16 @@ jobs:
                 break
               fi
               if [ $i -eq 5 ]; then
-                echo "Health check failed after 5 attempts, rolling back..."
-                if [ -f docker-compose.prod.yml.backup ]; then
-                  mv docker-compose.prod.yml.backup docker-compose.prod.yml
-                  docker compose -f docker-compose.prod.yml up -d --remove-orphans
+                echo "Health check failed after 5 attempts"
+                if ! grep -q "^LAST_WORKING_TAG=" .env; then
+                  echo "⚠️ No last working version"
+                  exit 1
                 fi
+                LAST_WORKING=$(grep "^LAST_WORKING_TAG=" .env | cut -d'=' -f2)
+                echo "Rolling back to last working version: $LAST_WORKING"
+                git checkout $LAST_WORKING
+                sed -i "s/^TAG=.*/TAG=$LAST_WORKING/" .env
+                docker compose -f docker-compose.prod.yml up -d --remove-orphans
                 exit 1
               fi
               echo "Health check attempt $i failed, retrying in 10s..."
@@ -121,9 +142,9 @@ jobs:
             done
             
             echo "Cleaning up..."
-            echo "Current images before cleanup:"
-            docker images | grep letsgo
             docker image prune -f --filter "until=24h"
-            rm -f docker-compose.prod.yml.backup current_images.txt
+            
+            CURRENT_TAG=$(grep "^TAG=" .env | cut -d'=' -f2)
+            sed -i "s/^LAST_WORKING_TAG=.*/LAST_WORKING_TAG=$CURRENT_TAG/" .env
             
             echo "Deployment success!"
