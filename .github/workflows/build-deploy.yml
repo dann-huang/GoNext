@@ -28,10 +28,6 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ steps.tag.outputs.version }}
-          cache-from: |
-            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:buildcache
-            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:latest
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:buildcache,mode=max
 
       - name: Build and push backend
         uses: docker/build-push-action@v5
@@ -40,10 +36,6 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
-          cache-from: |
-            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:buildcache
-            type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:latest
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:buildcache,mode=max
 
   deploy:
     needs: build
