@@ -2,7 +2,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ feature/cicd ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -27,7 +27,9 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ steps.tag.outputs.version }}
+          tags: |
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ steps.tag.outputs.version }}
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:latest
 
       - name: Build and push backend
         uses: docker/build-push-action@v5
@@ -35,7 +37,9 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
+          tags: |
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
+            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:latest
 
   deploy:
     needs: build
