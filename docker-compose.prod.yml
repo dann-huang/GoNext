@@ -9,15 +9,15 @@ services:
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
     depends_on:
-      - frontend
-      - backend
+      - next
+      - go
 
-  frontend:
+  next:
     image: ${DOCKERHUB_NAME}/letsgo-frontend:${TAG}
     environment:
       - NODE_ENV=production
 
-  backend:
+  go:
     image: ${DOCKERHUB_NAME}/letsgo-backend:${TAG}
     environment:
       - REDIS_URL=redis:6379
