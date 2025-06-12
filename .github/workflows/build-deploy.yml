@@ -75,7 +75,7 @@ jobs:
             echo "Setting envs..."
             CURRENT_SHA=$(git rev-parse --short HEAD)
             if [ ! -f .env ]; then
-              echo "❌ .env not found."
+              echo "❌ .env not found"
               exit 1
             fi
             sed -i '/^TAG=/d' .env
