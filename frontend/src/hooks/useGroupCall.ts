@@ -253,10 +253,14 @@ export function useGroupCall() {
             const senderConn = peerConns.current.get(sender);
             if (senderConn) {
               const pc = senderConn.pc;
-              if (pc.signalingState === 'have-local-offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
+              if (!pc.currentRemoteDescription) {
+                try {
+                  await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
+                } catch (err) {
+                  console.error('Failed to apply remote answer from', sender, err);
+                }
               } else {
-                console.warn(`Ignoring answer from ${sender} because signalingState is ${pc.signalingState}`);
+                console.debug(`Remote description already set for ${sender}, skipping duplicate answer`);
               }
             }
             break;
