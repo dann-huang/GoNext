@@ -26,6 +26,9 @@ export function useGroupCall() {
   // Keep track of all peer connections by their username
   const peerConns = useRef<Map<string, PeerConnection>>(new Map());
 
+  // Keep a ref to always have the latest local stream inside callbacks
+  const localStreamRef = useRef<MediaStream | null>(null);
+
   // Create a new peer connection for a specific user
   const createPeerConnection = useCallback((targetUser: string) => {
     const pc = new RTCPeerConnection({
@@ -58,10 +61,12 @@ export function useGroupCall() {
       console.log(`ICE connection state: ${pc.iceConnectionState}`);
     };
 
-    // Add local stream tracks to peer connection
-    localStream?.getTracks().forEach(track => {
-      pc.addTrack(track, localStream);
-    });
+    // Add local stream tracks to peer connection (if we already have them)
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => {
+        pc.addTrack(track, localStreamRef.current as MediaStream);
+      });
+    }
 
     // Handle incoming remote stream
     const remoteStream = new MediaStream();
@@ -84,6 +89,7 @@ export function useGroupCall() {
       if (event.candidate) {
         sendVidSignal({
           type: 'ice-candidate',
+          sender: useUserStore.getState().username,
           target: targetUser,
           candidate: event.candidate
         });
@@ -100,7 +106,7 @@ export function useGroupCall() {
 
     peerConns.current.set(targetUser, { pc, stream: remoteStream });
     return pc;
-  }, [localStream, sendVidSignal]);
+  }, [localStreamRef, sendVidSignal]);
 
   // Initialize or clean up media devices
   useEffect(() => {
@@ -130,7 +136,7 @@ export function useGroupCall() {
 
     try {
       setError(null);
-      if (!localStream) {
+      if (!localStreamRef.current) {
         console.log('Requesting media devices...');
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: { width: 1280, height: 720 },
@@ -143,6 +149,12 @@ export function useGroupCall() {
           muted: t.muted
         })));
         setLocalStream(stream);
+        localStreamRef.current = stream;
+
+        // Attach tracks to any peer connections that could have been created meanwhile
+        peerConns.current.forEach(({ pc }) => {
+          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        });
       }
     } catch (err) {
       const error = err as Error;
@@ -150,6 +162,8 @@ export function useGroupCall() {
       setError(`Could not access camera/microphone: ${error.message}`);
       throw error;
     }
+
+    // Now that we certainly have a stream, mark in-call and notify others
     setIsInCall(true);
 
     sendVidSignal({
@@ -170,15 +184,15 @@ export function useGroupCall() {
 
   // Toggle audio track (mute/unmute)
   const toggleAudio = () => {
-    if (!localStream) return;
-    localStream.getAudioTracks().forEach(t => (t.enabled = !t.enabled));
+    if (!localStreamRef.current) return;
+    localStreamRef.current.getAudioTracks().forEach(t => (t.enabled = !t.enabled));
     setAudioEnabled(prev => !prev);
   };
 
   // Toggle video track (camera on/off)
   const toggleVideo = () => {
-    if (!localStream) return;
-    localStream.getVideoTracks().forEach(t => (t.enabled = !t.enabled));
+    if (!localStreamRef.current) return;
+    localStreamRef.current.getVideoTracks().forEach(t => (t.enabled = !t.enabled));
     setVideoEnabled(prev => !prev);
   };
 
@@ -196,15 +210,18 @@ export function useGroupCall() {
       try {
         switch (type) {
           case 'join-call': {
-            if (!isInCall || !localStream) return;
+            console.debug('[useGroupCall] join-call received from', sender, 'isInCall', isInCall, 'haveStream', !!localStreamRef.current);
+            if (!isInCall || !localStreamRef.current) return;
             
             // Someone wants to join, send them an offer
             const pc = createPeerConnection(sender);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
+            console.debug('[useGroupCall] sending offer to', sender, 'sdp size', offer.sdp?.length);
             
             sendVidSignal({
               type: 'offer',
+              sender: useUserStore.getState().username,
               target: sender,
               offer
             });
@@ -212,15 +229,18 @@ export function useGroupCall() {
           }
 
           case 'offer': {
+            console.debug('[useGroupCall] offer received from', sender, 'haveConn', peerConns.current.has(sender));
             if (!signal.offer) return;
             // We received an offer, create answer
             const pc = createPeerConnection(sender);
             await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
+            console.debug('[useGroupCall] sending answer to', sender);
             
             sendVidSignal({
               type: 'answer',
+              sender: useUserStore.getState().username,
               target: sender,
               answer
             });
@@ -228,6 +248,7 @@ export function useGroupCall() {
           }
 
           case 'answer': {
+            console.debug('[useGroupCall] answer received from', sender);
             if (!signal.answer) return;
             const senderConn = peerConns.current.get(sender);
             if (senderConn) {
@@ -239,6 +260,7 @@ export function useGroupCall() {
           }
 
           case 'ice-candidate': {
+            console.debug('[useGroupCall] ice-candidate from', sender);
             if (!signal.candidate) return;
             const senderConn = peerConns.current.get(sender);
             if (senderConn) {
@@ -259,7 +281,7 @@ export function useGroupCall() {
     return () => {
       setVideoSignalHandler(() => {});
     };
-  }, [setVideoSignalHandler, sendVidSignal, isInCall, localStream, createPeerConnection]);
+  }, [setVideoSignalHandler, sendVidSignal, isInCall, localStreamRef, createPeerConnection]);
 
   return {
     localStream,

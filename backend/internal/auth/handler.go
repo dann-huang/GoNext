@@ -124,7 +124,7 @@ func (h *handlerImpl) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		refreshCookie, err := r.Cookie(h.config.RefCookieName)
 		if err == nil {
-			h.service.logoutUser(r.Context(), refreshCookie.Name)
+			h.service.logoutUser(r.Context(), refreshCookie.Value)
 
 			h.setAuthCookie(w, h.config.AccCookieName, "", "/", time.Unix(0, 0))
 			h.setAuthCookie(w, h.config.RefCookieName, "", "/api/auth", time.Unix(0, 0))

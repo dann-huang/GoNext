@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useUserStore } from './userStore';
 import * as t from '@/types/wsTypes';
 import { create } from 'zustand';
-import { RECONNECT_MAX_DELAY, RECONNECT_INITIAL_DELAY, RECONNECT_MAX_ATTEMPTS, WS_URL } from '@/config/consts';
+import { RECONNECT_INITIAL_DELAY, WS_URL } from '@/config/consts';
 
 interface WSState {
   error: string;
@@ -31,9 +31,6 @@ interface WSState {
 }
 
 let ws: WebSocket | null = null; //causes problems when defined in store
-let reconnTimeout: NodeJS.Timeout | null = null;
-let reconnAttempt = 0;
-let reconnDelay = RECONNECT_INITIAL_DELAY;
 
 let vidSigHandler: ((signal: unknown) => void) | null = null; //also causes rerendering issues
 let drawHandler: ((data: t.DrawPayload) => void) | null = null;
@@ -60,16 +57,10 @@ export const useWebSocket = create<WSState>()((set, get) => ({
       return console.error("WS needs authentication")
 
     set({ error: "" })
-    if (reconnTimeout) {
-      clearTimeout(reconnTimeout);
-      reconnTimeout = null;
-    }
 
     ws = new WebSocket(WS_URL);
     ws.onopen = () => {
       console.debug('WS connected')
-      reconnAttempt = 0;
-      reconnDelay = RECONNECT_INITIAL_DELAY;
     }
 
     ws.onmessage = e => {
@@ -121,30 +112,14 @@ export const useWebSocket = create<WSState>()((set, get) => ({
       set({ error: 'WS error' });
     };
 
-    ws.onclose = async (event) => {
+    ws.onclose = (event) => {
       console.debug('WS closed:', event.code, event.reason);
       set({ error: `WS disconnected: code ${event.code}, reason: ${event.reason || 'Unknown'}.` });
 
-      if (event.code === 1000 || event.code === 1001)
-        return console.debug("WS closed gracefully");
-
-      const loggedIn = await useUserStore.getState().refresh();
-      if (!loggedIn) return console.error("WS died; require auth to reconnect");
-
-      if (++reconnAttempt > RECONNECT_MAX_ATTEMPTS)
-        return console.debug("WS died; reconnect unsuccessful");
-
-      reconnDelay = Math.min(reconnDelay * 2, RECONNECT_MAX_DELAY);
-      console.debug(`WS reconnect in ${reconnDelay / 1000}s...`);
-      reconnTimeout = setTimeout(get().connect, reconnDelay);
+      ws = null;
     }
   },
   disconnect: () => {
-    if (reconnTimeout) {
-      clearTimeout(reconnTimeout);
-      reconnTimeout = null;
-    }
-
     if (ws) {
       console.debug("Closing WS");
       ws.close(1000, "Client wants to leave");
@@ -191,7 +166,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
 
 
 export const useWSConnect = () => {
-  const { accessExp, refresh, loggedin } = useUserStore();
+  const { loggedin, refresh, addRefreshDependent, removeRefreshDependent } = useUserStore();
   const { connect, disconnect, getStatus } = useWebSocket();
 
   useEffect(() => {
@@ -201,14 +176,11 @@ export const useWSConnect = () => {
       if (unmounted) return;
 
       if (!loggedin()) {
-        disconnect();
-        return;
-      }
-
-      // proactive refresh
-      const now = Date.now();
-      if (accessExp !== 0 && accessExp - now < 60_000) {
-        await refresh().catch((err) => console.error('Token refresh failed', err));
+        const ok = await refresh();
+        if (!ok) {
+          disconnect();
+          return console.warn("not loggedin disconnect");
+        }
       }
 
       if (getStatus() === 'disconnected') {
@@ -216,14 +188,17 @@ export const useWSConnect = () => {
       }
     };
 
+    addRefreshDependent('ws');
     maybeConnect();
 
-    const interval = setInterval(maybeConnect, 30_000);
+    const interval = setInterval(maybeConnect, RECONNECT_INITIAL_DELAY);
 
     return () => {
       unmounted = true;
       clearInterval(interval);
       disconnect();
+      removeRefreshDependent('ws');
+      console.warn("not loggedin disconnect");
     };
-  }, [accessExp, loggedin, refresh, connect, disconnect, getStatus]);
+  }, [loggedin, refresh, connect, disconnect, getStatus, addRefreshDependent, removeRefreshDependent]);
 };
