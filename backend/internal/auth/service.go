@@ -75,7 +75,7 @@ func (s *serviceImpl) loginUser(ctx context.Context, username, password string) 
 func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error {
 	username, err := s.kv.Get(ctx, refreshToken)
 	if err != nil {
-		return fmt.Errorf("service: refresh token lookup failed: %w", err)
+		return fmt.Errorf("service: logout without finding refresh token: %w", err)
 	}
 	return s.unsetRefreshToken(ctx, username, refreshToken)
 }
@@ -83,7 +83,7 @@ func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error
 func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (string, string, error) {
 	username, err := s.kv.Get(ctx, refreshToken)
 	if err != nil {
-		return "", "", fmt.Errorf("service: refresh token lookup failed: %w", err)
+		return "", "", fmt.Errorf("service: no refresh token found: %w", err)
 	}
 	user, err := s.repo.ReadUser(ctx, username)
 	if err != nil {
@@ -91,7 +91,7 @@ func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (str
 	}
 
 	newRefToken := uuid.New().String()
-	if err := s.setRefreshToken(ctx, username, refreshToken); err != nil {
+	if err := s.setRefreshToken(ctx, username, newRefToken); err != nil {
 		return "", "", err
 	}
 	accessToken, err := s.accTokenManager.GenerateToken(token.NewUserPayload(user.Username, user.DisplayName))

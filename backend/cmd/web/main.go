@@ -69,5 +69,6 @@ func main() {
 	//frontend
 	// r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
 
+	println("---Server start---")
 	http.ListenAndServe(":3333", r)
 }

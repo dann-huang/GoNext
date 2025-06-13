@@ -2,6 +2,22 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '@/lib/api'
 import { LoginSuccessResponse, RefreshSuccessResponse, RegisterSuccessResponse } from '@/types/authTypes';
+import { REFRESH_BEFORE } from '@/config/consts';
+
+const refreshDependents = new Set<string>();
+let refreshTimeout: NodeJS.Timeout | null = null;
+
+const scheduleRefresh = (get: () => UserState) => {
+  if (refreshTimeout) clearTimeout(refreshTimeout);
+  if (refreshDependents.size === 0) {
+    refreshTimeout = null;
+    return;
+  }
+  const { accessExp, refresh } = get();
+
+  const delay = Math.max(accessExp - REFRESH_BEFORE - Date.now(), 0);
+  refreshTimeout = setTimeout(refresh, delay);
+};
 
 interface UserState {
   username: string;
@@ -14,8 +30,9 @@ interface UserState {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
-  // needRef: () => boolean;
   loggedin: () => boolean;
+  addRefreshDependent: (id: string) => void;
+  removeRefreshDependent: (id: string) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -98,6 +115,8 @@ export const useUserStore = create<UserState>()(
           }
           const json: RefreshSuccessResponse = await res.json();
           set({ accessExp: json.accessExpires, refreshExp: json.refreshExpires, error: "" })
+          scheduleRefresh(get);
+          console.debug("Refreshed access token")
           return true;
         } catch (err: unknown) {
           console.error("userstore err ", err)
@@ -105,6 +124,17 @@ export const useUserStore = create<UserState>()(
         }
       },
       loggedin: () => get().accessExp > Date.now(),
+      addRefreshDependent: (id: string) => {
+        refreshDependents.add(id);
+        scheduleRefresh(get);
+      },
+      removeRefreshDependent: (id: string) => {
+        refreshDependents.delete(id);
+        if (refreshDependents.size === 0 && refreshTimeout) {
+          clearTimeout(refreshTimeout);
+          refreshTimeout = null;
+        }
+      },
     }),
     {
       name: 'user-storage',
