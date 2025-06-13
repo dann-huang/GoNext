@@ -252,9 +252,12 @@ export function useGroupCall() {
             if (!signal.answer) return;
             const senderConn = peerConns.current.get(sender);
             if (senderConn) {
-              await senderConn.pc.setRemoteDescription(
-                new RTCSessionDescription(signal.answer)
-              );
+              const pc = senderConn.pc;
+              if (pc.signalingState === 'have-local-offer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
+              } else {
+                console.warn(`Ignoring answer from ${sender} because signalingState is ${pc.signalingState}`);
+              }
             }
             break;
           }
