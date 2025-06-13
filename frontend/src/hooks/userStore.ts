@@ -101,7 +101,6 @@ export const useUserStore = create<UserState>()(
           return true;
         } catch (err: unknown) {
           console.error("userstore err ", err)
-          const msgErr = err as { message: string }
           return false;
         }
       },

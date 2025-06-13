@@ -155,7 +155,9 @@ export default function VideoPage() {
 
             {peerVideos.map(({ username, stream }) => {
               const videoRef = (el: HTMLVideoElement | null) => {
-                el && (el.srcObject = stream);
+                if (el) {
+                  el.srcObject = stream;
+                }
               };
 
               return (

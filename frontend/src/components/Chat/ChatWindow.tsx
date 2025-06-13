@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useUserStore } from '@/hooks/userStore';
 import { useWSConnect } from '@/hooks/webSocket';
 import LoginBox from './LoginBox';

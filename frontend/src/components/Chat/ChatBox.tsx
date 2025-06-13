@@ -12,7 +12,6 @@ export default function ChatBox() {
   const [newRoom, setNewRoom] = useState('');
   const { msgLog, currentRoom, joinRoom, sendChat } = useWebSocket();
   const username = useUserStore((state) => state.username);
-  const loggedIn = useUserStore((state) => state.accessExp) > Date.now();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
