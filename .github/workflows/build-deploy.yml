@@ -70,7 +70,8 @@ jobs:
             cd /root/git/server || { echo "❌ Directory does not exist"; exit 1; }
             
             echo "Pulling changes..."
-            git pull || { echo "❌ Git pull failed"; exit 1; }
+            git checkout main
+            git pull origin main || { echo "❌ Git pull failed"; exit 1; }
             
             echo "Setting envs..."
             if [ ! -f .env ]; then
