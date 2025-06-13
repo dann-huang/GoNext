@@ -10,11 +10,9 @@ export default function ChatBox() {
   const [message, setMessage] = useState('');
   const [showRoomInput, setShowRoomInput] = useState(false);
   const [newRoom, setNewRoom] = useState('');
-  const { msgLog, currentRoom, joinRoom, sendChat, connect, disconnect } = useWebSocket(); //todo: take error from here and display
+  const { msgLog, currentRoom, joinRoom, sendChat } = useWebSocket();
   const username = useUserStore((state) => state.username);
-
-  const expire = useUserStore((state) => state.accessExp);
-  const loggedIn = expire > Date.now();
+  const loggedIn = useUserStore((state) => state.accessExp) > Date.now();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -22,13 +20,6 @@ export default function ChatBox() {
     //todo: only scroll if user isn't reading higher up
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgLog]);
-
-  useEffect(() => {
-    if (loggedIn) {
-      connect()
-    }
-    return disconnect;
-  }, [loggedIn, connect, disconnect]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();

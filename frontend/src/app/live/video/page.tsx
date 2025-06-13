@@ -1,25 +1,61 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useWebSocket } from '@/hooks/webSocket';
-import Button from '@/components/ui/Button';
 import { useGroupCall } from '@/hooks/useGroupCall';
+import Button from '@/components/ui/Button';
 
 export default function VideoPage() {
   const { currentRoom } = useWebSocket();
-  const { localStream, peerVideos, isInCall, joinCall, leaveCall } = useGroupCall();
+  const { 
+    localStream, 
+    peerVideos, 
+    isInCall, 
+    joinCall, 
+    leaveCall, 
+    error: callError 
+  } = useGroupCall();
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const [isJoining, setIsJoining] = useState(false);
 
   // Set local video stream when it's available
-  if (localStream && localVideoRef.current) {
-    localVideoRef.current.srcObject = localStream;
-  }
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
+
+  // Clean up streams on unmount
+  useEffect(() => {
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [localStream]);
+
+  const handleJoinCall = async () => {
+    try {
+      setIsJoining(true);
+      await joinCall();
+    } catch (err) {
+      console.error('Failed to join call:', err);
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   if (!currentRoom) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-background text-text">
-        <p className="text-lg mb-4">Please connect to a chat channel first</p>
-        <p className="text-sm text-text/60">Join a room in the chat to start a video call</p>
+      <div className="flex flex-col items-center justify-center h-full bg-background text-text p-4 text-center">
+        <p className="text-lg font-medium mb-2">No Active Room</p>
+        <p className="text-text/70 mb-6">Please join a room from the chat to start a video call</p>
+        <Button 
+          onClick={() => window.open('/live', '_self')}
+          color="primary"
+        >
+          Back to Live
+        </Button>
       </div>
     );
   }
@@ -31,17 +67,39 @@ export default function VideoPage() {
   if (totalParticipants > 4) gridCols = 'grid-cols-3';
 
   return <>
-    <div className="flex justify-between items-center">
-      <h1 className="text-xl font-semibold text-text">Video Call - Room: {currentRoom}</h1>
-      <div className="flex gap-2">
-        <Button
-          onClick={isInCall ? leaveCall : joinCall}
-          color={isInCall ? 'secondary' : 'primary'}
-        >
-          {isInCall ? 'Leave Call' : 'Join Call'}
-        </Button>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div>
+        <h1 className="text-xl font-semibold text-text">Video Call</h1>
+        <p className="text-sm text-text/70">Room: {currentRoom}</p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        {isInCall ? (
+          <Button
+            onClick={leaveCall}
+            color="secondary"
+            className="w-full sm:w-auto"
+          >
+            Leave Call
+          </Button>
+        ) : (
+          <Button
+            onClick={handleJoinCall}
+            color="primary"
+            disabled={isJoining}
+            className="w-full sm:w-auto"
+          >
+            {isJoining ? 'Joining...' : 'Join Call'}
+          </Button>
+        )}
       </div>
     </div>
+    
+    {callError && (
+      <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+        <p className="font-medium">Error</p>
+        <p>{callError}</p>
+      </div>
+    )}
 
     <div className="flex-grow">
       <div className={`grid ${gridCols} gap-4`}>

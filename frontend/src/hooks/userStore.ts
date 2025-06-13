@@ -90,7 +90,6 @@ export const useUserStore = create<UserState>()(
           })
           return false;
         }
-        set({ loading: true, error: '' });
         try {
           const res = await api.postJson("/auth/refresh", {})
           if (!res.ok) {
@@ -98,12 +97,11 @@ export const useUserStore = create<UserState>()(
             throw new Error(err.message)
           }
           const json: RefreshSuccessResponse = await res.json();
-          set({ accessExp: json.accessExpires, refreshExp: json.refreshExpires, loading: false })
+          set({ accessExp: json.accessExpires, refreshExp: json.refreshExpires, error: "" })
           return true;
         } catch (err: unknown) {
           console.error("userstore err ", err)
           const msgErr = err as { message: string }
-          set({ error: msgErr.message, loading: false, accessExp: 0, refreshExp: 0 })
           return false;
         }
       },

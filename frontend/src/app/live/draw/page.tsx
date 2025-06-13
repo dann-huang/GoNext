@@ -4,7 +4,7 @@ import { useDraw } from '@/hooks/useDraw';
 
 export default function DrawPage() {
   const { canvasRef, drawState, setDrawState,
-    startDrawing, draw, stopDrawing, clearCanvas } = useDraw();
+    startDrawing, draw, stopDrawing, clearCanvas, touchHandlers } = useDraw();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -32,12 +32,26 @@ export default function DrawPage() {
       </div>
       <canvas
         ref={canvasRef}
+        // Mouse events
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}
         onMouseLeave={stopDrawing}
-        className="border border-gray-300 rounded-lg"
-        style={{ width: '800px', height: '600px' }}
+        // Touch events
+        onTouchStart={touchHandlers.onTouchStart}
+        onTouchMove={touchHandlers.onTouchMove}
+        onTouchEnd={touchHandlers.onTouchEnd}
+        onTouchCancel={touchHandlers.onTouchCancel}
+        // Disable scrolling on touch devices when drawing
+        style={{
+          width: '100%',
+          maxWidth: '800px',
+          height: '600px',
+          touchAction: 'none', // Prevent touch scrolling
+          border: '1px solid #d1d5db',
+          borderRadius: '0.5rem'
+        }}
+        className="bg-white"
       />
     </div>
   );
