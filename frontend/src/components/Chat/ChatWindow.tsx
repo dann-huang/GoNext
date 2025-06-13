@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useUserStore } from '@/hooks/userStore';
+import { useWSConnect } from '@/hooks/webSocket';
 import LoginBox from './LoginBox';
 import ChatBox from './ChatBox';
 import Button from '../ui/Button';
@@ -10,6 +11,7 @@ export default function ChatWindow() {
   const [isOpen, setIsOpen] = useState(false);
   const expire = useUserStore((state) => state.accessExp);
   const loggedIn = expire > Date.now();
+  useWSConnect();
 
   const toggleChat = () => {
     setIsOpen(!isOpen);

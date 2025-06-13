@@ -72,44 +72,69 @@ export function useDraw() {
   }, [drawState.color, drawState.lineWidth]);
 
   // Handle drawing
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let clientX, clientY;
+
+    if ('touches' in e) {
+      // Touch event
+      if (e.touches.length === 0) return null;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      // Mouse event
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault(); // Prevent scrolling on touch devices
+    
+    const coords = getCoordinates(e);
+    if (!coords) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     setIsDrawing(true);
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(coords.x, coords.y);
 
     // Start new stroke
-    currentStroke.current = [{ x, y }];
+    currentStroke.current = [{ x: coords.x, y: coords.y }];
     lastSendTime.current = Date.now();
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
+    e.preventDefault(); // Prevent scrolling on touch devices
+    
+    const coords = getCoordinates(e);
+    if (!coords) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.lineTo(x, y);
+    ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
 
     // Add point to current stroke
-    currentStroke.current.push({ x, y });
+    currentStroke.current.push({ x: coords.x, y: coords.y });
 
     // Send stroke if enough time has passed
     if (Date.now() - lastSendTime.current >= DRAW_STROKE_INTERVAL) {
@@ -174,6 +199,13 @@ export function useDraw() {
     startDrawing,
     draw,
     stopDrawing,
-    clearCanvas
+    clearCanvas,
+    // Add touch-specific handlers
+    touchHandlers: {
+      onTouchStart: startDrawing,
+      onTouchMove: draw,
+      onTouchEnd: stopDrawing,
+      onTouchCancel: stopDrawing
+    }
   };
 } 

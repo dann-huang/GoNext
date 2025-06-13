@@ -19,15 +19,44 @@ export function useGroupCall() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isInCall, setIsInCall] = useState(false);
   const [peerVideos, setPeerVideos] = useState<PeerVideo[]>([]);
-  
+  const [error, setError] = useState<string | null>(null);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [videoEnabled, setVideoEnabled] = useState(true);
+
   // Keep track of all peer connections by their username
   const peerConns = useRef<Map<string, PeerConnection>>(new Map());
 
   // Create a new peer connection for a specific user
   const createPeerConnection = useCallback((targetUser: string) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+        // Add TURN servers here if needed
+      ]
     });
+
+    // Set up connection state change handler for debugging
+    pc.onconnectionstatechange = () => {
+      console.log(`Connection state with ${targetUser}:`, pc.connectionState);
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+        console.log(`Connection with ${targetUser} failed or disconnected`);
+        // Remove peer from connections and videos
+        peerConns.current.delete(targetUser);
+        setPeerVideos(prev => prev.filter(p => p.username !== targetUser));
+      }
+    };
+
+    // Log ICE gathering state changes
+    pc.onicegatheringstatechange = () => {
+      console.log(`ICE gathering state: ${pc.iceGatheringState}`);
+    };
+
+    // Log ICE connection state changes
+    pc.oniceconnectionstatechange = () => {
+      console.log(`ICE connection state: ${pc.iceConnectionState}`);
+    };
 
     // Add local stream tracks to peer connection
     localStream?.getTracks().forEach(track => {
@@ -99,15 +128,33 @@ export function useGroupCall() {
   const joinCall = async () => {
     if (typeof window === 'undefined') return;
 
-    if (!localStream) {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      setLocalStream(stream);
+    try {
+      setError(null);
+      if (!localStream) {
+        console.log('Requesting media devices...');
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: 1280, height: 720 },
+          audio: true 
+        });
+        console.log('Got media stream:', stream.getTracks().map(t => ({
+          kind: t.kind, 
+          enabled: t.enabled, 
+          readyState: t.readyState,
+          muted: t.muted
+        })));
+        setLocalStream(stream);
+      }
+    } catch (err) {
+      const error = err as Error;
+      console.error('Error accessing media devices:', error);
+      setError(`Could not access camera/microphone: ${error.message}`);
+      throw error;
     }
     setIsInCall(true);
 
-    // Send join signal to everyone in the room
     sendVidSignal({
-      type: 'join-call'
+      type: 'join-call',
+      sender: useUserStore.getState().username,
     });
   };
 
@@ -119,6 +166,20 @@ export function useGroupCall() {
     peerConns.current.forEach(({ pc }) => pc.close());
     peerConns.current.clear();
     setPeerVideos([]);
+  };
+
+  // Toggle audio track (mute/unmute)
+  const toggleAudio = () => {
+    if (!localStream) return;
+    localStream.getAudioTracks().forEach(t => (t.enabled = !t.enabled));
+    setAudioEnabled(prev => !prev);
+  };
+
+  // Toggle video track (camera on/off)
+  const toggleVideo = () => {
+    if (!localStream) return;
+    localStream.getVideoTracks().forEach(t => (t.enabled = !t.enabled));
+    setVideoEnabled(prev => !prev);
   };
 
   // Handle incoming WebRTC signals
@@ -205,7 +266,12 @@ export function useGroupCall() {
     peerVideos,
     isInCall,
     joinCall,
-    leaveCall
+    leaveCall,
+    toggleAudio,
+    toggleVideo,
+    audioEnabled,
+    videoEnabled,
+    error
   };
 }
 

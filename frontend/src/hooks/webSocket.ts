@@ -84,9 +84,13 @@ export const useWebSocket = create<WSState>()((set, get) => ({
             set(state => ({ msgLog: [...state.msgLog, msg] }));
             break;
           case t.GameState:
-            if (msg.payload.type === 'draw' && drawHandler) {
-              drawHandler(msg.payload);
+            const us = useUserStore.getState().username;
+            if (msg.payload.type === 'draw') {
+              if (msg.sender !== us && drawHandler) {
+                drawHandler(msg.payload);
+              }
             } else {
+              console.warn("Unhandled game state", msg.payload.type);
               set(state => ({ gameStates: [...state.gameStates, msg] }));
             }
             break;
@@ -186,17 +190,40 @@ export const useWebSocket = create<WSState>()((set, get) => ({
 }))
 
 
-export const useWSConnect = () => { //helps remember disconnecting
-  const { refresh } = useUserStore();
-  const { connect, disconnect } = useWebSocket();
+export const useWSConnect = () => {
+  const { accessExp, refresh, loggedin } = useUserStore();
+  const { connect, disconnect, getStatus } = useWebSocket();
 
   useEffect(() => {
-    (async () => {
-      if (await refresh()) connect()
-    })()
+    let unmounted = false;
+
+    const maybeConnect = async () => {
+      if (unmounted) return;
+
+      if (!loggedin()) {
+        disconnect();
+        return;
+      }
+
+      // proactive refresh
+      const now = Date.now();
+      if (accessExp !== 0 && accessExp - now < 60_000) {
+        await refresh().catch((err) => console.error('Token refresh failed', err));
+      }
+
+      if (getStatus() === 'disconnected') {
+        connect();
+      }
+    };
+
+    maybeConnect();
+
+    const interval = setInterval(maybeConnect, 30_000);
 
     return () => {
+      unmounted = true;
+      clearInterval(interval);
       disconnect();
     };
-  }, [refresh, connect, disconnect]);
+  }, [accessExp, loggedin, refresh, connect, disconnect, getStatus]);
 };
