@@ -26,7 +26,7 @@ interface WSState {
   joinRoom: (roomName: string) => void;
   leaveRoom: () => void;
 
-  setVideoSignalHandler: (handler: (msg: t.VidSignalMsg) => void) => void;
+  setVideoSignalHandler: (handler: ((msg: t.VidSignalMsg) => void) | null) => void;
   sendVidSignal: (payload: t.VidSignalMsg['payload']) => void;
 
   setDrawHandler: (handler: (data: t.DrawPayload) => void) => void;

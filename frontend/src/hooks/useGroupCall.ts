@@ -129,10 +129,10 @@ export function useGroupCall() {
     if (isInCall)
       setVideoSignalHandler(handleVideoSignal);
     else
-      setVideoSignalHandler(_ => { });
+      setVideoSignalHandler(null);
 
     return () => {
-      setVideoSignalHandler(_ => { });
+      setVideoSignalHandler(null);
     };
   }, [isInCall, setVideoSignalHandler, handleVideoSignal]);
 
