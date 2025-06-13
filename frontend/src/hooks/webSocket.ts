@@ -15,7 +15,9 @@ interface WSState {
 
   gameStates: t.GameStateMsg[];
 
-  getStatus: () => t.WsStatus,
+  getStatus: () => t.WsStatus;
+  getClients: () => string[];
+
   connect: () => void;
   disconnect: () => void;
   sendMessage: (msg: t.OutgoingMsg) => void;
@@ -24,16 +26,16 @@ interface WSState {
   joinRoom: (roomName: string) => void;
   leaveRoom: () => void;
 
-  setVideoSignalHandler: (handler: (signal: unknown) => void) => void;
-  sendVidSignal: (signal: unknown) => void;
+  setVideoSignalHandler: (handler: (msg: t.VidSignalMsg) => void) => void;
+  sendVidSignal: (payload: t.VidSignalMsg['payload']) => void;
 
   setDrawHandler: (handler: (data: t.DrawPayload) => void) => void;
 }
 
 let ws: WebSocket | null = null; //causes problems when defined in store
 
-let vidSigHandler: ((signal: unknown) => void) | null = null; //also causes rerendering issues
-let drawHandler: ((data: t.DrawPayload) => void) | null = null;
+let vidSigHandler: ((msg: t.VidSignalMsg) => void) | null = null; //also causes rerendering issues
+let drawHandler: ((msg: t.DrawPayload) => void) | null = null;
 
 export const useWebSocket = create<WSState>()((set, get) => ({
   currentRoom: "",
@@ -50,6 +52,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     if (ws.readyState === WebSocket.CONNECTING) return "connecting";
     return "disconnected";
   },
+  getClients: () => get().clients,
   connect: () => {
     if (get().getStatus() !== "disconnected")
       return console.warn("WS nothing to connect")
@@ -89,7 +92,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
             if (vidSigHandler === null) {
               console.warn("WS recieved vid signal, but no handler")
             } else {
-              vidSigHandler(msg.payload)
+              vidSigHandler(msg)
             }
             break;
           case t.JoinRoom:
@@ -157,7 +160,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     get().sendMessage(msg);
   },
   setVideoSignalHandler: handler => { vidSigHandler = handler },
-  sendVidSignal: (payload: unknown) => {
+  sendVidSignal: (payload: t.VidSignalMsg['payload']) => {
     const msg: t.VidSignalMsg = { type: t.VidSignal, sender: "", payload }
     get().sendMessage(msg);
   },

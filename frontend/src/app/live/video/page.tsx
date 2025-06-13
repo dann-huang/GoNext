@@ -28,7 +28,6 @@ export default function VideoPage() {
     toggleVideo,
     audioEnabled,
     videoEnabled,
-    error: callError
   } = useGroupCall();
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -123,18 +122,11 @@ export default function VideoPage() {
                 color={videoEnabled ? 'primary' : 'secondary'}
                 className="whitespace-nowrap flex-shrink-0 w-24"
               >
-                {videoEnabled ? 'Hide Cam' : 'Show Cam'}
+                {videoEnabled ? 'Blind' : 'Unblind'}
               </Button>
             </>
           )}
         </div>
-
-        {callError && (
-          <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
-            <p className="font-medium">Error</p>
-            <p>{callError}</p>
-          </div>
-        )}
       </header >
 
       {/* Scrollable content area */}
