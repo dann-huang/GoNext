@@ -110,6 +110,22 @@ func (c *Connect4) IsFull() bool {
 	return len(c.players) == 2
 }
 
-func (c *Connect4) Exists() bool {
-	return c.created
+func (c *Connect4) Leave(player string) bool {
+	idx := -1
+	for i, p := range c.players {
+		if p == player {
+			idx = i
+			break
+		}
+	}
+	if idx != -1 {
+		c.players = append(c.players[:idx], c.players[idx+1:]...)
+	}
+	if len(c.players) == 0 {
+		c.created = false
+		c.turn = 0
+		c.board = [6][7]int{}
+		return true
+	}
+	return false
 }

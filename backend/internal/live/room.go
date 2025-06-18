@@ -14,7 +14,7 @@ type room struct {
 	clients  map[string]*client
 	mu       sync.RWMutex
 	game     game.Game
-	gameName string // store which game is active in this room
+	gameName string
 }
 
 func newRoom(name string, registry *game.Registry) *room {
@@ -45,6 +45,11 @@ func (r *room) removeClient(client *client) {
 	if _, ok := r.clients[client.ID]; ok {
 		delete(r.clients, client.ID)
 		client.Room = nil
+		if r.game != nil {
+			if r.game.Leave(client.User.Username) {
+				r.game = nil
+			}
+		}
 		r.broadcast(createMsg(msgStatus, "message", client.User.Displayname+" has left "+r.name))
 		r.broadcast(r.getClientList())
 	}
@@ -96,7 +101,7 @@ func (r *room) handleGameState(msg *roomMsg) string {
 
 	switch payload.Action {
 	case "create":
-		if r.game != nil && r.game.Exists() {
+		if r.game != nil {
 			return "Game already exists in this room"
 		}
 		newGame, err := r.registry.Create(payload.GameName)
@@ -119,7 +124,7 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		r.gameName = payload.GameName
 		return ""
 	case "join":
-		if r.game == nil || !r.game.Exists() {
+		if r.game == nil {
 			return "No game to join"
 		}
 		err := r.game.Join(sender)
@@ -128,7 +133,7 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		}
 		return r.broadcastGameState()
 	case "move":
-		if r.game == nil || !r.game.Exists() {
+		if r.game == nil {
 			return "No game in progress"
 		}
 		if payload.Move == nil {

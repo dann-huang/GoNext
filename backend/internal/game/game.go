@@ -8,7 +8,7 @@ type Game interface {
 	Move(sender string, payload json.RawMessage) (*GameState, error)
 	State() *GameState
 	IsFull() bool
-	Exists() bool
+	Leave(player string) bool
 }
 
 type GameState struct {

@@ -15,24 +15,26 @@ type hub struct {
 	rooms    map[string]*room
 	clients  map[string]*client
 
-	register   chan *client
-	unregister chan *client
-	joinRoom   chan *crPair
-	leaveRoom  chan *client
+	register    chan *client
+	unregister  chan *client
+	joinRoom    chan *crPair
+	leaveRoom   chan *client
+	destroyRoom chan *room
 
 	mu sync.RWMutex
 }
 
 func newhub(registry *game.Registry, cfg *config.WS) *hub {
 	return &hub{
-		registry:   registry,
-		cfg:        cfg,
-		rooms:      make(map[string]*room),
-		clients:    make(map[string]*client),
-		register:   make(chan *client, cfg.RegisterBuffer),
-		unregister: make(chan *client, cfg.RegisterBuffer),
-		joinRoom:   make(chan *crPair, cfg.RoomBuffer),
-		leaveRoom:  make(chan *client, cfg.RoomBuffer),
+		registry:    registry,
+		cfg:         cfg,
+		rooms:       make(map[string]*room),
+		clients:     make(map[string]*client),
+		register:    make(chan *client, cfg.RegisterBuffer),
+		unregister:  make(chan *client, cfg.RegisterBuffer),
+		joinRoom:    make(chan *crPair, cfg.RoomBuffer),
+		leaveRoom:   make(chan *client, cfg.RoomBuffer),
+		destroyRoom: make(chan *room, cfg.RoomBuffer),
 	}
 }
 
@@ -48,6 +50,14 @@ func (h *hub) run() {
 			lobby.addClient(client)
 			h.mu.Unlock()
 			slog.Debug("Registered: ", "client", client.ID)
+
+		case room := <-h.destroyRoom:
+			h.mu.Lock()
+			if room.name != "Lobby" {
+				delete(h.rooms, room.name)
+				slog.Info("Room destroyed", "room", room.name)
+			}
+			h.mu.Unlock()
 
 		case client := <-h.unregister:
 			h.mu.Lock()
