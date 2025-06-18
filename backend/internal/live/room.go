@@ -8,7 +8,6 @@ import (
 )
 
 type room struct {
-	// ID      string
 	name    string
 	clients map[string]*client
 	mu      sync.RWMutex
@@ -27,12 +26,12 @@ func (r *room) addClient(client *client) {
 	defer r.mu.Unlock()
 
 	r.clients[client.ID] = client
-	client.Room = r.name
+	client.Room = r
 	client.Send <- createMsg(msgJoinRoom, "roomName", r.name)
 
 	r.broadcast(createMsg(msgStatus, "message", client.User.Displayname+" has joined "+r.name))
 	r.broadcast(r.getClientList())
-}
+} 
 
 func (r *room) removeClient(client *client) {
 	r.mu.Lock()
@@ -40,7 +39,7 @@ func (r *room) removeClient(client *client) {
 
 	if _, ok := r.clients[client.ID]; ok {
 		delete(r.clients, client.ID)
-		client.Room = ""
+		client.Room = nil
 		r.broadcast(createMsg(msgStatus, "message", client.User.Displayname+" has left "+r.name))
 		r.broadcast(r.getClientList())
 	}

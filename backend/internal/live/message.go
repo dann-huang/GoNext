@@ -17,9 +17,14 @@ const (
 )
 
 type roomMsg struct {
-	Type    string `json:"type"`
-	Sender  string `json:"sender,omitempty"`
-	Payload any    `json:"payload"`
+	Type    string      `json:"type"`
+	Sender  string      `json:"sender,omitempty"`
+	Payload any         `json:"payload"`
+}
+
+type hubMsg struct {
+	client *client
+	msg    *roomMsg
 }
 
 type crPair struct {

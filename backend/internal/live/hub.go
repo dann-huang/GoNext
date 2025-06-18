@@ -12,7 +12,7 @@ import (
 type hub struct {
 	rooms    map[string]*room
 	clients  map[string]*client
-	messages chan *roomMsg
+	messages chan *hubMsg
 
 	register   chan *client
 	unregister chan *client
@@ -20,7 +20,7 @@ type hub struct {
 	leaveRoom  chan *client
 
 	mu sync.RWMutex
-}
+} // Room pointers now used in client.Room
 
 func newHub(cfg *config.WS) *hub {
 	return &hub{
@@ -49,10 +49,10 @@ func (h *hub) Run() {
 
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if room, ok := h.rooms[client.Room]; ok {
-				room.removeClient(client)
-				if room != lobby && len(room.clients) == 0 {
-					delete(h.rooms, room.name)
+			if client.Room != nil {
+				client.Room.removeClient(client)
+				if client.Room != lobby && len(client.Room.clients) == 0 {
+					delete(h.rooms, client.Room.name)
 				}
 			}
 			if _, ok := h.clients[client.ID]; ok {
@@ -64,25 +64,25 @@ func (h *hub) Run() {
 			}
 			h.mu.Unlock()
 
-		case msg := <-h.messages:
-			slog.Debug("Sending msg", "message", msg)
+		case hubmsg := <-h.messages:
+			slog.Debug("Sending msg", "message", hubmsg.msg)
 			h.mu.RLock()
-			client, ok := h.clients[msg.Sender]
-			if !ok {
+			client := hubmsg.client
+			if client == nil {
 				h.mu.RUnlock()
 				continue
 			}
-			room, ok := h.rooms[client.Room]
+			room := client.Room
 			h.mu.RUnlock()
-			if !ok {
+			if room == nil {
 				client.Send <- createMsg(msgError, "message", "Room not found, kicking back to lobby")
 				h.joinRoom <- &crPair{client, lobby.name}
 				lobby.addClient(client)
 				continue
 			}
-			jsonMessage, err := json.Marshal(msg)
+			jsonMessage, err := json.Marshal(hubmsg.msg)
 			if err != nil {
-				slog.Error("Failed to marshal message", "error", err, "message", msg)
+				slog.Error("Failed to marshal message", "error", err, "message", hubmsg.msg)
 				continue
 			}
 			room.broadcast(jsonMessage)
@@ -92,11 +92,12 @@ func (h *hub) Run() {
 			h.mu.Lock()
 			client := pair.Client
 			roomID := pair.RoomName
-			if client.Room == "" || client.Room == roomID {
+			if client.Room != nil && client.Room.name == roomID {
 				h.mu.Unlock()
 				continue
 			}
-			if oldRoom, ok := h.rooms[client.Room]; ok {
+			if client.Room != nil {
+				oldRoom := client.Room
 				oldRoom.removeClient(client)
 				if oldRoom != lobby && len(oldRoom.clients) == 0 {
 					delete(h.rooms, oldRoom.name)
@@ -113,17 +114,17 @@ func (h *hub) Run() {
 
 		case client := <-h.leaveRoom:
 			h.mu.Lock()
-			roomID := client.Room
-
-			if room, ok := h.rooms[roomID]; ok {
+			if client.Room != nil {
+				room := client.Room
 				if room == lobby {
+					h.mu.Unlock()
 					continue
 				}
 				room.removeClient(client)
 				if len(room.clients) == 0 {
 					delete(h.rooms, room.name)
 				}
-				slog.Debug("Client left room.", "client", client.ID, "roomID", roomID)
+				slog.Debug("Client left room.", "client", client.ID, "roomID", room.name)
 				lobby.addClient(client)
 			}
 			h.mu.Unlock()

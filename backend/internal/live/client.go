@@ -18,7 +18,7 @@ type client struct {
 	Hub    *hub
 	Conn   *websocket.Conn
 	Send   chan []byte
-	Room   string
+	Room   *room
 	User   *token.UserPayload
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -35,6 +35,7 @@ func newClient(hub *hub, conn *websocket.Conn, user *token.UserPayload, cfg *con
 		User:   user,
 		ctx:    ctx,
 		cancel: cancel,
+		Room:   nil, // Room will be set when joining
 	}
 }
 
@@ -77,7 +78,8 @@ func (c *client) readPump() {
 
 		switch msg.Type {
 		case msgChat, msgVidSignal, msgGameState:
-			c.Hub.messages <- &msg
+			msg.Sender = c.ID
+			c.Hub.messages <- &hubMsg{client: c, msg: &msg}
 		case msgJoinRoom:
 			if payloadMap, ok := msg.Payload.(map[string]any); ok {
 				if roomID, ok := payloadMap["roomName"].(string); ok && roomID != "" {
@@ -91,10 +93,8 @@ func (c *client) readPump() {
 		case msgLeaveRoom:
 			c.Hub.leaveRoom <- c
 		case msgGetClients:
-			if c.Room != "" {
-				if room, ok := c.Hub.rooms[c.Room]; ok {
-					c.Send <- room.getClientList()
-				}
+			if c.Room != nil {
+				c.Send <- c.Room.getClientList()
 			}
 		default:
 			slog.Warn("readPump: Unknown message type received", "type", msg.Type, "client", c.ID)
