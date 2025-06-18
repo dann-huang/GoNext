@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { useUserStore } from '@/hooks/userStore'; // Adjust path if different
-import Input from '../ui/Input';
-import Button from '../ui/Button';
+import Input from '../UI/Input';
+import Button from '../UI/Button';
 
 export default function LoginBox() {
   const [username, setUsername] = useState('');

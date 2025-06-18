@@ -91,7 +91,8 @@ export interface RawDrawMsg {
 
 
 //------------------------------Game state stuff--------------------------------
-export type GameName = 'tictactoe' | 'connect4';
+export const GAME_NAMES = ['tictactoe', 'connect4'] as const;
+export type GameName = typeof GAME_NAMES[number];
 
 export interface BoardGameState {
   gameName: GameName | '';
@@ -113,7 +114,7 @@ export interface GameMove {
 }
 
 export interface GamePayload {
-  action: 'create' | 'join' | 'move' | 'get';
+  action: 'get' | 'create' | 'join' | 'leave' | 'move';
   gameName?: GameName;
   move?: GameMove;
 }

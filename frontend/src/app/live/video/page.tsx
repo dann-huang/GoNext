@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useWebSocket } from '@/hooks/webSocket';
 import { useGroupCall } from '@/hooks/useGroupCall';
-import Button from '@/components/ui/Button';
+import Button from '@/components/UI/Button';
 
 function VideoContainer({ children, username }: { children: React.ReactNode; username?: string }) {
   return <div className="relative bg-secondary rounded-lg overflow-hidden w-full pt-[56.25%] relative">

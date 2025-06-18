@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '@/hooks/webSocket';
 import { useUserStore } from '@/hooks/userStore';
-import Input from '../ui/Input';
-import Button from '../ui/Button';
+import Input from '../UI/Input';
+import Button from '../UI/Button';
 
 export default function ChatBox() {
   const [message, setMessage] = useState('');

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
-import NavBar from '@/components/ui/NavBar';
-import Footer from '@/components/ui/Footer';
+import NavBar from '@/components/UI/NavBar';
+import Footer from '@/components/UI/Footer';
 import ChatWindow from '@/components/Chat/ChatWindow';
-import ThemeInitializer from '@/components/ui/ThemeInitializer';
+import ThemeInitializer from '@/components/UI/ThemeInitializer';
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],

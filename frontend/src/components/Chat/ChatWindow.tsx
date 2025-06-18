@@ -5,7 +5,7 @@ import { useUserStore } from '@/hooks/userStore';
 import { useWSConnect } from '@/hooks/webSocket';
 import LoginBox from './LoginBox';
 import ChatBox from './ChatBox';
-import Button from '../ui/Button';
+import Button from '../UI/Button';
 
 export default function ChatWindow() {
   const [isOpen, setIsOpen] = useState(false);
