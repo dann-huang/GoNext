@@ -18,7 +18,6 @@ const (
 )
 
 type Game interface {
-	Create(sender string, payload json.RawMessage) error
 	Join(sender string) error
 	Move(sender string, payload json.RawMessage) (*GameState, error)
 	State() *GameState

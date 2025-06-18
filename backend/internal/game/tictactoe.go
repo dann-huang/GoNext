@@ -10,17 +10,16 @@ type TicTacToe struct {
 	board [3][3]int
 }
 
-func NewTicTacToe() Game {
-	return &TicTacToe{
-		baseGame: newBase(2, "tictactoe"),
+func NewTicTacToe() Factory {
+	return func(creator string, payload json.RawMessage) (Game, error) {
+		game := &TicTacToe{
+			baseGame: newBase(2, "tictactoe"),
+			board:    [3][3]int{},
+		}
+		game.Players = []string{creator}
+		game.Turn = 0
+		return game, nil
 	}
-}
-
-func (t *TicTacToe) Create(sender string, payload json.RawMessage) error {
-	t.Players = []string{sender}
-	t.Turn = 0
-	t.board = [3][3]int{}
-	return nil
 }
 
 func (t *TicTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {

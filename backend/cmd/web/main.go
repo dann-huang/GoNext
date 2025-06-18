@@ -53,8 +53,8 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	games := game.NewRegistry()
-	games.Register("connect4", game.NewConnect4)
-games.Register("tictactoe", game.NewTicTacToe)
+	games.Register("connect4", game.NewConnect4())
+	games.Register("tictactoe", game.NewTicTacToe())
 
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/health", func(w http.ResponseWriter, r *http.Request) {

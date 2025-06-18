@@ -17,7 +17,6 @@ type room struct {
 	clients  map[*client]struct{}
 	mu       sync.RWMutex
 	game     game.Game
-	gameName string
 	done     chan struct{}
 }
 
@@ -143,16 +142,11 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if r.game != nil {
 			return "Game already exists in this room"
 		}
-		newGame, err := r.registry.Create(payload.GameName)
+		newGame, err := r.registry.Create(payload.GameName, sender, nil)
 		if err != nil {
 			return err.Error()
 		}
-
-		if err := newGame.Create(sender, nil); err != nil {
-			return err.Error()
-		}
 		r.game = newGame
-		r.gameName = payload.GameName
 		msg, err := r.gameStateMsg()
 		if err != nil {
 			return "failed to get game state: " + err.Error()
@@ -188,6 +182,22 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if err != nil {
 			return err.Error()
 		}
+		msg, err := r.gameStateMsg()
+		if err != nil {
+			return "failed to get game state: " + err.Error()
+		}
+		r.broadcast(msg)
+		return ""
+	case "leave":
+		if r.game == nil {
+			return "No game in progress"
+		}
+		// Remove the player from the game
+		if r.game.Leave(sender) {
+			// If the game is empty after leaving, remove it
+			r.game = nil
+		}
+		// Broadcast the updated game state
 		msg, err := r.gameStateMsg()
 		if err != nil {
 			return "failed to get game state: " + err.Error()

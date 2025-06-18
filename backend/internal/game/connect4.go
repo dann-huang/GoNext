@@ -10,17 +10,16 @@ type Connect4 struct {
 	board [6][7]int
 }
 
-func NewConnect4() Game {
-	return &Connect4{
-		baseGame: newBase(2, "connect4"),
+func NewConnect4() Factory {
+	return func(creator string, payload json.RawMessage) (Game, error) {
+		game := &Connect4{
+			baseGame: newBase(2, "connect4"),
+			board:    [6][7]int{},
+		}
+		game.Players = []string{creator}
+		game.Turn = 0
+		return game, nil
 	}
-}
-
-func (c *Connect4) Create(sender string, payload json.RawMessage) error {
-	c.Players = []string{sender}
-	c.Turn = 0
-	c.board = [6][7]int{}
-	return nil
 }
 
 func (c *Connect4) Move(sender string, payload json.RawMessage) (*GameState, error) {

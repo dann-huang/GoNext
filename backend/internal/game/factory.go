@@ -1,15 +1,15 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
-// Factory is a function that creates a new Game instance.
-type Factory func() Game
+type Factory func(creator string, payload json.RawMessage) (Game, error)
 
-// GameInfo holds metadata for a game: its factory and payload types.
+// GameInfo just in case we need payload for creation
 type GameInfo struct {
-	Factory      Factory
+	Factory Factory
 }
 
 type Registry struct {
@@ -20,28 +20,16 @@ func NewRegistry() *Registry {
 	return &Registry{games: make(map[string]GameInfo)}
 }
 
-
-
 func (r *Registry) Register(name string, factory Factory) {
 	r.games[name] = GameInfo{
 		Factory: factory,
 	}
 }
 
-func (r *Registry) Create(name string) (Game, error) {
+func (r *Registry) Create(name, creator string, payload json.RawMessage) (Game, error) {
 	info, ok := r.games[name]
 	if !ok {
 		return nil, fmt.Errorf("game type not supported: %s", name)
 	}
-	return info.Factory(), nil
+	return info.Factory(creator, payload)
 }
-
-func (r *Registry) List() map[string]GameInfo {
-	result := make(map[string]GameInfo, len(r.games))
-	for k, v := range r.games {
-		result[k] = v
-	}
-	return result
-}
-
-
