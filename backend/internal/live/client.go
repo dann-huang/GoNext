@@ -75,9 +75,10 @@ func (c *client) readPump() {
 		}
 
 		msg.Sender = c.ID
+		msg.Client = c
 
 		switch msg.Type {
-		case msgChat, msgVidSignal:
+		case msgChat, msgVidSignal, msgRawSignal:
 			msg.Sender = c.ID
 			jsonMsg, err := json.Marshal(msg)
 			if err != nil {

@@ -3,10 +3,12 @@ package live
 
 import (
 	"encoding/json"
-	"letsgo/internal/game"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
+
+	"letsgo/internal/game"
 )
 
 type room struct {
@@ -41,7 +43,12 @@ func (r *room) run() {
 			r.mu.Lock()
 			if r.game != nil {
 				if _, changed := r.game.Tick(); changed {
-					r.broadcastGameState()
+					msg, err := r.gameStateMsg()
+					if err != nil {
+						slog.Error("gameStateMsg failed", "error", err)
+					} else {
+						r.broadcast(msg)
+					}
 				}
 			}
 			r.mu.Unlock()
@@ -73,9 +80,7 @@ func (r *room) removeClient(client *client) {
 				r.game = nil
 			}
 		}
-
 		delete(r.clients, client)
-		client.room = nil
 
 		r.broadcast(createMsg(msgStatus, "message", client.token.Displayname+" has left "+r.name))
 		r.broadcast(r.getClientList())
@@ -127,6 +132,13 @@ func (r *room) handleGameState(msg *roomMsg) string {
 	sender := msg.Sender
 
 	switch payload.Action {
+	case "get":
+		jsonMsg, err := r.gameStateMsg()
+		if err != nil {
+			return "failed to get game state: " + err.Error()
+		}
+		msg.Client.send <- jsonMsg
+		return ""
 	case "create":
 		if r.game != nil {
 			return "Game already exists in this room"
@@ -141,6 +153,11 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		}
 		r.game = newGame
 		r.gameName = payload.GameName
+		msg, err := r.gameStateMsg()
+		if err != nil {
+			return "failed to get game state: " + err.Error()
+		}
+		r.broadcast(msg)
 		return ""
 	case "join":
 		if r.game == nil {
@@ -150,7 +167,12 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if err != nil {
 			return err.Error()
 		}
-		return r.broadcastGameState()
+		msg, err := r.gameStateMsg()
+		if err != nil {
+			return "failed to get game state: " + err.Error()
+		}
+		r.broadcast(msg)
+		return ""
 	case "move":
 		if r.game == nil {
 			return "No game in progress"
@@ -166,27 +188,41 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if err != nil {
 			return err.Error()
 		}
-		return r.broadcastGameState()
+		msg, err := r.gameStateMsg()
+		if err != nil {
+			return "failed to get game state: " + err.Error()
+		}
+		r.broadcast(msg)
+		return ""
 	default:
 		return "unknown action: " + payload.Action
 	}
 }
 
-func (r *room) broadcastGameState() string {
-	state := r.game.State()
+func (r *room) gameStateMsg() ([]byte, error) {
+	var state *game.GameState
+
+	if r.game != nil {
+		state = r.game.State()
+	} else {
+		state = &game.GameState{
+			Status:  game.StatusWaiting,
+			Players: []string{},
+		}
+	}
 	stateBytes, err := json.Marshal(state)
 	if err != nil {
-		return "failed to marshal game state: " + err.Error()
+		return nil, fmt.Errorf("failed to marshal game state: %w", err)
 	}
+
 	msg := &roomMsg{
 		Type:    msgGameState,
 		Sender:  "_server",
-		Payload: stateBytes,
+		Payload: json.RawMessage(stateBytes),
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
-		return "failed to marshal game state: " + err.Error()
+		return nil, fmt.Errorf("failed to marshal message: %w", err)
 	}
-	r.broadcast(jsonMsg)
-	return ""
+	return jsonMsg, nil
 }

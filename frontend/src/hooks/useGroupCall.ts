@@ -51,7 +51,7 @@ const ICE_SERVERS = {
 
 export function useGroupCall() {
   const sendSignal = useWebSocket(s => s.sendVidSignal);
-  const setSignalHandler = useWebSocket(s => s.setVideoSignalHandler);
+  const setSignalHandler = useWebSocket(s => s.setVidSigHandler);
   const { username } = useUserStore();
 
   const [peers, dispatch] = useReducer(peerReducer, new Map());

@@ -27,11 +27,12 @@ type Game interface {
 }
 
 type GameState struct {
-	Players []string `json:"players"`
-	Turn    string   `json:"turn"`
-	Board   any      `json:"board"`
-	Status  string   `json:"status"`
-	Winner  string   `json:"winner,omitempty"`
+	GameName string   `json:"gameName"`
+	Players  []string `json:"players"`
+	Turn     string   `json:"turn"`
+	Board    any      `json:"board"`
+	Status   string   `json:"status"`
+	Winner   string   `json:"winner,omitempty"`
 }
 
 type Position struct {
@@ -45,28 +46,30 @@ type GameMovePayload struct {
 }
 
 type baseGame struct {
-	Players             []string
-	Turn                int
-	NumPlayers          int
-	Status              string
-	Winner              string
-	DisconnectedPlayers map[string]time.Time
+	GameName    string
+	Players     []string
+	Turn        int
+	NumPlayers  int
+	Status      string
+	Winner      string
+	Disconnects map[string]time.Time
 }
 
-func newBase(numPlayers int) baseGame {
+func newBase(numPlayers int, gameName string) baseGame {
 	return baseGame{
-		Players:             make([]string, 0, numPlayers),
-		NumPlayers:          numPlayers,
-		Status:              StatusWaiting,
-		DisconnectedPlayers: make(map[string]time.Time),
+		GameName:    gameName,
+		Players:     make([]string, 0, numPlayers),
+		NumPlayers:  numPlayers,
+		Status:      StatusWaiting,
+		Disconnects: make(map[string]time.Time),
 	}
 }
 
 func (g *baseGame) Join(player string) error {
 	if g.Status == StatusDisconnected {
-		if _, ok := g.DisconnectedPlayers[player]; ok {
-			delete(g.DisconnectedPlayers, player)
-			if len(g.DisconnectedPlayers) == 0 {
+		if _, ok := g.Disconnects[player]; ok {
+			delete(g.Disconnects, player)
+			if len(g.Disconnects) == 0 {
 				g.Status = StatusInProgress // Resume the game
 			}
 			return nil
@@ -101,7 +104,7 @@ func (g *baseGame) Leave(player string) bool {
 
 	if g.Status == StatusInProgress || g.Status == StatusDisconnected {
 		g.Status = StatusDisconnected
-		g.DisconnectedPlayers[player] = time.Now()
+		g.Disconnects[player] = time.Now()
 		return false
 	}
 
@@ -119,7 +122,7 @@ func (g *baseGame) handleTimeout() bool {
 	}
 
 	var timedOutPlayer string
-	for player, disconnectedAt := range g.DisconnectedPlayers {
+	for player, disconnectedAt := range g.Disconnects {
 		if time.Since(disconnectedAt) > DisconnectTimeout {
 			timedOutPlayer = player
 			break
@@ -169,10 +172,11 @@ func (g *baseGame) state(board any) *GameState {
 		turn = g.Players[g.Turn]
 	}
 	return &GameState{
-		Players: g.Players,
-		Turn:    turn,
-		Board:   board,
-		Status:  g.Status,
-		Winner:  g.Winner,
+		GameName: g.GameName,
+		Players:  g.Players,
+		Turn:     turn,
+		Board:    board,
+		Status:   g.Status,
+		Winner:   g.Winner,
 	}
 }

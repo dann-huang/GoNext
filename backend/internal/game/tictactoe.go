@@ -12,7 +12,7 @@ type TicTacToe struct {
 
 func NewTicTacToe() Game {
 	return &TicTacToe{
-		baseGame: newBase(2),
+		baseGame: newBase(2, "tictactoe"),
 	}
 }
 

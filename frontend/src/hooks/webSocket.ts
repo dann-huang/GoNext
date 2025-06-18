@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect } from 'react';
 import { useUserStore } from './userStore';
@@ -14,6 +14,7 @@ interface WSState {
   clients: string[];
 
   gameStates: t.GameStateMsg[];
+  boardGameState: t.BoardGameState | null;
 
   getStatus: () => t.WsStatus;
   getClients: () => string[];
@@ -26,75 +27,81 @@ interface WSState {
   joinRoom: (roomName: string) => void;
   leaveRoom: () => void;
 
-  setVideoSignalHandler: (handler: ((msg: t.VidSignalMsg) => void) | null) => void;
+  setVidSigHandler: (handler: ((msg: t.VidSignalMsg) => void) | null) => void;
   sendVidSignal: (payload: t.VidSignalMsg['payload']) => void;
 
   setDrawHandler: (handler: (data: t.DrawPayload) => void) => void;
+  setGameHandler: (handler: ((data: t.BoardGameState) => void) | null) => void;
+  sendGameMsg: (payload: t.GamePayload) => void;
 }
 
 let ws: WebSocket | null = null; //causes problems when defined in store
 
 let vidSigHandler: ((msg: t.VidSignalMsg) => void) | null = null; //also causes rerendering issues
 let drawHandler: ((msg: t.DrawPayload) => void) | null = null;
+let gameHandler: ((data: t.BoardGameState) => void) | null = null;
 
 export const useWebSocket = create<WSState>()((set, get) => ({
-  currentRoom: "",
-  error: "",
+  currentRoom: '',
+  error: '',
 
   msgLog: [],
   clients: [],
 
   gameStates: [],
+  boardGameState: null,
 
   getStatus: () => {
-    if (ws === null) return "disconnected";
-    if (ws.readyState === WebSocket.OPEN) return "connected";
-    if (ws.readyState === WebSocket.CONNECTING) return "connecting";
-    return "disconnected";
+    if (ws === null) return 'disconnected';
+    if (ws.readyState === WebSocket.OPEN) return 'connected';
+    if (ws.readyState === WebSocket.CONNECTING) return 'connecting';
+    return 'disconnected';
   },
   getClients: () => get().clients,
   connect: () => {
-    if (get().getStatus() !== "disconnected")
-      return console.warn("WS nothing to connect")
+    if (get().getStatus() !== 'disconnected')
+      return console.warn('WS nothing to connect')
     if (!useUserStore.getState().loggedin())
-      return console.error("WS needs authentication")
+      return console.error('WS needs authentication')
 
-    set({ error: "" })
+    set({ error: '' })
 
     ws = new WebSocket(WS_URL);
     ws.onopen = () => {
       console.debug('WS connected')
     }
 
-    ws.onmessage = e => {
+    ws.onmessage = (e: MessageEvent) => {
       try {
-        const msg: t.IncomingMsg = JSON.parse(e.data)
+        const msg: t.IncomingMsg = JSON.parse(e.data);
 
-        //todo: lots
         switch (msg.type) {
           case t.Chat:
           case t.Status:
           case t.Error:
-            set(state => ({ msgLog: [...state.msgLog, msg] }));
+            set(state => ({ ...state, msgLog: [...state.msgLog, msg] }));
             break;
-          case t.GameState:
-            const us = useUserStore.getState().username;
-            if (msg.payload.type === 'draw') {
-              if (msg.sender !== us && drawHandler) {
-                drawHandler(msg.payload);
-              }
-            } else {
-              console.warn("Unhandled game state", msg.payload.type);
-              set(state => ({ gameStates: [...state.gameStates, msg] }));
+
+          case t.RawSignal:
+            if (drawHandler) {
+              drawHandler(msg.payload);
             }
             break;
+
+          case t.GameState:
+            if (gameHandler) {
+              gameHandler(msg.payload);
+            }
+            break;
+
           case t.VidSignal:
             if (vidSigHandler === null) {
-              console.warn("WS recieved vid signal, but no handler")
+              console.warn('WS received vid signal, but no handler');
             } else {
-              vidSigHandler(msg)
+              vidSigHandler(msg);
             }
             break;
+
           case t.JoinRoom:
             set({ currentRoom: msg.payload.roomName });
             break;
@@ -105,8 +112,8 @@ export const useWebSocket = create<WSState>()((set, get) => ({
             console.warn('Unknown message', msg);
         }
       } catch (err) {
-        console.error("WS onmessage failed", e.data, err)
-        set({ error: "WS onmessage failed" })
+        console.error('WS onmessage failed', e.data, err)
+        set({ error: 'WS onmessage failed' })
       }
     }
 
@@ -124,16 +131,16 @@ export const useWebSocket = create<WSState>()((set, get) => ({
   },
   disconnect: () => {
     if (ws) {
-      console.debug("Closing WS");
-      ws.close(1000, "Client wants to leave");
+      console.debug('Closing WS');
+      ws.close(1000, 'Client wants to leave');
       ws = null;
     }
-    set({ currentRoom: "", msgLog: [], clients: [], error: "" })
+    set({ currentRoom: '', msgLog: [], clients: [], error: '' })
   },
   sendMessage: (msg: t.OutgoingMsg) => {
-    if (!ws || get().getStatus() !== "connected") {
-      set({ error: "WS not connected" })
-      return console.warn("WS not connected")
+    if (!ws || get().getStatus() !== 'connected') {
+      set({ error: 'WS not connected' })
+      return console.warn('WS not connected')
     }
     try {
       ws.send(JSON.stringify(msg));
@@ -152,24 +159,33 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     get().sendMessage(msg);
   },
   joinRoom: (roomName: string) => {
-    const msg: t.JoinRoomMsg = { type: t.JoinRoom, sender: "", payload: { roomName } }
+    const msg: t.JoinRoomMsg = { type: t.JoinRoom, sender: '', payload: { roomName } }
     get().sendMessage(msg);
   },
   leaveRoom: () => {
     const msg: t.LeaveRoomMsg = { type: t.LeaveRoom }
     get().sendMessage(msg);
   },
-  setVideoSignalHandler: handler => { vidSigHandler = handler },
+  setVidSigHandler: handler => { vidSigHandler = handler },
   sendVidSignal: (payload: t.VidSignalMsg['payload']) => {
-    const msg: t.VidSignalMsg = { type: t.VidSignal, sender: "", payload }
+    const msg: t.VidSignalMsg = { type: t.VidSignal, sender: '', payload }
     get().sendMessage(msg);
   },
   setDrawHandler: (handler: (data: t.DrawPayload) => void) => { drawHandler = handler },
+  setGameHandler: handler => { gameHandler = handler },
+  sendGameMsg: (payload: t.GamePayload) => {
+    const msg: t.OutgoingMsg = {
+      type: t.GameState,
+      sender: '',
+      payload: payload as any,
+    };
+    get().sendMessage(msg);
+  },
 }))
 
 
 export const useWSConnect = () => {
-  const { loggedin, refresh, addRefreshDependent, removeRefreshDependent } = useUserStore();
+  const { loggedin, refresh, addRefreshDependent: addRefDependent, removeRefreshDependent: remRefDependent } = useUserStore();
   const { connect, disconnect, getStatus } = useWebSocket();
 
   useEffect(() => {
@@ -182,7 +198,7 @@ export const useWSConnect = () => {
         const ok = await refresh();
         if (!ok) {
           disconnect();
-          return console.warn("not loggedin disconnect");
+          return console.warn('not loggedin disconnect');
         }
       }
 
@@ -191,7 +207,7 @@ export const useWSConnect = () => {
       }
     };
 
-    addRefreshDependent('ws');
+    addRefDependent('ws');
     maybeConnect();
 
     const interval = setInterval(maybeConnect, RECONNECT_INITIAL_DELAY);
@@ -200,8 +216,8 @@ export const useWSConnect = () => {
       unmounted = true;
       clearInterval(interval);
       disconnect();
-      removeRefreshDependent('ws');
-      console.warn("not loggedin disconnect");
+      remRefDependent('ws');
+      console.warn('not loggedin disconnect');
     };
-  }, [loggedin, refresh, connect, disconnect, getStatus, addRefreshDependent, removeRefreshDependent]);
+  }, [loggedin, refresh, connect, disconnect, getStatus, addRefDependent, remRefDependent]);
 };

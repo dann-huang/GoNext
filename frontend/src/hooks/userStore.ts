@@ -56,7 +56,7 @@ export const useUserStore = create<UserState>()(
           const json: RegisterSuccessResponse = await res.json();
           set({ username: json.username, loading: false, })
         } catch (err: unknown) {
-          console.error("userstore err ", err)
+          console.error("userstore register err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
         }
@@ -78,7 +78,7 @@ export const useUserStore = create<UserState>()(
             refreshExp: json.refreshExpires,
           })
         } catch (err: unknown) {
-          console.error("userstore err ", err)
+          console.error("userstore login err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
         }
@@ -93,7 +93,7 @@ export const useUserStore = create<UserState>()(
           }
           set({ username: '', displayName: '', loading: false, accessExp: 0, refreshExp: 0 })
         } catch (err: unknown) {
-          console.error("userstore err ", err)
+          console.error("userstore logout err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
         }
@@ -119,7 +119,8 @@ export const useUserStore = create<UserState>()(
           console.debug("Refreshed access token")
           return true;
         } catch (err: unknown) {
-          console.error("userstore err ", err)
+          console.error("userstore refresh err ", err)
+          if (refreshTimeout) clearTimeout(refreshTimeout);
           return false;
         }
       },

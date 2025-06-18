@@ -12,7 +12,7 @@ type Connect4 struct {
 
 func NewConnect4() Game {
 	return &Connect4{
-		baseGame: newBase(2),
+		baseGame: newBase(2, "connect4"),
 	}
 }
 

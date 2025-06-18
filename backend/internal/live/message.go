@@ -10,6 +10,7 @@ const (
 	msgStatus     = "status"
 	msgChat       = "chat"
 	msgVidSignal  = "video_signal"
+	msgRawSignal  = "raw_signal"
 	msgGameState  = "game_state"
 	msgJoinRoom   = "join_room"
 	msgLeaveRoom  = "leave_room"
@@ -17,16 +18,17 @@ const (
 	msgGetClients = "get_clients"
 )
 
+type roomMsg struct {
+	Type    string          `json:"type"`
+	Sender  string          `json:"sender,omitempty"`
+	Client  *client         `json:"-"`
+	Payload json.RawMessage `json:"payload,omitempty"`
+}
+
 type GameMessagePayload struct {
 	Action   string                `json:"action"`
 	GameName string                `json:"gameName,omitempty"`
 	Move     *game.GameMovePayload `json:"move,omitempty"`
-}
-
-type roomMsg struct {
-	Type    string          `json:"type"`
-	Sender  string          `json:"sender,omitempty"`
-	Payload json.RawMessage `json:"payload,omitempty"`
 }
 
 type crPair struct {

@@ -2,6 +2,7 @@ export type WsStatus = 'disconnected' | 'connecting' | 'connected';
 
 export const Chat = 'chat' as const;
 export const VidSignal = 'video_signal' as const;
+export const RawSignal = 'raw_signal' as const;
 export const GameState = 'game_state' as const;
 export const JoinRoom = 'join_room' as const;
 export const LeaveRoom = 'leave_room' as const;
@@ -75,7 +76,6 @@ export interface GetClientsReq {
   // Payload: {};
 }
 
-//------------------------------Game state stuff--------------------------------
 export interface DrawPayload {
   type: 'draw';
   points: Array<{ x: number; y: number }>;
@@ -83,20 +83,47 @@ export interface DrawPayload {
   width: number;
 }
 
-export interface ChessPayload {
-  type: 'chess';
-  move: string;
-  piece: string;
+export interface RawDrawMsg {
+  type: typeof RawSignal;
+  sender: string;
+  payload: DrawPayload;
 }
 
-export type GameStatePayload = DrawPayload | ChessPayload;
+
+//------------------------------Game state stuff--------------------------------
+export type GameName = 'tictactoe' | 'connect4';
+
+export interface BoardGameState {
+  gameName: GameName | '';
+  players: string[];
+  turn: string;
+  board: number[][];
+  status: 'waiting' | 'in_progress' | 'win' | 'draw' | 'disconnected';
+  winner?: string;
+}
+
+export interface Position {
+  row: number;
+  col: number;
+}
+
+export interface GameMove {
+  from?: Position;
+  to: Position;
+}
+
+export interface GamePayload {
+  action: 'create' | 'join' | 'move' | 'get';
+  gameName?: GameName;
+  move?: GameMove;
+}
 
 export interface GameStateMsg {
   type: typeof GameState;
   sender: string;
-  payload: GameStatePayload;
+  payload: BoardGameState;
 }
-//------------------------------------------------------------------------------
+
 
 export type IncomingMsg =
   | ChatMsg
@@ -105,7 +132,8 @@ export type IncomingMsg =
   | JoinRoomMsg
   | GetClientRes
   | ErrorMsg
-  | StatusMsg;
+  | StatusMsg
+  | RawDrawMsg
 
 export type OutgoingMsg =
   | ChatMsg
@@ -113,7 +141,8 @@ export type OutgoingMsg =
   | GameStateMsg
   | JoinRoomMsg
   | LeaveRoomMsg
-  | GetClientsReq;
+  | GetClientsReq
+  | RawDrawMsg
 
 export type DisplayableMsg =
   | ChatMsg
