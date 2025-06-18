@@ -24,19 +24,18 @@ export default function NavBar() {
 
       <div className="flex space-x-4 md:space-x-8">
         <Dropdown
-          title="Static"
+          title="Board games"
           links={[
-            { href: "/", label: "Thing 1" },
+            { href: "/board/connect4", label: "Connect 4" },
             { href: "/", label: "Thing 2" },
             { href: "/about", label: "About Me" },
           ]}
         />
         <Dropdown
-          title="Live demo"
+          title="Interaction demo"
           links={[
             { href: "/live/video", label: "Video call" },
             { href: "/live/draw", label: "Drawing" },
-            { href: "/", label: "thing3" },
           ]}
         />
         <ThemeSwitcher />
