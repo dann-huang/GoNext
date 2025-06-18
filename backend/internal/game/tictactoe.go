@@ -6,125 +6,53 @@ import (
 )
 
 type TicTacToe struct {
-	players []string
-	board   [3][3]int
-	turn    int
-	created bool
-	winner  int
-}
-
-type TicTacToeMove struct {
-	Row int `json:"row"`
-	Col int `json:"col"`
+	baseGame
+	board [3][3]int
 }
 
 func NewTicTacToe() Game {
-	return &TicTacToe{}
+	return &TicTacToe{
+		baseGame: newBase(2),
+	}
 }
 
 func (t *TicTacToe) Create(sender string, payload json.RawMessage) error {
-	if t.created {
-		return fmt.Errorf("game already created")
-	}
-	t.players = []string{sender}
-	t.turn = 0
+	t.Players = []string{sender}
+	t.Turn = 0
 	t.board = [3][3]int{}
-	t.created = true
-	t.winner = 0
-	return nil
-}
-
-func (t *TicTacToe) Join(player string) error {
-	if !t.created {
-		return fmt.Errorf("game not created")
-	}
-	if len(t.players) >= 2 {
-		return fmt.Errorf("game is full")
-	}
-	if t.players[0] == player {
-		return fmt.Errorf("player already joined")
-	}
-	t.players = append(t.players, player)
 	return nil
 }
 
 func (t *TicTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {
-	if !t.created || len(t.players) < 2 {
-		return nil, fmt.Errorf("game not ready")
+	mv, idx, err := t.validateMove(sender, payload)
+	if err != nil {
+		return nil, err
 	}
-	if t.winner != 0 {
-		return nil, fmt.Errorf("game is over")
+
+	if mv.To.Row < 0 || mv.To.Row > 2 || mv.To.Col < 0 || mv.To.Col > 2 {
+		return nil, fmt.Errorf("invalid move")
 	}
-	var mv TicTacToeMove
-	if err := json.Unmarshal(payload, &mv); err != nil {
-		return nil, fmt.Errorf("invalid move payload: %w", err)
-	}
-	if mv.Row < 0 || mv.Row > 2 || mv.Col < 0 || mv.Col > 2 {
-		return nil, fmt.Errorf("invalid move coordinates")
-	}
-	idx := -1
-	for i, p := range t.players {
-		if p == sender {
-			idx = i
-			break
-		}
-	}
-	if idx != t.turn {
-		return nil, fmt.Errorf("not your turn")
-	}
-	if t.board[mv.Row][mv.Col] != 0 {
+	if t.board[mv.To.Row][mv.To.Col] != 0 {
 		return nil, fmt.Errorf("cell already taken")
 	}
-	t.board[mv.Row][mv.Col] = idx + 1
-	if win := t.checkWinner(); win != 0 {
-		t.winner = win
-	} else if t.isBoardFull() {
-		t.winner = 3
+	t.board[mv.To.Row][mv.To.Col] = idx + 1
+
+	if win := t.checkWin(); win != 0 {
+		t.Status = StatusWin
+		t.Winner = t.Players[win-1]
+	} else if t.checkDraw() {
+		t.Status = StatusDraw
 	}
-	t.turn = 1 - t.turn
+
+	t.Turn = 1 - t.Turn
 	return t.State(), nil
 }
 
 func (t *TicTacToe) State() *GameState {
-	turn := ""
-	if len(t.players) > t.turn {
-		turn = t.players[t.turn]
-	}
-	return &GameState{
-		Players: t.players,
-		Turn:    turn,
-		Board:   t.board,
-	}
+	return t.state(t.board)
 }
 
-func (t *TicTacToe) IsFull() bool {
-	return len(t.players) == 2
-}
-
-func (t *TicTacToe) Leave(player string) bool {
-	// Remove player from t.players
-	idx := -1
-	for i, p := range t.players {
-		if p == player {
-			idx = i
-			break
-		}
-	}
-	if idx != -1 {
-		t.players = append(t.players[:idx], t.players[idx+1:]...)
-	}
-	if len(t.players) == 0 {
-		t.created = false
-		t.winner = 0
-		t.turn = 0
-		t.board = [3][3]int{}
-		return true
-	}
-	return false
-}
-
-
-func (t *TicTacToe) checkWinner() int {
+func (t *TicTacToe) checkWin() int {
 	lines := [8][3][2]int{
 		{{0, 0}, {0, 1}, {0, 2}},
 		{{1, 0}, {1, 1}, {1, 2}},
@@ -148,13 +76,20 @@ func (t *TicTacToe) checkWinner() int {
 	return 0
 }
 
-func (t *TicTacToe) isBoardFull() bool {
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			if t.board[i][j] == 0 {
+func (t *TicTacToe) checkDraw() bool {
+	for row := range 3 {
+		for col := range 3 {
+			if t.board[row][col] == 0 {
 				return false
 			}
 		}
 	}
 	return true
+}
+
+func (t *TicTacToe) Tick() (*GameState, bool) {
+	if t.handleTimeout() {
+		return t.State(), true
+	}
+	return nil, false
 }

@@ -2,6 +2,7 @@ package live
 
 import (
 	"encoding/json"
+	"letsgo/internal/game"
 )
 
 const (
@@ -16,23 +17,10 @@ const (
 	msgGetClients = "get_clients"
 )
 
-// GameMessagePayload is the strongly typed payload for game messages
-// Action is one of: "create", "join", "move"
 type GameMessagePayload struct {
-	Action   string             `json:"action"`
-	GameName string             `json:"gameName,omitempty"`
-	Create   *GameCreatePayload `json:"create,omitempty"`
-	Move     *GameMovePayload   `json:"move,omitempty"`
-}
-
-type GameCreatePayload struct {
-	// For connect4, this is empty or could add custom options later
-}
-
-type GameMovePayload struct {
-	// For connect4
-	Col int `json:"col"`
-	// For chess, could add From/To squares, promotion, etc
+	Action   string                `json:"action"`
+	GameName string                `json:"gameName,omitempty"`
+	Move     *game.GameMovePayload `json:"move,omitempty"`
 }
 
 type roomMsg struct {

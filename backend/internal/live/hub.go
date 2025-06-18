@@ -13,28 +13,26 @@ type hub struct {
 	registry *game.Registry
 	cfg      *config.WS
 	rooms    map[string]*room
-	clients  map[string]*client
+	clients  map[*client]struct{}
 
-	register    chan *client
-	unregister  chan *client
-	joinRoom    chan *crPair
-	leaveRoom   chan *client
-	destroyRoom chan *room
+	register   chan *client
+	unregister chan *client
+	joinRoom   chan *crPair
+	leaveRoom  chan *client
 
 	mu sync.RWMutex
 }
 
 func newhub(registry *game.Registry, cfg *config.WS) *hub {
 	return &hub{
-		registry:    registry,
-		cfg:         cfg,
-		rooms:       make(map[string]*room),
-		clients:     make(map[string]*client),
-		register:    make(chan *client, cfg.RegisterBuffer),
-		unregister:  make(chan *client, cfg.RegisterBuffer),
-		joinRoom:    make(chan *crPair, cfg.RoomBuffer),
-		leaveRoom:   make(chan *client, cfg.RoomBuffer),
-		destroyRoom: make(chan *room, cfg.RoomBuffer),
+		registry:   registry,
+		cfg:        cfg,
+		rooms:      make(map[string]*room),
+		clients:    make(map[*client]struct{}),
+		register:   make(chan *client, cfg.RegisterBuffer),
+		unregister: make(chan *client, cfg.RegisterBuffer),
+		joinRoom:   make(chan *crPair, cfg.RoomBuffer),
+		leaveRoom:  make(chan *client, cfg.RoomBuffer),
 	}
 }
 
@@ -46,32 +44,24 @@ func (h *hub) run() {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
-			h.clients[client.ID] = client
+			h.clients[client] = struct{}{}
 			lobby.addClient(client)
 			h.mu.Unlock()
 			slog.Debug("Registered: ", "client", client.ID)
 
-		case room := <-h.destroyRoom:
-			h.mu.Lock()
-			if room.name != "Lobby" {
-				delete(h.rooms, room.name)
-				slog.Info("Room destroyed", "room", room.name)
-			}
-			h.mu.Unlock()
-
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if client.Room != nil {
-				client.Room.removeClient(client)
-				if client.Room != lobby && len(client.Room.clients) == 0 {
-					delete(h.rooms, client.Room.name)
+			if client.room != nil {
+				client.room.removeClient(client)
+				if client.room != lobby && len(client.room.clients) == 0 {
+					delete(h.rooms, client.room.name)
 				}
 			}
-			if _, ok := h.clients[client.ID]; ok {
-				delete(h.clients, client.ID)
-				close(client.Send)
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
 				client.cancel()
-				client.Conn.Close(websocket.StatusNormalClosure, "client leaving")
+				client.conn.Close(websocket.StatusNormalClosure, "client leaving")
 				slog.Debug("Unregistered: ", "client", client.ID)
 			}
 			h.mu.Unlock()
@@ -81,12 +71,12 @@ func (h *hub) run() {
 			h.mu.Lock()
 			client := pair.Client
 			roomID := pair.RoomName
-			if client.Room != nil && client.Room.name == roomID {
+			if client.room != nil && client.room.name == roomID {
 				h.mu.Unlock()
 				continue
 			}
-			if client.Room != nil {
-				oldRoom := client.Room
+			if client.room != nil {
+				oldRoom := client.room
 				oldRoom.removeClient(client)
 				if oldRoom != lobby && len(oldRoom.clients) == 0 {
 					delete(h.rooms, oldRoom.name)
@@ -103,8 +93,8 @@ func (h *hub) run() {
 
 		case client := <-h.leaveRoom:
 			h.mu.Lock()
-			if client.Room != nil {
-				room := client.Room
+			if client.room != nil {
+				room := client.room
 				if room == lobby {
 					h.mu.Unlock()
 					continue
