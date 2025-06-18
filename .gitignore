@@ -18,3 +18,7 @@ node_modules/
 .idea/
 *.swp
 *.swo
+
+# SSL/TLS Certificates
+/etc/letsencrypt/
+certbot/

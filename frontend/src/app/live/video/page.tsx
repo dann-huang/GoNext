@@ -20,15 +20,14 @@ export default function VideoPage() {
   const { currentRoom } = useWebSocket();
   const {
     localStream,
-    peerVideos,
-    isInCall,
+    peerStreams,
+    inCall,
     joinCall,
     leaveCall,
     toggleAudio,
     toggleVideo,
-    audioEnabled,
-    videoEnabled,
-    error: callError
+    audioOn,
+    videoOn,
   } = useGroupCall();
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -76,7 +75,7 @@ export default function VideoPage() {
   }
 
   // Calculate grid columns based on number of participants
-  const totalParticipants = isInCall ? 1 + peerVideos.length : 0;
+  const totalParticipants = inCall ? 1 + peerStreams.length : 0;
   let gridCols = 'grid-cols-1';
   if (totalParticipants > 1) gridCols = 'grid-cols-2';
   if (totalParticipants > 4) gridCols = 'grid-cols-3';
@@ -91,7 +90,7 @@ export default function VideoPage() {
         </div>
 
         <div className="flex gap-2">
-          {isInCall ? (
+          {inCall ? (
             <Button
               onClick={leaveCall}
               color="primary"
@@ -109,39 +108,32 @@ export default function VideoPage() {
               {isJoining ? 'Joining...' : 'Join Call'}
             </Button>
           )}
-          {isInCall && (
+          {inCall && (
             <>
               <Button
                 onClick={toggleAudio}
-                color={audioEnabled ? 'primary' : 'secondary'}
+                color={audioOn ? 'primary' : 'secondary'}
                 className="whitespace-nowrap flex-shrink-0 w-24"
               >
-                {audioEnabled ? 'Mute' : 'Unmute'}
+                {audioOn ? 'Mute' : 'Unmute'}
               </Button>
               <Button
                 onClick={toggleVideo}
-                color={videoEnabled ? 'primary' : 'secondary'}
+                color={videoOn ? 'primary' : 'secondary'}
                 className="whitespace-nowrap flex-shrink-0 w-24"
               >
-                {videoEnabled ? 'Hide Cam' : 'Show Cam'}
+                {videoOn ? 'Blind' : 'Unblind'}
               </Button>
             </>
           )}
         </div>
-
-        {callError && (
-          <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
-            <p className="font-medium">Error</p>
-            <p>{callError}</p>
-          </div>
-        )}
       </header >
 
       {/* Scrollable content area */}
       < main className="flex-1 overflow-auto w-full" >
         <div className="w-full max-w-[2000px] mx-auto p-4">
           <div className={`grid ${gridCols} gap-4 w-full`}>
-            {isInCall && (
+            {inCall && (
               <VideoContainer username="You">
                 <video
                   ref={localVideoRef}
@@ -153,7 +145,7 @@ export default function VideoPage() {
               </VideoContainer>
             )}
 
-            {peerVideos.map(({ username, stream }) => {
+            {peerStreams.map(({ username, stream }) => {
               const videoRef = (el: HTMLVideoElement | null) => {
                 if (el) {
                   el.srcObject = stream;
@@ -172,7 +164,7 @@ export default function VideoPage() {
               );
             })}
 
-            {!isInCall && (
+            {!inCall && (
               <VideoContainer>
                 <div className="absolute inset-0 flex items-center justify-center text-on-secondary">
                   Click &quot;Join Call&quot; to start

@@ -52,7 +52,13 @@ export interface ChatMsg {
 export interface VidSignalMsg {
   type: typeof VidSignal;
   sender: string;
-  payload: unknown; //todo
+  payload: {
+    type: 'join' | 'leave' | 'offer' | 'answer' | 'ice';
+    target: string;
+    offer?: RTCSessionDescriptionInit;
+    answer?: RTCSessionDescriptionInit;
+    candidate?: RTCIceCandidateInit;
+  };
 }
 
 export interface GetClientRes {

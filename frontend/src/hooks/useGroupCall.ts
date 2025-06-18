@@ -1,320 +1,209 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useWebSocket } from './webSocket';
-import { useUserStore } from './userStore';
+import { useState, useReducer, useCallback, useEffect } from 'react';
+import { useWebSocket } from '@/hooks/webSocket';
+import { useUserStore } from '@/hooks/userStore';
+import { VidSignalMsg } from '@/types/wsTypes';
 
-interface PeerConnection {
-  pc: RTCPeerConnection;
-  stream: MediaStream;
-}
-
-interface PeerVideo {
+interface Peer {
+  conn: RTCPeerConnection;
+  stream: MediaStream | null;
   username: string;
-  stream: MediaStream;
 }
+
+type PeerState = Map<string, Peer>;
+
+type PeerAction =
+  | { type: 'ADD_PEER'; payload: { username: string; conn: RTCPeerConnection } }
+  | { type: 'REMOVE_PEER'; payload: { username: string } }
+  | { type: 'SET_STREAM'; payload: { username: string; stream: MediaStream } }
+  | { type: 'CLEAR_PEERS' };
+
+const peerReducer = (state: PeerState, action: PeerAction): PeerState => {
+  const newState = new Map(state);
+  switch (action.type) {
+    case 'ADD_PEER':
+      newState.set(action.payload.username, { conn: action.payload.conn, stream: null, username: action.payload.username });
+      return newState;
+    case 'REMOVE_PEER':
+      newState.get(action.payload.username)?.conn.close();
+      newState.delete(action.payload.username);
+      return newState;
+    case 'SET_STREAM': {
+      const peer = newState.get(action.payload.username);
+      if (peer) peer.stream = action.payload.stream;
+      return newState;
+    }
+    case 'CLEAR_PEERS':
+      newState.forEach(peer => peer.conn.close());
+      return new Map();
+    default:
+      return state;
+  }
+};
+
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
 
 export function useGroupCall() {
-  const { sendVidSignal, setVideoSignalHandler } = useWebSocket();
+  const sendSignal = useWebSocket(s => s.sendVidSignal);
+  const setSignalHandler = useWebSocket(s => s.setVideoSignalHandler);
+  const { username } = useUserStore();
+
+  const [peers, dispatch] = useReducer(peerReducer, new Map());
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [isInCall, setIsInCall] = useState(false);
-  const [peerVideos, setPeerVideos] = useState<PeerVideo[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [inCall, setIsInCall] = useState(false);
+  const [audioOn, setAudioOn] = useState(true);
+  const [videoOn, setVideoOn] = useState(true);
 
-  // Keep track of all peer connections by their username
-  const peerConns = useRef<Map<string, PeerConnection>>(new Map());
+  const createPeer = useCallback((peerUsername: string) => {
+    const pc = new RTCPeerConnection(ICE_SERVERS);
 
-  // Keep a ref to always have the latest local stream inside callbacks
-  const localStreamRef = useRef<MediaStream | null>(null);
-
-  // Create a new peer connection for a specific user
-  const createPeerConnection = useCallback((targetUser: string) => {
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' }
-        // Add TURN servers here if needed
-      ]
-    });
-
-    // Set up connection state change handler for debugging
-    pc.onconnectionstatechange = () => {
-      console.log(`Connection state with ${targetUser}:`, pc.connectionState);
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-        console.log(`Connection with ${targetUser} failed or disconnected`);
-        // Remove peer from connections and videos
-        peerConns.current.delete(targetUser);
-        setPeerVideos(prev => prev.filter(p => p.username !== targetUser));
-      }
-    };
-
-    // Log ICE gathering state changes
-    pc.onicegatheringstatechange = () => {
-      console.log(`ICE gathering state: ${pc.iceGatheringState}`);
-    };
-
-    // Log ICE connection state changes
-    pc.oniceconnectionstatechange = () => {
-      console.log(`ICE connection state: ${pc.iceConnectionState}`);
-    };
-
-    // Add local stream tracks to peer connection (if we already have them)
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        pc.addTrack(track, localStreamRef.current as MediaStream);
-      });
-    }
-
-    // Handle incoming remote stream
-    const remoteStream = new MediaStream();
-    pc.ontrack = (event) => {
-      event.streams[0].getTracks().forEach(track => {
-        remoteStream.addTrack(track);
-      });
-      // Update peer videos state
-      setPeerVideos(prev => {
-        const existing = prev.find(p => p.username === targetUser);
-        if (existing) {
-          return prev;
-        }
-        return [...prev, { username: targetUser, stream: remoteStream }];
-      });
-    };
-
-    // Send ICE candidates through WebSocket
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        sendVidSignal({
-          type: 'ice-candidate',
-          sender: useUserStore.getState().username,
-          target: targetUser,
-          candidate: event.candidate
-        });
+        sendSignal({ type: 'ice', target: peerUsername, candidate: event.candidate.toJSON() });
       }
     };
 
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-        // Remove peer from connections and videos
-        peerConns.current.delete(targetUser);
-        setPeerVideos(prev => prev.filter(p => p.username !== targetUser));
-      }
+    pc.ontrack = (event) => {
+      dispatch({ type: 'SET_STREAM', payload: { username: peerUsername, stream: event.streams[0] } });
     };
 
-    peerConns.current.set(targetUser, { pc, stream: remoteStream });
+    if (localStream) {
+      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+    }
+
+    dispatch({ type: 'ADD_PEER', payload: { username: peerUsername, conn: pc } });
     return pc;
-  }, [localStreamRef, sendVidSignal]);
+  }, [localStream, sendSignal]);
 
-  // Initialize or clean up media devices
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  const handleSignal = useCallback(async (msg: VidSignalMsg) => {
+    const { sender, payload } = msg;
+    if (sender === username) return;
 
-    if (!localStream && isInCall) {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-          setLocalStream(stream);
-        })
-        .catch(err => console.error('Error accessing media devices:', err));
-    }
-
-    const Conns = peerConns.current;
-    return () => {
-      localStream?.getTracks().forEach(track => track.stop());
-      // Close all peer connections
-      Conns.forEach(({ pc }) => pc.close());
-      Conns.clear();
-      setPeerVideos([]);
-    };
-  }, [localStream, isInCall]);
-
-  // Join the video call
-  const joinCall = async () => {
-    if (typeof window === 'undefined') return;
-
-    try {
-      setError(null);
-      if (!localStreamRef.current) {
-        console.log('Requesting media devices...');
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { width: 1280, height: 720 },
-          audio: true 
-        });
-        console.log('Got media stream:', stream.getTracks().map(t => ({
-          kind: t.kind, 
-          enabled: t.enabled, 
-          readyState: t.readyState,
-          muted: t.muted
-        })));
-        setLocalStream(stream);
-        localStreamRef.current = stream;
-
-        // Attach tracks to any peer connections that could have been created meanwhile
-        peerConns.current.forEach(({ pc }) => {
-          stream.getTracks().forEach(track => pc.addTrack(track, stream));
-        });
-      }
-    } catch (err) {
-      const error = err as Error;
-      console.error('Error accessing media devices:', error);
-      setError(`Could not access camera/microphone: ${error.message}`);
-      throw error;
-    }
-
-    // Now that we certainly have a stream, mark in-call and notify others
-    setIsInCall(true);
-
-    sendVidSignal({
-      type: 'join-call',
-      sender: useUserStore.getState().username,
-    });
-  };
-
-  // Leave the video call
-  const leaveCall = () => {
-    setIsInCall(false);
-    localStream?.getTracks().forEach(track => track.stop());
-    setLocalStream(null);
-    peerConns.current.forEach(({ pc }) => pc.close());
-    peerConns.current.clear();
-    setPeerVideos([]);
-  };
-
-  // Toggle audio track (mute/unmute)
-  const toggleAudio = () => {
-    if (!localStreamRef.current) return;
-    localStreamRef.current.getAudioTracks().forEach(t => (t.enabled = !t.enabled));
-    setAudioEnabled(prev => !prev);
-  };
-
-  // Toggle video track (camera on/off)
-  const toggleVideo = () => {
-    if (!localStreamRef.current) return;
-    localStreamRef.current.getVideoTracks().forEach(t => (t.enabled = !t.enabled));
-    setVideoEnabled(prev => !prev);
-  };
-
-  // Handle incoming WebRTC signals
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleVidSignal = async (signal: unknown) => {
-      if (!isValidSignal(signal)) return;
-      const { type, sender, target } = signal;
-
-      // Ignore our own messages
-      if (target && target !== useUserStore.getState().username) return;
-
-      try {
-        switch (type) {
-          case 'join-call': {
-            console.debug('[useGroupCall] join-call received from', sender, 'isInCall', isInCall, 'haveStream', !!localStreamRef.current);
-            if (!isInCall || !localStreamRef.current) return;
-            
-            // Someone wants to join, send them an offer
-            const pc = createPeerConnection(sender);
+    if (payload.target === '_all') {
+      switch (payload.type) {
+        case 'join':
+          if (inCall) {
+            console.log(`Peer ${sender} joined. Creating offer...`);
+            const pc = createPeer(sender);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            console.debug('[useGroupCall] sending offer to', sender, 'sdp size', offer.sdp?.length);
-            
-            sendVidSignal({
-              type: 'offer',
-              sender: useUserStore.getState().username,
-              target: sender,
-              offer
-            });
-            break;
+            sendSignal({ type: 'offer', target: sender, offer });
           }
+          break;
+        case 'leave':
+          dispatch({ type: 'REMOVE_PEER', payload: { username: sender } });
+          break;
+      }
+      return;
+    }
 
-          case 'offer': {
-            console.debug('[useGroupCall] offer received from', sender, 'haveConn', peerConns.current.has(sender));
-            if (!signal.offer) return;
-            // We received an offer, create answer
-            const pc = createPeerConnection(sender);
-            await pc.setRemoteDescription(new RTCSessionDescription(signal.offer));
+    if (payload.target === username) {
+      switch (payload.type) {
+        case 'offer':
+          if (payload.offer) {
+            console.log(`Received offer from ${sender}. Creating answer...`);
+            const pc = createPeer(sender);
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            console.debug('[useGroupCall] sending answer to', sender);
-            
-            sendVidSignal({
-              type: 'answer',
-              sender: useUserStore.getState().username,
-              target: sender,
-              answer
-            });
-            break;
+            sendSignal({ type: 'answer', target: sender, answer });
           }
-
-          case 'answer': {
-            console.debug('[useGroupCall] answer received from', sender);
-            if (!signal.answer) return;
-            const senderConn = peerConns.current.get(sender);
-            if (senderConn) {
-              const pc = senderConn.pc;
-              if (pc.signalingState === 'have-local-offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(signal.answer));
-              } else {
-                console.warn(`Ignoring answer from ${sender} because signalingState is ${pc.signalingState}`);
+          break;
+        case 'answer':
+          if (payload.answer) {
+            console.log(`Received answer from ${sender}.`);
+            const peer = peers.get(sender);
+            if (peer) {
+              await peer.conn.setRemoteDescription(new RTCSessionDescription(payload.answer));
+            }
+          }
+          break;
+        case 'ice':
+          if (payload.candidate) {
+            console.log(`Received ICE candidate from ${sender}.`);
+            const peer = peers.get(sender);
+            if (peer && peer.conn.remoteDescription) {
+              try {
+                await peer.conn.addIceCandidate(new RTCIceCandidate(payload.candidate));
+              } catch (err) {
+                console.error('Error adding received ICE candidate', err);
               }
             }
-            break;
           }
-
-          case 'ice-candidate': {
-            console.debug('[useGroupCall] ice-candidate from', sender);
-            if (!signal.candidate) return;
-            const senderConn = peerConns.current.get(sender);
-            if (senderConn) {
-              await senderConn.pc.addIceCandidate(
-                new RTCIceCandidate(signal.candidate)
-              );
-            }
-            break;
-          }
-        }
-      } catch (err) {
-        console.error('Error handling signal:', err);
+          break;
       }
-    };
+    }
+  }, [username, createPeer, sendSignal, inCall, peers]);
 
-    setVideoSignalHandler(handleVidSignal);
-    
-    return () => {
-      setVideoSignalHandler(() => {});
-    };
-  }, [setVideoSignalHandler, sendVidSignal, isInCall, localStreamRef, createPeerConnection]);
+  useEffect(() => {
+    if (inCall) {
+      setSignalHandler(handleSignal);
+    } else {
+      setSignalHandler(null);
+    }
+    return () => setSignalHandler(null);
+  }, [inCall, setSignalHandler, handleSignal]);
+
+  const joinCall = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream(stream);
+      setIsInCall(true);
+      setAudioOn(true);
+      setVideoOn(true);
+      sendSignal({ type: 'join', target: '_all' });
+    } catch (err) {
+      console.error('Error getting user media:', err);
+    }
+  };
+
+  const leaveCall = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+    }
+    dispatch({ type: 'CLEAR_PEERS' });
+    setLocalStream(null);
+    setIsInCall(false);
+    sendSignal({ type: 'leave', target: '_all' });
+  };
+
+  const toggleAudio = () => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = !audioOn;
+      });
+      setAudioOn(!audioOn);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStream) {
+      localStream.getVideoTracks().forEach((track) => {
+        track.enabled = !videoOn;
+      });
+      setVideoOn(!videoOn);
+    }
+  };
+
+  const peerStreams = Array.from(peers.values())
+    .filter(p => p.stream)
+    .map(p => ({ username: p.username, stream: p.stream! }));
 
   return {
     localStream,
-    peerVideos,
-    isInCall,
+    peerStreams,
+    inCall,
     joinCall,
     leaveCall,
     toggleAudio,
     toggleVideo,
-    audioEnabled,
-    videoEnabled,
-    error
+    audioOn,
+    videoOn,
   };
 }
-
-// Type guard for signal validation
-function isValidSignal(signal: unknown): signal is {
-  type: 'join-call' | 'offer' | 'answer' | 'ice-candidate';
-  sender: string;
-  target?: string;
-  offer?: RTCSessionDescriptionInit;
-  answer?: RTCSessionDescriptionInit;
-  candidate?: RTCIceCandidateInit;
-} {
-  if (!signal || typeof signal !== 'object') return false;
-  const s = signal as Record<string, unknown>;
-  return (
-    typeof s.type === 'string' &&
-    ['join-call', 'offer', 'answer', 'ice-candidate'].includes(s.type) &&
-    typeof s.sender === 'string' &&
-    (!s.target || typeof s.target === 'string')
-  );
-} 
