@@ -1,14 +1,46 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useReducer, useCallback, useEffect } from 'react';
 import { useWebSocket } from '@/hooks/webSocket';
 import { useUserStore } from '@/hooks/userStore';
 import { VidSignalMsg } from '@/types/wsTypes';
 
-interface PeerVideo {
+interface Peer {
+  conn: RTCPeerConnection;
+  stream: MediaStream | null;
   username: string;
-  stream: MediaStream;
 }
+
+type PeerState = Map<string, Peer>;
+
+type PeerAction =
+  | { type: 'ADD_PEER'; payload: { username: string; conn: RTCPeerConnection } }
+  | { type: 'REMOVE_PEER'; payload: { username: string } }
+  | { type: 'SET_STREAM'; payload: { username: string; stream: MediaStream } }
+  | { type: 'CLEAR_PEERS' };
+
+const peerReducer = (state: PeerState, action: PeerAction): PeerState => {
+  const newState = new Map(state);
+  switch (action.type) {
+    case 'ADD_PEER':
+      newState.set(action.payload.username, { conn: action.payload.conn, stream: null, username: action.payload.username });
+      return newState;
+    case 'REMOVE_PEER':
+      newState.get(action.payload.username)?.conn.close();
+      newState.delete(action.payload.username);
+      return newState;
+    case 'SET_STREAM': {
+      const peer = newState.get(action.payload.username);
+      if (peer) peer.stream = action.payload.stream;
+      return newState;
+    }
+    case 'CLEAR_PEERS':
+      newState.forEach(peer => peer.conn.close());
+      return new Map();
+    default:
+      return state;
+  }
+};
 
 const ICE_SERVERS = {
   iceServers: [
@@ -18,137 +50,114 @@ const ICE_SERVERS = {
 };
 
 export function useGroupCall() {
-  const getClients = useWebSocket(s => s.getClients);
-  const sendVidSignal = useWebSocket(s => s.sendVidSignal);
-  const setVideoSignalHandler = useWebSocket(s => s.setVideoSignalHandler);
-  const { username: username } = useUserStore();
+  const sendSignal = useWebSocket(s => s.sendVidSignal);
+  const setSignalHandler = useWebSocket(s => s.setVideoSignalHandler);
+  const { username } = useUserStore();
 
+  const [peers, dispatch] = useReducer(peerReducer, new Map());
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [peerVideos, setPeerVideos] = useState<PeerVideo[]>([]);
-  const [isInCall, setIsInCall] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [inCall, setIsInCall] = useState(false);
+  const [audioOn, setAudioOn] = useState(true);
+  const [videoOn, setVideoOn] = useState(true);
 
-  const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
-
-  const createPeerConnection = useCallback((peerUsername: string) => {
+  const createPeer = useCallback((peerUsername: string) => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        sendVidSignal({
-          type: 'ice',
-          target: peerUsername,
-          candidate: event.candidate.toJSON(),
-        });
+        sendSignal({ type: 'ice', target: peerUsername, candidate: event.candidate.toJSON() });
       }
     };
 
     pc.ontrack = (event) => {
-      setPeerVideos((prev) => {
-        if (prev.some((p) => p.username === peerUsername)) return prev;
-        return [...prev, { username: peerUsername, stream: event.streams[0] }];
-      });
+      dispatch({ type: 'SET_STREAM', payload: { username: peerUsername, stream: event.streams[0] } });
     };
 
     if (localStream) {
-      localStream.getTracks().forEach((track) => {
-        pc.addTrack(track, localStream);
-      });
+      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
     }
 
-    peerConnections.current.set(peerUsername, pc);
+    dispatch({ type: 'ADD_PEER', payload: { username: peerUsername, conn: pc } });
     return pc;
-  }, [localStream, sendVidSignal]);
+  }, [localStream, sendSignal]);
 
-
-  const handleVideoSignal = useCallback(async (msg: VidSignalMsg) => {
+  const handleSignal = useCallback(async (msg: VidSignalMsg) => {
     const { sender, payload } = msg;
-    if (payload.target !== username) return;
+    if (sender === username) return;
 
-    switch (payload.type) {
-      case 'leave': {
-        const pc = peerConnections.current.get(sender);
-        if (pc) {
-          pc.close();
-          peerConnections.current.delete(sender);
-        }
-        setPeerVideos(prev => prev.filter(p => p.username !== sender));
-        break;
-      }
-      case 'join': {
-        console.log(`Peer ${sender} joined. Creating offer...`);
-        const pc = createPeerConnection(sender);
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        sendVidSignal({ type: 'offer', target: sender, offer });
-        break;
-      }
-
-      case 'offer': {
-        if (payload.offer) {
-          console.log(`Received offer from ${sender}. Creating answer...`);
-          const pc = createPeerConnection(sender);
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          sendVidSignal({ type: 'answer', target: sender, answer });
-        }
-        break;
-      }
-
-      case 'answer': {
-        if (payload.answer) {
-          console.log(`Received answer from ${sender}.`);
-          const pc = peerConnections.current.get(sender);
-          if (pc) {
-            await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+    if (payload.target === '_all') {
+      switch (payload.type) {
+        case 'join':
+          if (inCall) {
+            console.log(`Peer ${sender} joined. Creating offer...`);
+            const pc = createPeer(sender);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignal({ type: 'offer', target: sender, offer });
           }
-        }
-        break;
+          break;
+        case 'leave':
+          dispatch({ type: 'REMOVE_PEER', payload: { username: sender } });
+          break;
       }
+      return;
+    }
 
-      case 'ice': {
-        if (payload.candidate) {
-          console.log(`Received ICE candidate from ${sender}.`);
-          const pc = peerConnections.current.get(sender);
-          if (pc && pc.remoteDescription) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-            } catch (err) {
-              console.error('Error adding received ICE candidate', err);
+    if (payload.target === username) {
+      switch (payload.type) {
+        case 'offer':
+          if (payload.offer) {
+            console.log(`Received offer from ${sender}. Creating answer...`);
+            const pc = createPeer(sender);
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sendSignal({ type: 'answer', target: sender, answer });
+          }
+          break;
+        case 'answer':
+          if (payload.answer) {
+            console.log(`Received answer from ${sender}.`);
+            const peer = peers.get(sender);
+            if (peer) {
+              await peer.conn.setRemoteDescription(new RTCSessionDescription(payload.answer));
             }
           }
-        }
-        break;
+          break;
+        case 'ice':
+          if (payload.candidate) {
+            console.log(`Received ICE candidate from ${sender}.`);
+            const peer = peers.get(sender);
+            if (peer && peer.conn.remoteDescription) {
+              try {
+                await peer.conn.addIceCandidate(new RTCIceCandidate(payload.candidate));
+              } catch (err) {
+                console.error('Error adding received ICE candidate', err);
+              }
+            }
+          }
+          break;
       }
     }
-  }, [username, createPeerConnection, sendVidSignal]);
+  }, [username, createPeer, sendSignal, inCall, peers]);
 
   useEffect(() => {
-    if (isInCall)
-      setVideoSignalHandler(handleVideoSignal);
-    else
-      setVideoSignalHandler(null);
-
-    return () => {
-      setVideoSignalHandler(null);
-    };
-  }, [isInCall, setVideoSignalHandler, handleVideoSignal]);
+    if (inCall) {
+      setSignalHandler(handleSignal);
+    } else {
+      setSignalHandler(null);
+    }
+    return () => setSignalHandler(null);
+  }, [inCall, setSignalHandler, handleSignal]);
 
   const joinCall = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
-      setAudioEnabled(true);
-      setVideoEnabled(true);
       setLocalStream(stream);
       setIsInCall(true);
-
-      getClients().forEach(client => {
-        if (client !== username)
-          sendVidSignal({ type: 'join', target: client });
-      });
+      setAudioOn(true);
+      setVideoOn(true);
+      sendSignal({ type: 'join', target: '_all' });
     } catch (err) {
       console.error('Error getting user media:', err);
     }
@@ -158,45 +167,43 @@ export function useGroupCall() {
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop());
     }
-    peerConnections.current.forEach((pc) => pc.close());
-    peerConnections.current.clear();
-
+    dispatch({ type: 'CLEAR_PEERS' });
     setLocalStream(null);
-    setPeerVideos([]);
     setIsInCall(false);
-    getClients().forEach(client => {
-      if (client !== username)
-        sendVidSignal({ type: 'leave', target: client });
-    });
+    sendSignal({ type: 'leave', target: '_all' });
   };
 
   const toggleAudio = () => {
     if (localStream) {
       localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !audioEnabled;
+        track.enabled = !audioOn;
       });
-      setAudioEnabled(!audioEnabled);
+      setAudioOn(!audioOn);
     }
   };
 
   const toggleVideo = () => {
     if (localStream) {
       localStream.getVideoTracks().forEach((track) => {
-        track.enabled = !videoEnabled;
+        track.enabled = !videoOn;
       });
-      setVideoEnabled(!videoEnabled);
+      setVideoOn(!videoOn);
     }
   };
 
+  const peerStreams = Array.from(peers.values())
+    .filter(p => p.stream)
+    .map(p => ({ username: p.username, stream: p.stream! }));
+
   return {
     localStream,
-    peerVideos,
-    isInCall,
+    peerStreams,
+    inCall,
     joinCall,
     leaveCall,
     toggleAudio,
     toggleVideo,
-    audioEnabled,
-    videoEnabled,
+    audioOn,
+    videoOn,
   };
 }

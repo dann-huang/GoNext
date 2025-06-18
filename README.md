@@ -1,7 +1,8 @@
 # LetsGo: A Real-time Full-Stack Web Application
 
-[![GitHub Actions CI Status](https://github.com/dann-huang/letsGo/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/dann-huang/letsgo/actions/workflows/pr-checks.yml)
-[![GitHub Actions Deployment Status](https://github.com/dann-huang/letsgo/actions/workflows/deploy.yml/badge.svg)](https://github.com/dann-huang/letsgo/actions/workflows/build-deploy.yml)
+[![GitHub Actions CI Status](https://github.com/dann-huang/letsGo/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/dann-huang/letsGo/actions/workflows/pr-checks.yml)
+[![GitHub Actions Deployment Status](https://github.com/dann-huang/letsGo/actions/workflows/build-deploy.yml/badge.svg)](https://github.com/dann-huang/letsGo/actions/workflows/build-deploy.yml)
+
 LetsGo is a personal project and portfolio piece showcasing a full-stack web application designed for interactive, real-time experiences. It highlights expertise in modern backend (Go), frontend (Next.js), and robust containerized deployment with Docker, Nginx, PostgreSQL, and Redis.
 
 **Live Demo:** [https://daniel-h.ca](https://daniel-h.ca) (If actively deployed and available)
@@ -17,14 +18,14 @@ LetsGo is a personal project and portfolio piece showcasing a full-stack web app
 * [Getting Started](#getting-started)
     * [Prerequisites](#prerequisites)
     * [Local Development Setup](#local-development-setup)
-* [CI/CD & Deployment](#cicd--deployment)
+* [CI/CD and Deployment](#cicd-and-deployment)
 * [Contributing](#contributing)
 * [License](#license)
 * [Contact](#contact)
 
 ---
 
-## ✨ Features
+## Features
 
 This project emphasizes real-time interactivity and robust architecture, demonstrating key full-stack capabilities:
 
@@ -38,7 +39,7 @@ This project emphasizes real-time interactivity and robust architecture, demonst
 
 ---
 
-## 🚀 Project Roadmap
+## Project Roadmap
 
 LetsGo is a continually evolving personal project. Planned enhancements include:
 
@@ -48,7 +49,7 @@ LetsGo is a continually evolving personal project. Planned enhancements include:
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 * **Go:** Core application logic and WebSocket server.
@@ -75,6 +76,43 @@ LetsGo is a continually evolving personal project. Planned enhancements include:
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 LetsGo employs a fully containerized, microservices-oriented architecture. Nginx serves as the entry point, routing requests to the Next.js frontend or the Go backend. The Go backend interacts with PostgreSQL for persistent data and Redis for real-time messaging and caching. All components are defined and orchestrated via Docker Compose.
+
+---
+
+## Getting Started
+
+This section provides instructions for setting up the project for local development.
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Go (version 1.21 or higher)
+- Node.js (version 18 or higher)
+
+### Local Development Setup
+
+1.  **Clone the repository:**
+    ```sh
+    git clone https://github.com/dann-huang/letsGo.git
+    cd letsGo
+    ```
+
+2.  **Run the application:**
+    ```sh
+    docker-compose up --build
+    ```
+
+This will build the Docker images and start all services. The frontend will be available at `http://localhost:3000`.
+
+---
+
+## CI/CD and Deployment
+
+This project uses GitHub Actions for continuous integration and deployment. The workflow is defined in `.github/workflows/`:
+
+-   `pr-checks.yml`: Runs on every pull request to ensure that the frontend and backend Docker images can be built successfully.
+-   `build-deploy.yml`: Deploys the application to the production server upon a push to the `main` branch.
+

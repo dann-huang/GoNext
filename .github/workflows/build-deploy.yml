@@ -2,7 +2,7 @@ name: Build and Deploy
 
 on:
   push:
-    branches: [ fix/vid-chat ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -70,8 +70,8 @@ jobs:
             cd /root/git/server || { echo "❌ Directory does not exist"; exit 1; }
             
             echo "Pulling changes..."
-            git checkout fix/vid-chat
-            git pull origin fix/vid-chat || { echo "❌ Git pull failed"; exit 1; }
+            git checkout main
+            git pull origin main || { echo "❌ Git pull failed"; exit 1; }
             
             echo "Setting envs..."
             if [ ! -f .env ]; then

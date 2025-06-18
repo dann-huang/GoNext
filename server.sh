@@ -28,6 +28,9 @@ case "$1" in
   blog)
     docker compose logs go -f
     ;;
+  pr)
+    ./bin/act pull_request
+    ;;
   *)
     echo "Usage: $0 {up|build|down|clear|fsh|bsh|flog|blog}"
     exit 1

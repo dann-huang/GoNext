@@ -31,7 +31,7 @@ export default function RootLayout({
       <body className={`${roboto.variable} antialiased`}>
         <div className="min-h-screen flex flex-col">
           <NavBar />
-          <main className="flex-1 w-full mx-auto p-4 max-w-screen-sm md:max-w-screen-md
+          <main className="flex flex-1 w-full mx-auto p-4 max-w-screen-sm md:max-w-screen-md
             lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-2xl">
             {children}
           </main>
