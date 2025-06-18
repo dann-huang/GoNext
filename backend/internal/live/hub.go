@@ -2,6 +2,7 @@ package live
 
 import (
 	"letsgo/internal/config"
+	"letsgo/internal/game"
 	"log/slog"
 	"sync"
 
@@ -9,8 +10,10 @@ import (
 )
 
 type hub struct {
-	rooms   map[string]*room
-	clients map[string]*client
+	registry *game.Registry
+	cfg      *config.WS
+	rooms    map[string]*room
+	clients  map[string]*client
 
 	register   chan *client
 	unregister chan *client
@@ -20,8 +23,10 @@ type hub struct {
 	mu sync.RWMutex
 }
 
-func newHub(cfg *config.WS) *hub {
+func newhub(registry *game.Registry, cfg *config.WS) *hub {
 	return &hub{
+		registry:   registry,
+		cfg:        cfg,
 		rooms:      make(map[string]*room),
 		clients:    make(map[string]*client),
 		register:   make(chan *client, cfg.RegisterBuffer),
@@ -31,8 +36,8 @@ func newHub(cfg *config.WS) *hub {
 	}
 }
 
-func (h *hub) Run() {
-	lobby := newRoom("Lobby")
+func (h *hub) run() {
+	lobby := newRoom("Lobby", h.registry)
 	h.rooms[lobby.name] = lobby
 
 	for {
@@ -79,7 +84,7 @@ func (h *hub) Run() {
 			}
 			room, ok := h.rooms[roomID]
 			if !ok {
-				room = newRoom(roomID)
+				room = newRoom(roomID, h.registry)
 				h.rooms[room.name] = room
 			}
 			room.addClient(client)

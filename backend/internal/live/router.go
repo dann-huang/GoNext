@@ -2,6 +2,7 @@ package live
 
 import (
 	"letsgo/internal/config"
+	"letsgo/internal/game"
 	"letsgo/internal/mdw"
 	"letsgo/internal/token"
 	"log/slog"
@@ -11,9 +12,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func Router(authMdw mdw.Middleware, ctxKey mdw.ContextKey, cfg *config.WS) chi.Router {
-	hub := newHub(cfg)
-	go hub.Run()
+func Router(authMdw mdw.Middleware, ctxKey mdw.ContextKey, registry *game.Registry, cfg *config.WS) chi.Router {
+	hub := newhub(registry, cfg)
+	go hub.run()
 
 	r := chi.NewRouter()
 	r.Use(authMdw)
@@ -25,7 +26,7 @@ func Router(authMdw mdw.Middleware, ctxKey mdw.ContextKey, cfg *config.WS) chi.R
 		}
 		user := r.Context().Value(ctxKey).(*token.UserPayload)
 
-		client := newClient(hub, conn, user, cfg)
+		client := newClient(hub, conn, user, hub.cfg)
 		hub.register <- client
 		client.start()
 	})

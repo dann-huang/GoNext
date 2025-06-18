@@ -24,12 +24,12 @@ type client struct {
 	cancel context.CancelFunc
 }
 
-func newClient(hub *hub, conn *websocket.Conn, user *token.UserPayload, cfg *config.WS) *client {
+func newClient(h *hub, conn *websocket.Conn, user *token.UserPayload, cfg *config.WS) *client {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &client{
 		cfg:    cfg,
 		ID:     user.Username,
-		Hub:    hub,
+		Hub:    h,
 		Conn:   conn,
 		Send:   make(chan []byte, cfg.SendBuffer),
 		User:   user,
@@ -88,13 +88,14 @@ func (c *client) readPump() {
 
 		case msgGameState:
 			msg.Sender = c.ID
-			if err := c.Room.handleGameState(&msg); err != nil {
-				c.Send <- createMsg(msgError, "message", "Failed to handle game state: "+err.Error())
+			if errStr := c.Room.handleGameState(&msg); errStr != "" {
+				c.Send <- createMsg(msgError, "message", "Failed to handle game state: "+errStr)
 			}
 
-		//hub actions
+		//Hub actions
 		case msgJoinRoom:
-			if payloadMap, ok := msg.Payload.(map[string]any); ok {
+			var payloadMap map[string]any
+			if err := json.Unmarshal(msg.Payload, &payloadMap); err == nil {
 				if roomID, ok := payloadMap["roomName"].(string); ok && roomID != "" {
 					c.Hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
 				} else {
