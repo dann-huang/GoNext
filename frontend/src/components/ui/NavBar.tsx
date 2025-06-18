@@ -32,7 +32,7 @@ export default function NavBar() {
           ]}
         />
         <Dropdown
-          title="Live"
+          title="Live demo"
           links={[
             { href: "/live/video", label: "Video call" },
             { href: "/live/draw", label: "Drawing" },

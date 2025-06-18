@@ -77,3 +77,8 @@ body {
 .scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-primary);
 }
+
+.copyleft {
+  display:inline-block;
+  transform: rotate(180deg);
+}
