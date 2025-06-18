@@ -77,9 +77,22 @@ func (c *client) readPump() {
 		msg.Sender = c.ID
 
 		switch msg.Type {
-		case msgChat, msgVidSignal, msgGameState:
+		case msgChat, msgVidSignal:
 			msg.Sender = c.ID
-			c.Hub.messages <- &hubMsg{client: c, msg: &msg}
+			jsonMsg, err := json.Marshal(msg)
+			if err != nil {
+				c.Send <- createMsg(msgError, "message", "Failed to marshal message: "+err.Error())
+				continue
+			}
+			c.Room.broadcast(jsonMsg)
+
+		case msgGameState:
+			msg.Sender = c.ID
+			if err := c.Room.handleGameState(&msg); err != nil {
+				c.Send <- createMsg(msgError, "message", "Failed to handle game state: "+err.Error())
+			}
+
+		//hub actions
 		case msgJoinRoom:
 			if payloadMap, ok := msg.Payload.(map[string]any); ok {
 				if roomID, ok := payloadMap["roomName"].(string); ok && roomID != "" {

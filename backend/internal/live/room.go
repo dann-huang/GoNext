@@ -31,7 +31,7 @@ func (r *room) addClient(client *client) {
 
 	r.broadcast(createMsg(msgStatus, "message", client.User.Displayname+" has joined "+r.name))
 	r.broadcast(r.getClientList())
-} 
+}
 
 func (r *room) removeClient(client *client) {
 	r.mu.Lock()
@@ -45,10 +45,10 @@ func (r *room) removeClient(client *client) {
 	}
 }
 
-func (r *room) broadcast(message []byte) {
+func (r *room) broadcast(msg []byte) {
 	for _, client := range r.clients {
 		select {
-		case client.Send <- message:
+		case client.Send <- msg:
 		default:
 			slog.Warn("Invalid client.", "client", client.ID, "roomID", r.name)
 		}
@@ -75,4 +75,8 @@ func (r *room) getClientList() []byte {
 		return nil
 	}
 	return jsonMessage
+}
+
+func (r *room) handleGameState(msg *roomMsg) error {
+	return nil
 }

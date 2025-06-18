@@ -22,11 +22,6 @@ type roomMsg struct {
 	Payload any         `json:"payload"`
 }
 
-type hubMsg struct {
-	client *client
-	msg    *roomMsg
-}
-
 type crPair struct {
 	Client   *client
 	RoomName string

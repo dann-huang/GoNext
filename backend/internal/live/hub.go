@@ -1,7 +1,6 @@
 package live
 
 import (
-	"encoding/json"
 	"letsgo/internal/config"
 	"log/slog"
 	"sync"
@@ -10,9 +9,8 @@ import (
 )
 
 type hub struct {
-	rooms    map[string]*room
-	clients  map[string]*client
-	messages chan *hubMsg
+	rooms   map[string]*room
+	clients map[string]*client
 
 	register   chan *client
 	unregister chan *client
@@ -20,13 +18,12 @@ type hub struct {
 	leaveRoom  chan *client
 
 	mu sync.RWMutex
-} // Room pointers now used in client.Room
+}
 
 func newHub(cfg *config.WS) *hub {
 	return &hub{
 		rooms:      make(map[string]*room),
 		clients:    make(map[string]*client),
-		messages:   make(chan *roomMsg, cfg.MsgBuffer),
 		register:   make(chan *client, cfg.RegisterBuffer),
 		unregister: make(chan *client, cfg.RegisterBuffer),
 		joinRoom:   make(chan *crPair, cfg.RoomBuffer),
@@ -63,29 +60,6 @@ func (h *hub) Run() {
 				slog.Debug("Unregistered: ", "client", client.ID)
 			}
 			h.mu.Unlock()
-
-		case hubmsg := <-h.messages:
-			slog.Debug("Sending msg", "message", hubmsg.msg)
-			h.mu.RLock()
-			client := hubmsg.client
-			if client == nil {
-				h.mu.RUnlock()
-				continue
-			}
-			room := client.Room
-			h.mu.RUnlock()
-			if room == nil {
-				client.Send <- createMsg(msgError, "message", "Room not found, kicking back to lobby")
-				h.joinRoom <- &crPair{client, lobby.name}
-				lobby.addClient(client)
-				continue
-			}
-			jsonMessage, err := json.Marshal(hubmsg.msg)
-			if err != nil {
-				slog.Error("Failed to marshal message", "error", err, "message", hubmsg.msg)
-				continue
-			}
-			room.broadcast(jsonMessage)
 
 		case pair := <-h.joinRoom:
 			slog.Debug("join room")
