@@ -137,19 +137,23 @@ export default function DrawPage() {
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
       style={{
-        transform: `translate(${viewState.offset.x}px, ${viewState.offset.y}px) scale(${startZoom * viewState.zoom})`,
+        transform: `scale(${startZoom})`,
         transformOrigin: '0 0',
         touchAction: 'none',
-        width: '1600px',
-        height: '900px',
+        width: `${DRAW_CANVAS_WIDTH}px`,
+        height: `${DRAW_CANVAS_HEIGHT}px`,
       }}
     >
       <canvas
         ref={canvasRef}
-        width={1600}
-        height={900}
+        width={DRAW_CANVAS_WIDTH}
+        height={DRAW_CANVAS_HEIGHT}
         className="bg-surface"
-        style={{ touchAction: 'none' }}
+        style={{
+          transform: `translate(${viewState.offset.x}px, ${viewState.offset.y}px) scale(${viewState.zoom})`,
+          transformOrigin: '0 0',
+          touchAction: 'none',
+        }}
       />
     </div>
   </div>;
