@@ -71,37 +71,8 @@ export function useDraw() {
     ctx.lineJoin = 'round';
   }, [drawState.color, drawState.lineWidth]);
 
-  // Handle drawing
-  const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-
-    if ('touches' in e) {
-      // Touch event
-      if (e.touches.length === 0) return null;
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      // Mouse event
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
-  };
-
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault(); // Prevent scrolling on touch devices
-
-    const coords = getCoordinates(e);
-    if (!coords) return;
-
+  // Start a new drawing stroke at the given coordinates
+  const startDrawing = (x: number, y: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -110,19 +81,16 @@ export function useDraw() {
 
     setIsDrawing(true);
     ctx.beginPath();
-    ctx.moveTo(coords.x, coords.y);
+    ctx.moveTo(x, y);
 
     // Start new stroke
-    currentStroke.current = [{ x: coords.x, y: coords.y }];
+    currentStroke.current = [{ x, y }];
     lastSendTime.current = Date.now();
   };
 
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+  // Continue drawing to the given coordinates
+  const draw = (x: number, y: number) => {
     if (!isDrawing) return;
-    e.preventDefault(); // Prevent scrolling on touch devices
-
-    const coords = getCoordinates(e);
-    if (!coords) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -130,10 +98,10 @@ export function useDraw() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.lineTo(coords.x, coords.y);
+    ctx.lineTo(x, y);
     ctx.stroke();
 
-    currentStroke.current.push({ x: coords.x, y: coords.y });
+    currentStroke.current.push({ x, y });
 
     if (Date.now() - lastSendTime.current >= DRAW_STROKE_INTERVAL) {
       sendStroke();

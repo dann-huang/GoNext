@@ -29,14 +29,25 @@ export default function DrawPage() {
     stopDrawing,
   } = useDraw();
 
+  // Helper to get canvas-relative coordinates
+  const getCanvasCoords = (clientX: number, clientY: number, element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left - viewState.offset.x) / viewState.zoom,
+      y: (clientY - rect.top - viewState.offset.y) / viewState.zoom
+    };
+  };
+
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    startDrawing(e);
+    const coords = getCanvasCoords(e.clientX, e.clientY, e.currentTarget as HTMLElement);
+    startDrawing(coords.x, coords.y);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isPanning) {
-      draw(e);
+      const coords = getCanvasCoords(e.clientX, e.clientY, e.currentTarget as HTMLElement);
+      draw(coords.x, coords.y);
     }
   };
 
@@ -48,14 +59,19 @@ export default function DrawPage() {
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     if (e.touches.length === 0) return;
-    startDrawing(e);
+    
+    const touch = e.touches[0];
+    const coords = getCanvasCoords(touch.clientX, touch.clientY, e.currentTarget as HTMLElement);
+    startDrawing(coords.x, coords.y);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
-    if (!isPanning && e.touches.length > 0) {
-      draw(e);
-    }
+    if (isPanning || e.touches.length === 0) return;
+    
+    const touch = e.touches[0];
+    const coords = getCanvasCoords(touch.clientX, touch.clientY, e.currentTarget as HTMLElement);
+    draw(coords.x, coords.y);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
