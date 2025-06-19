@@ -21,7 +21,7 @@ type Game interface {
 	Join(sender string) error
 	Move(sender string, payload json.RawMessage) (*GameState, error)
 	State() *GameState
-	Leave(player string) bool
+	Leave(player string, intentional bool) bool
 	Tick() (*GameState, bool) // Tick handles time-based events, returns true if state changed
 }
 

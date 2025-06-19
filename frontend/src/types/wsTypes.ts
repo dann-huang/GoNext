@@ -76,16 +76,12 @@ export interface GetClientsReq {
   // Payload: {};
 }
 
-export type DrawPayload = 
-  | {
-      type: 'draw';
-      points: Array<{ x: number; y: number }>;
-      color: string;
-      width: number;
-    }
-  | {
-      type: 'clear';
-    };
+export interface DrawPayload {
+  type: 'draw';
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  width: number;
+}
 
 export interface RawDrawMsg {
   type: typeof RawSignal;
