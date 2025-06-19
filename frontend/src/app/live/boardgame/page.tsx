@@ -34,49 +34,44 @@ export default function BoardGamePage() {
     }
   };
 
-  if (!gameState.gameName) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <CreateGame
-          onCreateGame={handleCreateGame}
-          isLoading={isLoading}
-          className="w-full max-w-md"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <GameStatus
-        gameState={gameState}
-        joinGame={joinGame}
-        leaveGame={leaveGame}
+  if (!gameState.gameName)
+    return <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <CreateGame
+        onCreateGame={handleCreateGame}
+        isLoading={isLoading}
+        className="w-full max-w-md"
       />
+    </div>;
 
-      <div className="flex-1 p-6 overflow-auto">
-        <div className="container mx-auto h-full">
-          {showGameLobby ? (
-            <CreateGame
-              onCreateGame={handleCreateGame}
-              className="h-full flex items-center justify-center"
-            />
-          ) : (
-            <div className="bg-background rounded-xl shadow-lg h-full flex items-center justify-center p-6">
-              {GameBoard ? (
-                <div className="w-full max-w-md">
-                  <GameBoard
-                    gameState={gameState}
-                    onMove={makeMove}
-                  />
-                </div>
-              ) : (
-                <div>Game type not supported</div>
-              )}
-            </div>
-          )}
-        </div>
+  return <div className="min-h-screen flex flex-col bg-background">
+    <GameStatus
+      gameState={gameState}
+      joinGame={joinGame}
+      leaveGame={leaveGame}
+    />
+
+    <div className="flex-1 p-6 overflow-auto">
+      <div className="container mx-auto h-full">
+        {showGameLobby ? (
+          <CreateGame
+            onCreateGame={handleCreateGame}
+            className="h-full flex items-center justify-center"
+          />
+        ) : (
+          <div className="bg-background rounded-xl shadow-lg h-full flex items-center justify-center p-6">
+            {GameBoard ? (
+              <div className="w-full max-w-md">
+                <GameBoard
+                  gameState={gameState}
+                  onMove={makeMove}
+                />
+              </div>
+            ) : (
+              <div>Game type not supported</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
-  );
+  </div>;
 }

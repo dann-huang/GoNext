@@ -35,19 +35,17 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
   className = '',
   ...props
 }, ref) => {
-  return (
-    <input
-      ref={ref}
-      className={cn(
-        baseStyles,
-        variantStyles[variant],
-        sizeStyles[inputSize],
-        fullWidth && 'w-full',
-        className
-      )}
-      {...props}
-    />
-  );
+  return <input
+    ref={ref}
+    className={cn(
+      baseStyles,
+      variantStyles[variant],
+      sizeStyles[inputSize],
+      fullWidth && 'w-full',
+      className
+    )}
+    {...props}
+  />;
 });
 
 Input.displayName = 'Input';

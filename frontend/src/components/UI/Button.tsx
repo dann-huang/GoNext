@@ -56,28 +56,26 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
     ? outlineStyles[variant as keyof typeof outlineStyles]
     : variantStyles[variant];
 
-  return (
-    <button
-      ref={ref}
-      className={cn(
-        baseStyles,
-        buttonStyles,
-        sizeStyles[size],
-        fullWidth && 'w-full',
-        isLoading && 'relative text-transparent',
-        className
-      )}
-      disabled={disabled || isLoading}
-      {...props}
-    >
-      {children}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        </div>
-      )}
-    </button>
-  );
+  return <button
+    ref={ref}
+    className={cn(
+      baseStyles,
+      buttonStyles,
+      sizeStyles[size],
+      fullWidth && 'w-full',
+      isLoading && 'relative text-transparent',
+      className
+    )}
+    disabled={disabled || isLoading}
+    {...props}
+  >
+    {children}
+    {isLoading && (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      </div>
+    )}
+  </button>;
 });
 
 Button.displayName = 'Button';

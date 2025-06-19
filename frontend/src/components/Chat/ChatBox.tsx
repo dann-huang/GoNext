@@ -5,6 +5,7 @@ import { useWebSocket } from '@/hooks/webSocket';
 import { useUserStore } from '@/hooks/userStore';
 import Input from '../UI/Input';
 import Button from '../UI/Button';
+import { Error } from '@/types/wsTypes';
 
 export default function ChatBox() {
   const [message, setMessage] = useState('');
@@ -61,7 +62,7 @@ export default function ChatBox() {
           </Button>
         </form>
       ) : (
-        <div 
+        <div
           className="flex p-2 items-center gap-2 cursor-pointer hover:opacity-80"
           onClick={() => setShowRoomInput(true)}
         >
@@ -85,7 +86,9 @@ export default function ChatBox() {
               : isMyMessage ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`max-w-[75%] p-3 rounded-xl text-base break-words shadow-sm
-              ${isServerMessage ? 'bg-accent text-on-accent text-center italic text-sm'
+              ${isServerMessage ?
+                msg.type == Error ? 'bg-error text-on-error, text-center italic text-sm'
+                  : 'bg-accent text-on-accent text-center italic text-sm'
                 : isMyMessage
                   ? 'bg-primary text-on-primary rounded-br-none'
                   : 'bg-secondary text-on-secondary rounded-bl-none'

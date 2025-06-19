@@ -104,29 +104,27 @@ export function GameStatus({
 
   if (!gameState.gameName) return null;
 
-  return (
-    <div className="p-4 bg-card shadow-sm border-b border-border">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">
-            {GAME_DISPLAY_NAMES[gameState.gameName]}
-          </h2>
-          <p className={cn('text-sm', statusClass)}>
-            {statusMessage}
-            {gameState.players.length > 0 && (
-              <span className="ml-2 text-sm text-muted-foreground">
-                ({gameState.players.join(' vs ')})
-              </span>
-            )}
-          </p>
-        </div>
-
-        {actionButton && (
-          <div className="flex-shrink-0">
-            {actionButton}
-          </div>
-        )}
+  return <div className="p-4 bg-card shadow-sm border-b border-primary">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold text-foreground">
+          {GAME_DISPLAY_NAMES[gameState.gameName]}
+        </h2>
+        <p className={cn('text-sm', statusClass)}>
+          {statusMessage}
+          {gameState.players.length > 0 && (
+            <span className="ml-2 text-sm text-muted-foreground">
+              ({gameState.players.join(' vs ')})
+            </span>
+          )}
+        </p>
       </div>
+
+      {actionButton && (
+        <div className="flex-shrink-0">
+          {actionButton}
+        </div>
+      )}
     </div>
-  );
+  </div>;
 }
