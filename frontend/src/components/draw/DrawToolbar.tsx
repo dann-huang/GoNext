@@ -22,7 +22,6 @@ export function DrawToolbar({
   zoomOut,
   zoomReset,
 }: DrawToolbarProps) {
-  console.log(currentZoom);
   return <div className="flex items-center justify-between p-2">
     <div className="flex items-center gap-2">
       <label htmlFor="color" className="text-xs">

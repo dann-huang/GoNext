@@ -72,7 +72,7 @@ export function useDraw() {
   }, [drawState.color, drawState.lineWidth]);
 
   // Handle drawing
-  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
@@ -96,7 +96,7 @@ export function useDraw() {
     };
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault(); // Prevent scrolling on touch devices
 
     const coords = getCoordinates(e);
@@ -117,7 +117,7 @@ export function useDraw() {
     lastSendTime.current = Date.now();
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return;
     e.preventDefault(); // Prevent scrolling on touch devices
 
