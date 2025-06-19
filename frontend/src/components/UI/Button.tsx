@@ -55,7 +55,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   const buttonStyles = outline
     ? outlineStyles[variant as keyof typeof outlineStyles]
     : variantStyles[variant];
-    
+
   return (
     <button
       ref={ref}
@@ -80,4 +80,5 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   );
 });
 
+Button.displayName = 'Button';
 export default Button;

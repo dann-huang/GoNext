@@ -44,14 +44,14 @@ export default function LoginBox() {
           type="text"
           placeholder="Username"
           value={username}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+          onChange={e => setUsername(e.target.value)}
           required
         />
         <Input
           type="password"
           placeholder="Password"
           value={password}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+          onChange={e => setPassword(e.target.value)}
           required
         />
 

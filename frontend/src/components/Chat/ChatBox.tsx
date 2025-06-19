@@ -31,7 +31,7 @@ export default function ChatBox() {
   return <div className="flex flex-col h-full bg-background">
     <div className="px-3 py-2 bg-primary text-on-primary border-b border-secondary">
       {showRoomInput ? (
-        <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+        <form onSubmit={e => {
           e.preventDefault();
           if (newRoom.trim()) {
             joinRoom(newRoom.trim());
