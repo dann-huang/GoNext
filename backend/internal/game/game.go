@@ -58,6 +58,7 @@ func newBase(numPlayers int, gameName string) baseGame {
 	return baseGame{
 		GameName:    gameName,
 		Players:     make([]string, 0, numPlayers),
+		Turn:        0,
 		NumPlayers:  numPlayers,
 		Status:      StatusWaiting,
 		Disconnects: make(map[string]time.Time),
