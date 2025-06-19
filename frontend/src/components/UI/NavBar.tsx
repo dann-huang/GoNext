@@ -14,7 +14,7 @@ const Logo = () => <svg
 
 export default function NavBar() {
   return (
-    <nav className="bg-primary text-text shadow-md py-3 px-6 flex justify-between items-center w-full font-sans">
+    <nav className="bg-primary text-on-primary shadow-md py-3 px-6 flex justify-between items-center w-full font-sans">
       <div className="flex items-center space-x-2">
         <Link href="/" className="flex items-center">
           <Logo />

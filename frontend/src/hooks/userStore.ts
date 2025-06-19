@@ -26,8 +26,8 @@ interface UserState {
   accessExp: number;
   refreshExp: number;
   error: string;
-  register: (username: string, password: string) => Promise<void>;
-  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
   loggedin: () => boolean;
@@ -55,10 +55,12 @@ export const useUserStore = create<UserState>()(
           }
           const json: RegisterSuccessResponse = await res.json();
           set({ username: json.username, loading: false, })
+          return true;
         } catch (err: unknown) {
           console.error("userstore register err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
+          return false;
         }
       },
       login: async (username: string, password: string) => {
@@ -77,10 +79,12 @@ export const useUserStore = create<UserState>()(
             accessExp: json.accessExpires,
             refreshExp: json.refreshExpires,
           })
+          return true;
         } catch (err: unknown) {
           console.error("userstore login err ", err)
           const msgErr = err as { message: string }
           set({ error: msgErr.message, loading: false })
+          return false;
         }
       },
       logout: async () => {

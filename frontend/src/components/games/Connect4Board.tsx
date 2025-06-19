@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/userStore';
 
@@ -21,14 +21,6 @@ export function Connect4Board({ gameState, onMove }: GameBoardProps) {
 
   return (
     <div className="flex flex-col space-y-4">
-      <div className="text-lg font-medium">
-        {gameState.status == 'in_progress' ?
-          isYourTurn ? `Your turn`
-            : `Waiting for opponent...`
-          : 'Game not started'
-        }
-      </div>
-
       <div className="grid grid-cols-7 gap-2">
         {gameState.board[0].map((_, col) => (
           <button

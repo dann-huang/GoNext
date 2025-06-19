@@ -20,7 +20,7 @@ export default function ChatBox() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgLog]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (message.trim()) {
       sendChat(message.trim());
@@ -31,7 +31,7 @@ export default function ChatBox() {
   return <div className="flex flex-col h-full bg-background">
     <div className="px-3 py-2 bg-primary text-on-primary border-b border-secondary">
       {showRoomInput ? (
-        <form onSubmit={(e) => {
+        <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
           e.preventDefault();
           if (newRoom.trim()) {
             joinRoom(newRoom.trim());
@@ -43,19 +43,17 @@ export default function ChatBox() {
             type="text"
             placeholder="Enter room name..."
             value={newRoom}
-            onChange={(e) => setNewRoom(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewRoom(e.target.value)}
             className="flex-grow text-sm"
             autoFocus
           />
           <Button
             type="submit"
-            padding="px-2"
           >
             Join
           </Button>
           <Button
             type="button"
-            padding="px-2"
             color="secondary"
             onClick={() => setShowRoomInput(false)}
           >
@@ -110,12 +108,11 @@ export default function ChatBox() {
         placeholder="Type a message..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        className="flex-grow"
-        rounded='rounded-l-md'
+        className="flex-grow rounded-r-none"
       />
       <Button
         type="submit"
-        rounded="rounded-r-md"
+        className="rounded-l-none border-secondary"
       >
         Send
       </Button>
