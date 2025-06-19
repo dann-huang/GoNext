@@ -4,6 +4,7 @@ import { useDraw } from '@/hooks/useDraw';
 import { useWebSocket } from '@/hooks/webSocket';
 import { DrawToolbar } from '@/components/draw/DrawToolbar';
 import { useCallback, useState, useRef, useEffect } from 'react';
+import { DRAW_CANVAS_WIDTH, DRAW_CANVAS_HEIGHT } from '@/config/consts';
 
 interface ViewState {
   zoom: number;
@@ -12,6 +13,7 @@ interface ViewState {
 
 export default function DrawPage() {
   const { currentRoom } = useWebSocket();
+  const [startZoom, setStartZoom] = useState(1);
   const [viewState, setViewState] = useState<ViewState>({
     zoom: 1,
     offset: { x: 0, y: 0 },
@@ -19,6 +21,31 @@ export default function DrawPage() {
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate initial zoom to fit container
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateZoom = () => {
+      if (!containerRef.current) return;
+      const container = containerRef.current.parentElement;
+      if (!container) return;
+
+      const availableWidth = container.clientWidth;
+      const availableHeight = window.innerHeight;
+
+      const widthRatio = availableWidth / DRAW_CANVAS_WIDTH;
+      const heightRatio = availableHeight / DRAW_CANVAS_HEIGHT;
+      const newZoom = Math.min(widthRatio, heightRatio);
+
+      setStartZoom(newZoom);
+    };
+
+    updateZoom();
+
+    window.addEventListener('resize', updateZoom);
+    return () => window.removeEventListener('resize', updateZoom);
+  }, [containerRef]);
 
   const {
     canvasRef,
@@ -29,12 +56,11 @@ export default function DrawPage() {
     stopDrawing,
   } = useDraw();
 
-  // Helper to get canvas-relative coordinates
   const getCanvasCoords = (clientX: number, clientY: number, element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
     return {
-      x: (clientX - rect.left - viewState.offset.x) / viewState.zoom,
-      y: (clientY - rect.top - viewState.offset.y) / viewState.zoom
+      x: (clientX - rect.left - viewState.offset.x) / (startZoom * viewState.zoom),
+      y: (clientY - rect.top - viewState.offset.y) / (startZoom * viewState.zoom),
     };
   };
 
@@ -59,7 +85,7 @@ export default function DrawPage() {
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     if (e.touches.length === 0) return;
-    
+
     const touch = e.touches[0];
     const coords = getCanvasCoords(touch.clientX, touch.clientY, e.currentTarget as HTMLElement);
     startDrawing(coords.x, coords.y);
@@ -68,7 +94,7 @@ export default function DrawPage() {
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
     if (isPanning || e.touches.length === 0) return;
-    
+
     const touch = e.touches[0];
     const coords = getCanvasCoords(touch.clientX, touch.clientY, e.currentTarget as HTMLElement);
     draw(coords.x, coords.y);
@@ -111,7 +137,7 @@ export default function DrawPage() {
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
       style={{
-        transform: `translate(${viewState.offset.x}px, ${viewState.offset.y}px) scale(${viewState.zoom})`,
+        transform: `translate(${viewState.offset.x}px, ${viewState.offset.y}px) scale(${startZoom * viewState.zoom})`,
         transformOrigin: '0 0',
         touchAction: 'none',
         width: '1600px',
