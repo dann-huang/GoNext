@@ -76,7 +76,7 @@ export default function VideoPage() {
   if (totalParticipants > 1) gridCols = 'grid-cols-2';
   if (totalParticipants > 4) gridCols = 'grid-cols-3';
 
-  return <div className="flex flex-col h-screen w-full">
+  return <div className="flex flex-col w-full">
     <header className="w-full border-b border-primary p-4 flex justify-between">
       <div>
         <h1 className="text-xl font-semibold text-text truncate">Video Call</h1>

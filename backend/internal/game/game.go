@@ -14,7 +14,7 @@ const (
 	StatusDraw         = "draw"
 	StatusDisconnected = "disconnected"
 
-	DisconnectTimeout = 60 * time.Second
+	DisconnectTimeout = 30 * time.Second
 )
 
 type Game interface {
@@ -91,18 +91,13 @@ func (g *baseGame) Join(player string) error {
 	return nil
 }
 
-func (g *baseGame) Leave(player string) bool {
-	// If game is already over, leaving doesn't change the outcome
-	if g.Status == StatusWin || g.Status == StatusDraw {
+func (g *baseGame) Leave(player string, intentional bool) bool {
+	idx := slices.Index(g.Players, player)
+	if idx == -1 {
 		return false
 	}
 
-	idx := slices.Index(g.Players, player)
-	if idx == -1 {
-		return len(g.Players) == 0
-	}
-
-	if g.Status == StatusInProgress || g.Status == StatusDisconnected {
+	if !intentional && (g.Status == StatusInProgress || g.Status == StatusDisconnected) {
 		g.Status = StatusDisconnected
 		g.Disconnects[player] = time.Now()
 		return false

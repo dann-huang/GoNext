@@ -75,7 +75,7 @@ func (r *room) removeClient(client *client) {
 
 	if _, ok := r.clients[client]; ok {
 		if r.game != nil {
-			if r.game.Leave(client.ID) {
+			if r.game.Leave(client.ID, false) {
 				r.game = nil
 			}
 		}
@@ -192,12 +192,9 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if r.game == nil {
 			return "No game in progress"
 		}
-		// Remove the player from the game
-		if r.game.Leave(sender) {
-			// If the game is empty after leaving, remove it
+		if r.game.Leave(sender, true) {
 			r.game = nil
 		}
-		// Broadcast the updated game state
 		msg, err := r.gameStateMsg()
 		if err != nil {
 			return "failed to get game state: " + err.Error()

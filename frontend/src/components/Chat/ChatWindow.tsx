@@ -6,6 +6,7 @@ import { useWSConnect } from '@/hooks/webSocket';
 import LoginBox from './LoginBox';
 import ChatBox from './ChatBox';
 import Button from '../UI/Button';
+import { MessageCircleMore } from 'lucide-react';
 
 export default function ChatWindow() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,7 +22,7 @@ export default function ChatWindow() {
     className={`
         fixed bottom-5 right-5 z-[1000] font-sans
         transition-all duration-300 ease-in-out
-        ${isOpen ? 'w-[400px] h-[600px] rounded-lg' : 'w-[64px] h-[64px] rounded-full'}
+        ${isOpen ? 'w-[400px] h-[600px] rounded-lg' : 'w-[50px] h-[50px] rounded-full'}
         max-w-[calc(100vw-40px)] max-h-[calc(100vh-40px)]
       `}
   >
@@ -32,7 +33,7 @@ export default function ChatWindow() {
         aria-label="Open Chat"
         className="w-full h-full text-2xl rounded-full"
       >
-        💬
+        <MessageCircleMore />
       </Button>
     )}
     {isOpen && (

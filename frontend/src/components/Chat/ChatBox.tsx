@@ -6,6 +6,7 @@ import { useUserStore } from '@/hooks/userStore';
 import Input from '../UI/Input';
 import Button from '../UI/Button';
 import { Error } from '@/types/wsTypes';
+import { SquarePen } from 'lucide-react';
 
 export default function ChatBox() {
   const [message, setMessage] = useState('');
@@ -67,9 +68,7 @@ export default function ChatBox() {
           onClick={() => setShowRoomInput(true)}
         >
           <p className="text-sm font-semibold">Room: {currentRoom || 'N/A'}</p>
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
+          <SquarePen />
         </div>
       )}
     </div>
