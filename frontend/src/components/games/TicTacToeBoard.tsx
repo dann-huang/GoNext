@@ -26,8 +26,8 @@ export function TicTacToeBoard({ gameState, onMove }: GameBoardProps) {
     }
   }, [gameState.status, gameState.board]);
 
-  return <div className="bg-secondary p-4 rounded-lg">
-    <div className="grid grid-cols-3 gap-2 relative">
+  return <div className='bg-secondary p-4 rounded-lg'>
+    <div className='grid grid-cols-3 gap-2 relative'>
       {gameState.board.map((row, rowIndex) =>
         row.map((cell, colIndex) => {
           const isCellEmpty = cell === 0;
@@ -56,9 +56,9 @@ export function TicTacToeBoard({ gameState, onMove }: GameBoardProps) {
                 }
               )}>
                 {cell === 1 ? (
-                  <X className="w-16 h-16 stroke-[3px]" />
+                  <X className='w-16 h-16 stroke-[3px]' />
                 ) : cell === 2 ? (
-                  <Circle className="w-14 h-14 stroke-[3px]" />
+                  <Circle className='w-14 h-14 stroke-[3px]' />
                 ) : null}
               </div>
             </div>

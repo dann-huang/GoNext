@@ -27,20 +27,20 @@ export function CreateGame({ createGame, isLoading = false }: CreateGameProps) {
   };
 
   return <div className='p-6 bg-surface rounded-lg shadow-md w-full max-w-md'>
-    <h2 className="text-2xl font-bold mb-6 text-center text-foreground">
+    <h2 className='text-2xl font-bold mb-6 text-center text-foreground'>
       Create a New Game
     </h2>
 
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
+    <form onSubmit={handleSubmit} className='space-y-6'>
+      <div className='space-y-2'>
         <label
-          htmlFor="game-select"
-          className="block text-sm font-medium text-foreground/80"
+          htmlFor='game-select'
+          className='block text-sm font-medium text-foreground/80'
         >
           Select Game
         </label>
         <select
-          id="game-select"
+          id='game-select'
           value={selectedGame}
           onChange={(e) => setSelectedGame(e.target.value as GameName)}
           className='w-full p-2.5 rounded-md border border-secondary border-2
@@ -52,7 +52,7 @@ export function CreateGame({ createGame, isLoading = false }: CreateGameProps) {
             <option
               key={gameName}
               value={gameName}
-              className="bg-background text-foreground"
+              className='bg-background text-foreground'
             >
               {GAME_DISPLAY_NAMES[gameName]}
             </option>
@@ -61,13 +61,13 @@ export function CreateGame({ createGame, isLoading = false }: CreateGameProps) {
       </div>
 
       <Button
-        type="submit"
-        variant="primary"
-        size="lg"
+        type='submit'
+        variant='primary'
+        size='lg'
         fullWidth
         isLoading={isLoading || isSubmitting}
         disabled={isLoading || isSubmitting}
-        className="mt-2 font-medium"
+        className='mt-2 font-medium'
       >
         Create Game
       </Button>

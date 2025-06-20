@@ -18,8 +18,7 @@ export function GameStatus({
   const username = useUserStore(state => state.username);
   const idx = gameState.players.indexOf(username);
   const yourTurn = gameState.turn === idx;
-  const isGameFull = gameState.players.length >= 2;
-  const canJoin = idx < 0 && gameState.status === 'waiting' && !isGameFull;
+  const canJoin = gameState.gameName && idx < 0 && gameState.status === 'waiting';
 
   const getStatusMessage = () => {
     if (!gameState.gameName) return 'Waiting for game...';
@@ -33,30 +32,30 @@ export function GameStatus({
         if (gameState.winner) return `${gameState.winner} wins!`;
         return 'Game over';
       case 'draw':
-        return "It's a draw!";
+        return 'It\'s a draw!';
       default:
         return 'Game starting...';
     }
   };
 
-  return <div className="flex items-center justify-between py-2 px-4 bg-background">
-    <div className="text-sm">
-      <span className="font-medium">Status: {getStatusMessage()}</span>
+  return <div className='flex items-center justify-between py-2 px-4 bg-background'>
+    <div className='text-sm'>
+      <span className='font-medium'>Status: {getStatusMessage()}</span>
     </div>
 
-    <div className="flex items-center gap-2">
+    <div className='flex items-center gap-2'>
       {idx >= 0 ?
         <Button
-          size="sm"
+          size='sm'
           onClick={leaveGame}
-          className="text-xs"
+          className='text-xs'
         >Leave Game</Button>
-        : canJoin ? <Button
-          size="sm"
+        : <Button
+          size='sm'
           onClick={joinGame}
-          className="text-xs"
-        >Join Game</Button>
-          : null}
+          className='text-xs'
+          disabled={!canJoin}
+        >Join Game</Button>}
     </div>
   </div>;
 }

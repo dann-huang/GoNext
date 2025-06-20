@@ -14,14 +14,14 @@ export function Connect4Board({ gameState, onMove }: GameBoardProps) {
     onMove({ to: { row: 0, col: hoveredCol } });
   };
 
-  return <div className="bg-primary p-2 rounded-lg"
+  return <div className='bg-primary p-2 rounded-lg'
     onClick={handleClick}
     onMouseLeave={() => setHoveredCol(-1)}
   >
-    <div className="grid grid-cols-7 gap-2 relative">
+    <div className='grid grid-cols-7 gap-2 relative'>
       {hoveredCol >= 0 && (
         <div
-          className="absolute top-0 -bottom-2 pointer-events-none transition-all duration-200"
+          className='absolute top-0 -bottom-2 pointer-events-none transition-all duration-200'
           style={{
             left: `calc(${(hoveredCol * 100 / 7)}% + ${(hoveredCol * 8) / 7}px)`,
             width: `calc(${100 / 7}% - 8px)`,
@@ -35,7 +35,7 @@ export function Connect4Board({ gameState, onMove }: GameBoardProps) {
         row.map((cell, colIndex) => (
           <div
             key={`${rowIndex}-${colIndex}`}
-            className="aspect-square rounded-full p-1"
+            className='aspect-square rounded-full p-1'
             onMouseEnter={() => setHoveredCol(colIndex)}
           >
             <div className={'w-full h-full rounded-full' +

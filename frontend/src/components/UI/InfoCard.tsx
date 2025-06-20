@@ -10,9 +10,9 @@ export const InfoCard = ({ children, width = 64 }: InfoCardProps) => {
   const [show, setShow] = useState(false);
 
   return (
-    <div className="relative">
+    <div className='relative'>
       <Info
-        className="cursor-pointer"
+        className='cursor-pointer'
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
         onTouchStart={() => setShow(true)}

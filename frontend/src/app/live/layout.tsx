@@ -27,9 +27,9 @@ export default function LiveLayout({
 
 
   if (!currentRoom) {
-    return <div className="w-full flex flex-col items-center justify-center ">
-      <h1 className="text-2xl font-bold mb-4">Let&apos;s Go Live!</h1>
-      <p className="text-lg mb-6 max-w-md text-center">
+    return <div className='w-full flex flex-col items-center justify-center '>
+      <h1 className='text-2xl font-bold mb-4'>Let&apos;s Go Live!</h1>
+      <p className='text-lg mb-6 max-w-md text-center'>
         These pages are only accessible while in a chat channel.
         Use the bottom right button to connect~
       </p>
