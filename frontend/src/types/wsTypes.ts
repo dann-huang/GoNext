@@ -99,7 +99,7 @@ export interface BoardGameState {
   players: string[];
   turn: number;
   board: number[][];
-  status: 'waiting' | 'in_progress' | 'win' | 'draw' | 'disconnected';
+  status: 'waiting' | 'in_progress' | 'finished' | 'disconnected';
   winner?: string;
 }
 

@@ -71,8 +71,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   >
     {children}
     {isLoading && (
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      <div className='absolute inset-0 flex items-center justify-center'>
+        <div className='h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent' />
       </div>
     )}
   </button>;

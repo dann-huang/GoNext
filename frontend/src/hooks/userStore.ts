@@ -105,10 +105,7 @@ export const useUserStore = create<UserState>()(
       refresh: async () => {
         const { refreshExp }: UserState = get();
         if (refreshExp <= Date.now()) {
-          set({
-            username: '', displayName: '', loading: false, accessExp: 0,
-            refreshExp: 0, error: "Session expired; Please log in again"
-          })
+          set({ username: '', displayName: '', loading: false, accessExp: 0, refreshExp: 0, error: "" })
           return false;
         }
         try {

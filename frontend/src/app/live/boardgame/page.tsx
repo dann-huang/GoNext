@@ -9,7 +9,7 @@ import { GameBoardProps } from '@/types/gameTypes';
 import useBoardGame from '@/hooks/useBoardGame';
 import { useWebSocket } from '@/hooks/webSocket';
 import { GAME_DISPLAY_NAMES } from '@/config/consts';
-import { Trophy, Zap } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 type GameBoardComponent = React.ComponentType<GameBoardProps>;
 
@@ -31,18 +31,18 @@ export default function BoardGamePage() {
     }
   };
 
-  return <div className="w-full flex flex-col relative">
-    {(gameState.status === 'win' || gameState.status === 'draw') && <div className="fixed inset-0 z-10 flex items-center justify-center pointer-events-none">
-      <div className="text-6xl font-extrabold text-accent bg-secondary/70 px-8 py-6 rounded-xl -rotate-12 flex items-center gap-6 animate-pulse">
-        <Trophy className="w-20 h-20 " />
+  return <div className='w-full flex flex-col relative'>
+    {(gameState.status === 'finished') && <div className='fixed inset-0 z-10 flex items-center justify-center pointer-events-none'>
+      <div className='text-6xl font-extrabold text-accent bg-secondary/70 px-8 py-6 rounded-xl -rotate-12 flex items-center gap-6 animate-pulse'>
+        <Trophy className='w-20 h-20 ' />
         {gameState.winner ?? 'Nobody'} Wins!
-        <Zap className="w-20 h-20 " />
+        <Trophy className='w-20 h-20 ' />
       </div>
     </div>}
-    <header className="w-full border-b border-primary p-4 flex justify-between">
+    <header className='w-full border-b border-primary p-4 flex justify-between'>
       <div>
-        <h1 className="text-xl font-semibold">Board Game</h1>
-        <p className="text-sm text-text/70">Room: {currentRoom}</p>
+        <h1 className='text-xl font-semibold'>Board Game</h1>
+        <p className='text-sm text-text/70'>Room: {currentRoom}</p>
       </div>
       <div>
         <div>Playing: {GAME_DISPLAY_NAMES[gameState.gameName]}</div>
@@ -55,10 +55,10 @@ export default function BoardGamePage() {
       leaveGame={leaveGame}
     />
 
-    <div className="flex-1 flex flex-col justify-center items-center">
+    <div className='flex-1 flex flex-col justify-center items-center'>
       {gameState.gameName !== ''
         ? GameBoard ?
-          <div className="w-full max-w-md">
+          <div className='w-full max-w-md'>
             <GameBoard
               gameState={gameState}
               onMove={makeMove}

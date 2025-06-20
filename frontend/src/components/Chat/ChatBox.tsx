@@ -40,8 +40,8 @@ export default function ChatBox() {
     }
   };
 
-  return <div className="flex flex-col h-full bg-background">
-    <div className="px-3 py-2 bg-primary text-on-primary border-b border-secondary">
+  return <div className='flex flex-col h-full bg-background'>
+    <div className='px-3 py-2 bg-primary text-on-primary border-b border-secondary'>
       {showRoomInput ? (
         <form onSubmit={e => {
           e.preventDefault();
@@ -50,49 +50,49 @@ export default function ChatBox() {
             setNewRoom('');
             setShowRoomInput(false);
           }
-        }} className="flex gap-2">
+        }} className='flex gap-2'>
           <Input
-            type="text"
-            placeholder="Enter room name..."
+            type='text'
+            placeholder='Enter room name...'
             value={newRoom}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewRoom(e.target.value)}
-            className="flex-grow text-sm"
+            className='flex-grow text-sm'
             autoFocus
           />
           <Button
-            type="submit"
+            type='submit'
           >
             Join
           </Button>
           <Button
-            type="button"
-            color="secondary"
+            type='button'
+            color='secondary'
             onClick={() => setShowRoomInput(false)}
           >
             Cancel
           </Button>
         </form>
       ) : (
-        <div className="flex justify-between items-center w-full">
+        <div className='flex justify-between items-center w-full'>
           <div
-            className="flex p-2 items-center gap-2 cursor-pointer hover:opacity-80"
+            className='flex p-2 items-center gap-2 cursor-pointer hover:opacity-80'
             onClick={() => setShowRoomInput(true)}
           >
             #{currentRoom}
-            <SquarePen className="w-4 h-4" />
+            <SquarePen className='w-4 h-4' />
           </div>
           <button
             onClick={e => { e.stopPropagation(); leaveRoom() }}
-            className="p-2 text-secondary hover:bg-secondary/50 hover:text-on-secondary rounded-md transition-colors"
-            title="Leave Room"
+            className='p-2 text-secondary hover:bg-secondary/50 hover:text-on-secondary rounded-md transition-colors'
+            title='Leave Room'
           >
-            <DoorOpen className="inline-block w-4 h-4" />
+            <DoorOpen className='inline-block w-4 h-4' />
             <span> Leave</span>
           </button>
           <button
             onClick={handleLogout}
-            className="p-2 text-error hover:bg-error/50 hover:text-on-error rounded-md transition-colors"
-            title="Log out"
+            className='p-2 text-error hover:bg-error/50 hover:text-on-error rounded-md transition-colors'
+            title='Log out'
           >
             <LogOut size={16} className='inline-block' />
             <span> Logout</span>
@@ -101,11 +101,11 @@ export default function ChatBox() {
       )}
     </div>
 
-    <div className="flex-grow overflow-y-auto p-4 space-y-2 scrollbar">
+    <div className='flex-grow overflow-y-auto p-4 space-y-2 scrollbar'>
       {msgLog.length === 0
-        ? <p className="text-center text-text text-sm">No messages yet.</p>
+        ? <p className='text-center text-text text-sm'>No messages yet.</p>
         : msgLog.map((msg, index) => {
-          const isServerMessage = msg.sender === "_server";
+          const isServerMessage = msg.sender === '_server';
           const isMyMessage = msg.sender === username;
           return <div
             key={index}
@@ -121,7 +121,7 @@ export default function ChatBox() {
                   : 'bg-secondary text-on-secondary rounded-bl-none'
               }`}>
               {!isServerMessage &&
-                <span className="font-semibold block text-xs mb-1 opacity-80">
+                <span className='font-semibold block text-xs mb-1 opacity-80'>
                   {msg.sender}
                 </span>
               }
@@ -132,17 +132,17 @@ export default function ChatBox() {
       <div ref={messagesEndRef} />
     </div>
 
-    <form onSubmit={handleSendMessage} className="p-3 border-t border-secondary bg-background flex">
+    <form onSubmit={handleSendMessage} className='p-3 border-t border-secondary bg-background flex'>
       <Input
-        type="text"
-        placeholder="Type a message..."
+        type='text'
+        placeholder='Type a message...'
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        className="flex-grow rounded-r-none"
+        className='flex-grow rounded-r-none'
       />
       <Button
-        type="submit"
-        className="rounded-l-none border-secondary"
+        type='submit'
+        className='rounded-l-none border-secondary'
       >
         Send
       </Button>

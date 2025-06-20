@@ -31,23 +31,23 @@ export default function Dropdown({ title, links }: DropdownProps) {
     };
   }, [handleClickOutside]);
 
-  return <div className="relative" ref={dropdownRef}>
+  return <div className='relative' ref={dropdownRef}>
     <Button
       onClick={() => setIsOpen(!isOpen)}
       aria-expanded={isOpen}
-      aria-haspopup="true"
+      aria-haspopup='true'
       color='secondary'
     >
       {title}
       <svg
         className={`ml-2 w-4 h-4 inline-block transform transition-transform duration-200 ${isOpen ? 'rotate-180' : 'rotate-0'
           }`}
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
+        fill='none'
+        stroke='currentColor'
+        viewBox='0 0 24 24'
+        xmlns='http://www.w3.org/2000/svg'
       >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M19 9l-7 7-7-7'></path>
       </svg>
     </Button>
 
@@ -64,7 +64,7 @@ export default function Dropdown({ title, links }: DropdownProps) {
       {links.map((link, index) => <Link
         key={index}
         href={link.href}
-        className="block py-1 text-lg text-on-secondary hover:text-primary transition-colors duration-200"
+        className='block py-1 text-lg text-on-secondary hover:text-primary transition-colors duration-200'
         onClick={() => setIsOpen(false)}
       >
         {link.label}

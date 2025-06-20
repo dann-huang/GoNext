@@ -30,27 +30,27 @@ export default function ChatWindow() {
       <Button
         onClick={toggleChat}
         variant='accent'
-        aria-label="Open Chat"
-        className="w-full h-full text-2xl rounded-full"
+        aria-label='Open Chat'
+        className='w-full h-full text-2xl rounded-full'
       >
         <MessageCircleMore />
       </Button>
     )}
     {isOpen && (
       <div
-        className="w-full h-full border border-secondary rounded-lg shadow-2xl relative"
+        className='w-full h-full border border-secondary rounded-lg shadow-2xl relative'
       >
         <Button
-          variant="secondary"
-          size="sm"
-          className="absolute -top-3 -right-3 p-2 rounded-full"
+          variant='secondary'
+          size='sm'
+          className='absolute -top-3 -right-3 p-2 rounded-full'
           onClick={toggleChat}
         >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+          <svg className='h-5 w-5' fill='none' stroke='currentColor' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
+            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M6 18L18 6M6 6l12 12'></path>
           </svg>
         </Button>
-        <div className="w-full h-full rounded-lg overflow-hidden">
+        <div className='w-full h-full rounded-lg overflow-hidden'>
           {loggedIn ? <ChatBox /> : <LoginBox />}
         </div>
       </div>

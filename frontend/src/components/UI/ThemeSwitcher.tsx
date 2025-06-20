@@ -13,10 +13,10 @@ export default function ThemeSwitcher() {
   return <select
     value={theme}
     onChange={handleThemeChange}
-    className="bg-secondary text-on-secondary rounded-md py-1 px-2 focus:outline-none appearance-none"
+    className='bg-secondary text-on-secondary rounded-md py-1 px-2 focus:outline-none appearance-none'
   >
-    <option value="system">System</option>
-    <option value="light">Light</option>
-    <option value="dark">Dark</option>
+    <option value='system'>System</option>
+    <option value='light'>Light</option>
+    <option value='dark'>Dark</option>
   </select >;
 };

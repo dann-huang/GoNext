@@ -3,16 +3,17 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
-type TicTacToe struct {
+type ticTacToe struct {
 	baseGame
 	board [3][3]int
 }
 
-func NewTicTacToe() Factory {
+func newTicTacToe() Factory {
 	return func(creator string, payload json.RawMessage) (Game, error) {
-		game := &TicTacToe{
+		game := &ticTacToe{
 			baseGame: newBase(2, "tictactoe"),
 			board:    [3][3]int{},
 		}
@@ -22,7 +23,7 @@ func NewTicTacToe() Factory {
 	}
 }
 
-func (t *TicTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {
+func (t *ticTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {
 	mv, idx, err := t.validateMove(sender, payload)
 	if err != nil {
 		return nil, err
@@ -37,21 +38,23 @@ func (t *TicTacToe) Move(sender string, payload json.RawMessage) (*GameState, er
 	t.board[mv.To.Row][mv.To.Col] = idx + 1
 
 	if win := t.checkWin(); win != 0 {
-		t.Status = StatusWin
+		t.Status = StatusFin
 		t.Winner = t.Players[win-1]
+		t.EndedAt = time.Now()
 	} else if t.checkDraw() {
-		t.Status = StatusDraw
+		t.Status = StatusFin
+		t.EndedAt = time.Now()
 	}
 
 	t.Turn = 1 - t.Turn
 	return t.State(), nil
 }
 
-func (t *TicTacToe) State() *GameState {
+func (t *ticTacToe) State() *GameState {
 	return t.state(t.board)
 }
 
-func (t *TicTacToe) checkWin() int {
+func (t *ticTacToe) checkWin() int {
 	lines := [8][3][2]int{
 		{{0, 0}, {0, 1}, {0, 2}},
 		{{1, 0}, {1, 1}, {1, 2}},
@@ -75,7 +78,7 @@ func (t *TicTacToe) checkWin() int {
 	return 0
 }
 
-func (t *TicTacToe) checkDraw() bool {
+func (t *ticTacToe) checkDraw() bool {
 	for row := range 3 {
 		for col := range 3 {
 			if t.board[row][col] == 0 {
@@ -86,9 +89,12 @@ func (t *TicTacToe) checkDraw() bool {
 	return true
 }
 
-func (t *TicTacToe) Tick() (*GameState, bool) {
+func (t *ticTacToe) Tick() (*GameState, string) {
 	if t.handleTimeout() {
-		return t.State(), true
+		return t.State(), TickFinished
 	}
-	return nil, false
+	if !t.EndedAt.IsZero() && time.Since(t.EndedAt) > CleanupDelay {
+		return t.State(), TickFinished
+	}
+	return nil, TickNoChange
 }

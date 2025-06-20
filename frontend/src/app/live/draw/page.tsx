@@ -177,17 +177,17 @@ export default function DrawPage() {
   };
 
 
-  return <div className="w-full flex flex-col">
-    <header className="w-full border-b border-border p-4">
-      <div className="flex items-center gap-2">
-        <h1 className="text-xl font-semibold">Draw</h1>
+  return <div className='w-full flex flex-col'>
+    <header className='w-full border-b border-border p-4'>
+      <div className='flex items-center gap-2'>
+        <h1 className='text-xl font-semibold'>Draw</h1>
         <InfoCard width={250}>
-          <p className="text-primary">Draw with others in the room!</p>
-          <p className="text-sm">- ctl+drag/middle drag to pan</p>
-          <p className="text-sm">- 2 finger to pan</p>
+          <p className='text-primary'>Draw with others in the room!</p>
+          <p className='text-sm'>- ctl+drag/middle drag to pan</p>
+          <p className='text-sm'>- 2 finger to pan</p>
         </InfoCard>
       </div>
-      <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+      <div className='flex items-center space-x-1 text-sm text-muted-foreground'>
         Room: {currentRoom}
       </div>
     </header>
@@ -204,7 +204,7 @@ export default function DrawPage() {
 
     <div
       ref={containerRef}
-      className="border border-primary border-2 rounded-md overflow-hidden"
+      className='border border-primary border-2 rounded-md overflow-hidden'
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -225,7 +225,7 @@ export default function DrawPage() {
         ref={canvasRef}
         width={DRAW_CANVAS_WIDTH}
         height={DRAW_CANVAS_HEIGHT}
-        className="bg-surface"
+        className='bg-surface'
         style={{
           transform: `translate(${viewState.offset.x}px, ${viewState.offset.y}px) scale(${viewState.zoom})`,
           transformOrigin: '0 0',

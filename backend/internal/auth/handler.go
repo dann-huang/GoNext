@@ -36,8 +36,9 @@ type handlerImpl struct {
 
 func (h *handlerImpl) indexHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message": "Auth is running"}`))
+		if err := util.RespondJSON(w, http.StatusOK, map[string]string{"message": "Auth is running"}); err != nil {
+			slog.Error("failed to write health response", "error", err)
+		}
 	}
 }
 
@@ -46,7 +47,7 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 		Name:  name,
 		Value: value,
 		// Quoted,
-		Path:    path,
+		Path: path,
 		// Domain:  h.config.Domain, // not needed when share domains apparently
 		Expires: expires,
 		// RawExpires,
@@ -80,11 +81,13 @@ func (h *handlerImpl) registerHandler() http.HandlerFunc {
 			}
 			return
 		}
-		util.RespondJSON(w, http.StatusOK, map[string]string{
+		if err := util.RespondJSON(w, http.StatusOK, map[string]string{
 			"message":     "Success",
 			"username":    usr.Username,
 			"displayname": usr.DisplayName,
-		})
+		}); err != nil {
+			slog.Error("failed to write register response", "error", err)
+		}
 	}
 }
 
@@ -110,13 +113,15 @@ func (h *handlerImpl) loginHandler() http.HandlerFunc {
 		h.setAuthCookie(w, h.config.AccCookieName, access, "/", accExpire)
 		h.setAuthCookie(w, h.config.RefCookieName, refresh, "/api/auth", refExpire)
 
-		util.RespondJSON(w, http.StatusOK, map[string]any{
+		if err := util.RespondJSON(w, http.StatusOK, map[string]any{
 			"message":        "login success",
 			"username":       usr.Username,
 			"displayname":    usr.DisplayName,
 			"accessExpires":  accExpire.UnixMilli(),
 			"refreshExpires": refExpire.UnixMilli(),
-		})
+		}); err != nil {
+			slog.Error("failed to write login response", "error", err)
+		}
 	}
 }
 
@@ -124,14 +129,17 @@ func (h *handlerImpl) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		refreshCookie, err := r.Cookie(h.config.RefCookieName)
 		if err == nil {
-			h.service.logoutUser(r.Context(), refreshCookie.Value)
-
+			if err := h.service.logoutUser(r.Context(), refreshCookie.Value); err != nil {
+				slog.Error("failed to logout user", "error", err)
+			}
 			h.setAuthCookie(w, h.config.AccCookieName, "", "/", time.Unix(0, 0))
 			h.setAuthCookie(w, h.config.RefCookieName, "", "/api/auth", time.Unix(0, 0))
 		} else {
 			slog.Error(err.Error())
 		}
-		util.RespondJSON(w, http.StatusOK, map[string]string{"message": "logout success"})
+		if err := util.RespondJSON(w, http.StatusOK, map[string]string{"message": "logout success"}); err != nil {
+			slog.Error("failed to write logout response", "error", err)
+		}
 	}
 }
 
@@ -156,10 +164,12 @@ func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 		h.setAuthCookie(w, h.config.AccCookieName, access, "/", accExpire)
 		h.setAuthCookie(w, h.config.RefCookieName, refresh, "/api/auth", refExpire)
 
-		util.RespondJSON(w, http.StatusOK, map[string]any{
+		if err := util.RespondJSON(w, http.StatusOK, map[string]any{
 			"message":        "refresh success",
 			"accessExpires":  accExpire.UnixMilli(),
 			"refreshExpires": refExpire.UnixMilli(),
-		})
+		}); err != nil {
+			slog.Error("failed to write refresh response", "error", err)
+		}
 	}
 }

@@ -7,7 +7,7 @@ import (
 
 type Factory func(creator string, payload json.RawMessage) (Game, error)
 
-// GameInfo just in case we need payload for creation
+// just in case we need payload for alternative modes
 type GameInfo struct {
 	Factory Factory
 }
@@ -20,10 +20,16 @@ func NewRegistry() *Registry {
 	return &Registry{games: make(map[string]GameInfo)}
 }
 
-func (r *Registry) Register(name string, factory Factory) {
+func (r *Registry) register(name string, factory Factory) {
 	r.games[name] = GameInfo{
 		Factory: factory,
 	}
+}
+
+func (r *Registry) RegisterAll() {
+	r.register("tictactoe", newTicTacToe())
+	r.register("connect4", newConnect4())
+	r.register("chess", newChess())
 }
 
 func (r *Registry) Create(name, creator string, payload json.RawMessage) (Game, error) {
