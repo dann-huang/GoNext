@@ -104,10 +104,6 @@ func (g *baseGame) Leave(player string, intentional bool) bool {
 	}
 
 	g.Players = slices.Delete(g.Players, idx, idx+1)
-	if len(g.Players) < g.NumPlayers {
-		g.Status = StatusWaiting
-	}
-
 	return len(g.Players) == 0
 }
 
