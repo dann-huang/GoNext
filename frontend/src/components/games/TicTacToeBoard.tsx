@@ -6,8 +6,6 @@ import { useUserStore } from '@/hooks/userStore';
 import { cn } from '@/lib/utils';
 import { X, Circle } from 'lucide-react';
 
-const PLAYER_SYMBOLS = ['', 'X', 'O'] as const;
-
 export function TicTacToeBoard({ gameState, onMove }: GameBoardProps) {
   const [hoveredCell, setHoveredCell] = useState<{ row: number, col: number } | null>(null);
   const username = useUserStore(state => state.username);

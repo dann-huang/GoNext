@@ -9,13 +9,11 @@ import { GameBoardProps } from '@/types/gameTypes';
 import useBoardGame from '@/hooks/useBoardGame';
 import { useWebSocket } from '@/hooks/webSocket';
 import { GAME_DISPLAY_NAMES } from '@/config/consts';
-import { useEffect, useMemo } from 'react';
 import { Trophy, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type GameBoardComponent = React.ComponentType<GameBoardProps>;
 
-const GAME_BOARDS: Record<GameName, GameBoardComponent> = {
+const GAME_BOARDS: Record<string, GameBoardComponent> = {
   tictactoe: TicTacToeBoard,
   connect4: Connect4Board,
 };

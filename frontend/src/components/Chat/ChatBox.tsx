@@ -22,7 +22,6 @@ export default function ChatBox() {
     e.preventDefault();
     try {
       await useUserStore.getState().logout();
-      // The store will handle clearing the user state
     } catch (error) {
       console.error('Logout failed:', error);
     }

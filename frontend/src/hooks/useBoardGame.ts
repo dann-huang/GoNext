@@ -9,7 +9,7 @@ export default function useBoardGame() {
   const [gameState, setGameState] = useState<BoardGameState>({
     gameName: '', 
     players: [], 
-    turn: '', 
+    turn: 0, 
     board: [[]], 
     status: 'waiting',
     winner: ''
