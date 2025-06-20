@@ -1,7 +1,7 @@
 # LetsGo: A Real-time Full-Stack Web Application
 
 [![GitHub Actions CI Status](https://github.com/dann-huang/letsGo/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/dann-huang/letsGo/actions/workflows/pr-checks.yml)
-[![GitHub Actions Deployment Status](https://github.com/dann-huang/letsGo/actions/workflows/build-deploy.yml/badge.svg)](https://github.com/dann-huang/letsGo/actions/workflows/build-deploy.yml)
+[![GitHub Actions Deployment Status](https://github.com/dann-huang/letsGo/actions/workflows/build-n-deploy.yml/badge.svg)](https://github.com/dann-huang/letsGo/actions/workflows/build-n-deploy.yml)
 
 LetsGo is a personal project and portfolio piece showcasing a full-stack web application designed for interactive, real-time experiences. It highlights expertise in modern backend (Go), frontend (Next.js), and robust containerized deployment with Docker, Nginx, PostgreSQL, and Redis.
 
@@ -114,5 +114,5 @@ This will build the Docker images and start all services. The frontend will be a
 This project uses GitHub Actions for continuous integration and deployment. The workflow is defined in `.github/workflows/`:
 
 -   `pr-checks.yml`: Runs on every pull request to ensure that the frontend and backend Docker images can be built successfully.
--   `build-deploy.yml`: Deploys the application to the production server upon a push to the `main` branch.
+-   `build-n-deploy.yml`: Deploys the application to the production server upon a push to the `main` branch.
 

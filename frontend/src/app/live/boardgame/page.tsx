@@ -9,7 +9,7 @@ import { GameBoardProps } from '@/types/gameTypes';
 import useBoardGame from '@/hooks/useBoardGame';
 import { useWebSocket } from '@/hooks/webSocket';
 import { GAME_DISPLAY_NAMES } from '@/config/consts';
-import { Trophy, Zap } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 type GameBoardComponent = React.ComponentType<GameBoardProps>;
 
@@ -36,7 +36,7 @@ export default function BoardGamePage() {
       <div className='text-6xl font-extrabold text-accent bg-secondary/70 px-8 py-6 rounded-xl -rotate-12 flex items-center gap-6 animate-pulse'>
         <Trophy className='w-20 h-20 ' />
         {gameState.winner ?? 'Nobody'} Wins!
-        <Zap className='w-20 h-20 ' />
+        <Trophy className='w-20 h-20 ' />
       </div>
     </div>}
     <header className='w-full border-b border-primary p-4 flex justify-between'>
