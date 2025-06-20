@@ -1,9 +1,17 @@
+'use client';
+
 import Link from 'next/link';
 import Button from '@/components/UI/Button';
+import ChatIndicator from '@/components/UI/ChatIndicator';
 
 export default function LivePage() {
   return <div className="container mx-auto p-6 max-w-4xl">
-    <h1 className="text-3xl font-bold mb-6">Welcome to Let's Go Live!</h1>
+    <h1 className="text-3xl font-bold mb-6">Welcome to Let's Go Live! 🎉</h1>
+    
+    <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-8 rounded">
+      <p className="font-semibold">👋 Getting Started</p>
+      <p>Choose an activity below to begin. The chat window is in the bottom right corner.</p>
+    </div>
 
     <div className="space-y-8">
       <section className="bg-surface p-6 rounded-lg shadow-md">
@@ -35,10 +43,6 @@ export default function LivePage() {
           <Button>Start Video Chat</Button>
         </Link>
       </section>
-
-      <div className="text-center text-sm text-foreground/70 mt-8">
-        <p>Create or join a room to get started. All features work in real-time across devices!</p>
-      </div>
     </div>
   </div>;
 }

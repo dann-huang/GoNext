@@ -6,16 +6,27 @@ import { useUserStore } from '@/hooks/userStore';
 import Input from '../UI/Input';
 import Button from '../UI/Button';
 import { Error } from '@/types/wsTypes';
-import { SquarePen } from 'lucide-react';
+import { SquarePen, LogOut, DoorOpen } from 'lucide-react';
 
 export default function ChatBox() {
   const [message, setMessage] = useState('');
   const [showRoomInput, setShowRoomInput] = useState(false);
   const [newRoom, setNewRoom] = useState('');
-  const { msgLog, currentRoom, joinRoom, sendChat } = useWebSocket();
+  const { msgLog, currentRoom, joinRoom, leaveRoom, sendChat } = useWebSocket();
   const username = useUserStore((state) => state.username);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      await useUserStore.getState().logout();
+      // The store will handle clearing the user state
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   useEffect(() => {
     //todo: only scroll if user isn't reading higher up
@@ -63,12 +74,30 @@ export default function ChatBox() {
           </Button>
         </form>
       ) : (
-        <div
-          className="flex p-2 items-center gap-2 cursor-pointer hover:opacity-80"
-          onClick={() => setShowRoomInput(true)}
-        >
-          <p className="text-sm font-semibold">Room: {currentRoom || 'N/A'}</p>
-          <SquarePen />
+        <div className="flex justify-between items-center w-full">
+          <div
+            className="flex p-2 items-center gap-2 cursor-pointer hover:opacity-80"
+            onClick={() => setShowRoomInput(true)}
+          >
+            #{currentRoom}
+            <SquarePen className="w-4 h-4" />
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); leaveRoom() }}
+            className="p-2 text-secondary hover:bg-secondary/50 hover:text-on-secondary rounded-md transition-colors"
+            title="Leave Room"
+          >
+            <DoorOpen className="inline-block w-4 h-4" />
+            <span> Leave</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            className="p-2 text-error hover:bg-error/50 hover:text-on-error rounded-md transition-colors"
+            title="Log out"
+          >
+            <LogOut size={16} className='inline-block' />
+            <span> Logout</span>
+          </button>
         </div>
       )}
     </div>

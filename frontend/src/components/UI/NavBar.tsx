@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Dropdown from './Dropdown';
 import ThemeSwitcher from './ThemeSwitcher';
+import { Earth } from 'lucide-react';
 
 const Logo = () => <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -13,11 +14,11 @@ const Logo = () => <svg
 </svg>;
 
 export default function NavBar() {
-  return <nav className="bg-primary text-on-primary shadow-md py-3 px-6 flex justify-between items-center w-full font-sans">
+  return <nav className="bg-primary text-on-primary shadow-md py-3 px-6 flex justify-between items-center w-full">
     <div className="flex items-center space-x-2">
       <Link href="/" className="flex items-center">
-        <Logo />
-        <span className="text-xl text-on-primary font-bold ml-2 hidden sm:block">My App</span>
+        <Earth />
+        <span className="text-xl text-on-primary font-bold ml-2 hidden sm:block">LetsGo</span>
       </Link>
     </div>
 

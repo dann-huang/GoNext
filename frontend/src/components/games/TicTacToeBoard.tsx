@@ -1,48 +1,72 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
+import { useUserStore } from '@/hooks/userStore';
+import { cn } from '@/lib/utils';
+import { X, Circle } from 'lucide-react';
 
-const CELL_SYMBOLS = ['', 'X', 'O'] as const;
-const CELL_COLORS = [
-  'text-foreground',     // Empty
-  'text-blue-500',      // X
-  'text-red-500'       // O
-] as const;
+const PLAYER_SYMBOLS = ['', 'X', 'O'] as const;
 
 export function TicTacToeBoard({ gameState, onMove }: GameBoardProps) {
+  const [hoveredCell, setHoveredCell] = useState<{ row: number, col: number } | null>(null);
+  const username = useUserStore(state => state.username);
+  const yourIdx = gameState.players.indexOf(username);
+  const isYourTurn = gameState.status === 'in_progress' && gameState.turn === yourIdx;
+
   const handleCellClick = useCallback((row: number, col: number) => {
-    if (gameState.status === 'in_progress' && gameState.board[row][col] === 0) {
+    if (gameState.status === 'in_progress' && gameState.board[row][col] === 0 && isYourTurn) {
       onMove({ to: { row, col } });
     }
-  }, [gameState.status, gameState.board, onMove]);
+  }, [gameState.status, gameState.board, onMove, isYourTurn]);
 
-  return <div className="flex flex-col items-center space-y-4">
-    <div className="grid grid-cols-3 gap-2 bg-foreground/10 p-2 rounded-lg">
-      {gameState.board.map((row, rowIndex) => (
+  const handleCellHover = useCallback((row: number, col: number) => {
+    if (gameState.status === 'in_progress' && gameState.board[row][col] === 0) {
+      setHoveredCell({ row, col });
+    } else {
+      setHoveredCell(null);
+    }
+  }, [gameState.status, gameState.board]);
+
+  return <div className="bg-secondary p-4 rounded-lg">
+    <div className="grid grid-cols-3 gap-2 relative">
+      {gameState.board.map((row, rowIndex) =>
         row.map((cell, colIndex) => {
           const isCellEmpty = cell === 0;
-          const symbol = CELL_SYMBOLS[cell] || '';
-          const color = CELL_COLORS[cell] || 'text-foreground';
-          const isClickable = isCellEmpty && gameState.status === 'in_progress';
+          const isHovered = hoveredCell?.row === rowIndex && hoveredCell?.col === colIndex;
 
-          return <button
-            key={`${rowIndex}-${colIndex}`}
-            onClick={() => handleCellClick(rowIndex, colIndex)}
-            disabled={!isClickable}
-            className={`
-                  w-20 h-20 flex items-center justify-center text-4xl font-bold
-                  rounded-md transition-colors ${color}
-                  ${isClickable
-                ? 'cursor-pointer hover:bg-foreground/10'
-                : 'cursor-not-allowed'}
-                `}
-            aria-label={`Cell ${rowIndex * 3 + colIndex + 1}${symbol ? `, ${symbol}` : ''}`}
-          >
-            {symbol}
-          </button>;
+          return (
+            <div
+              key={`${rowIndex}-${colIndex}`}
+              className={cn(
+                'aspect-square p-2 rounded-lg transition-all',
+                'cursor-pointer',
+                isCellEmpty && 'hover:bg-secondary/80 hover:scale-[1.03]',
+                isHovered && 'bg-secondary/90 scale-[1.03]'
+              )}
+              onClick={() => handleCellClick(rowIndex, colIndex)}
+              onMouseEnter={() => handleCellHover(rowIndex, colIndex)}
+              onMouseLeave={() => setHoveredCell(null)}
+            >
+              <div className={cn(
+                'w-full h-full rounded-md flex items-center justify-center',
+                'bg-background shadow-sm',
+                {
+                  'text-primary': cell === yourIdx + 1 || yourIdx === -1,
+                  'text-accent': cell > 0 && yourIdx !== -1 && cell !== yourIdx + 1,
+                  'opacity-90': isHovered,
+                }
+              )}>
+                {cell === 1 ? (
+                  <X className="w-16 h-16 stroke-[3px]" />
+                ) : cell === 2 ? (
+                  <Circle className="w-14 h-14 stroke-[3px]" />
+                ) : null}
+              </div>
+            </div>
+          );
         })
-      ))}
+      )}
     </div>
   </div>;
 }

@@ -7,7 +7,7 @@ type InputSize = 'sm' | 'md' | 'lg';
 const baseStyles = 'flex w-full rounded-md border border-input bg-background font-medium ring-offset-background transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
 
 const variantStyles = {
-  primary: 'border-primary text-foreground focus-visible:ring-primary/50',
+  primary: 'border-primary bg-background text-primary focus-visible:ring-primary/50',
   secondary: 'border-secondary text-foreground focus-visible:ring-secondary/50',
   accent: 'border-accent text-foreground focus-visible:ring-accent/50',
   destructive: 'border-destructive text-destructive focus-visible:ring-destructive/50',
