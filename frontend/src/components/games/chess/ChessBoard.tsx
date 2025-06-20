@@ -71,52 +71,50 @@ export function ChessBoard({ gameState, onMove }: GameBoardProps) {
     return [];
   }, []);
 
-  return (
-    <div className="bg-amber-100 p-4 rounded-lg shadow-lg">
-      <div className="grid grid-cols-8 border-2 border-amber-800">
-        {gameState.board.map((row, rowIndex) =>
-          row.map((cell, colIndex) => {
-            const isLight = (rowIndex + colIndex) % 2 === 0;
-            const Piece = pieceMapping[cell];
+  return <div className="bg-amber-100 p-4 rounded-lg shadow-lg">
+    <div className="grid grid-cols-8 border-2 border-amber-800">
+      {gameState.board.map((row, rowIndex) =>
+        row.map((cell, colIndex) => {
+          const isLight = (rowIndex + colIndex) % 2 === 0;
+          const Piece = pieceMapping[cell];
 
-            return (
-              <div
-                key={`${rowIndex}-${colIndex}`}
-                className={cn(
-                  'aspect-square flex items-center justify-center relative',
-                  isLight ? 'bg-amber-100' : 'bg-amber-800',
-                  isSelected(rowIndex, colIndex) && 'ring-4 ring-blue-500',
-                  isValidMove(rowIndex, colIndex) && 'bg-green-200/70',
-                  'cursor-pointer',
-                  'transition-colors duration-200',
-                  'hover:bg-opacity-80',
-                  'group'
-                )}
-                onClick={() => handleSquareClick(rowIndex, colIndex)}
-              >
-                {Piece && <Piece />}
-                {isValidMove(rowIndex, colIndex) && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-1/4 h-1/4 rounded-full bg-black/30" />
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-      <div className="mt-4 text-center">
-        {gameState.status === 'in_progress' && (
-          <p className="text-lg font-medium">
-            {isYourTurn ? 'Your turn' : 'Waiting for opponent...'}
-          </p>
-        )}
-        {gameState.status === 'finished' && gameState.winner && (
-          <p className="text-lg font-bold text-green-700">
-            {gameState.winner === username ? 'You win!' : `${gameState.winner} wins!`}
-          </p>
-        )}
-      </div>
+          return (
+            <div
+              key={`${rowIndex}-${colIndex}`}
+              className={cn(
+                'aspect-square flex items-center justify-center relative',
+                isLight ? 'bg-amber-100' : 'bg-amber-800',
+                isSelected(rowIndex, colIndex) && 'ring-4 ring-blue-500',
+                isValidMove(rowIndex, colIndex) && 'bg-green-200/70',
+                'cursor-pointer',
+                'transition-colors duration-200',
+                'hover:bg-opacity-80',
+                'group'
+              )}
+              onClick={() => handleSquareClick(rowIndex, colIndex)}
+            >
+              {Piece && <Piece />}
+              {isValidMove(rowIndex, colIndex) && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-1/4 h-1/4 rounded-full bg-black/30" />
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
     </div>
-  );
+    <div className="mt-4 text-center">
+      {gameState.status === 'in_progress' && (
+        <p className="text-lg font-medium">
+          {isYourTurn ? 'Your turn' : 'Waiting for opponent...'}
+        </p>
+      )}
+      {gameState.status === 'finished' && gameState.winner && (
+        <p className="text-lg font-bold text-green-700">
+          {gameState.winner === username ? 'You win!' : `${gameState.winner} wins!`}
+        </p>
+      )}
+    </div>
+  </div>;
 }
