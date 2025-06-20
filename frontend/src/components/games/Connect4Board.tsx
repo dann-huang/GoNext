@@ -17,7 +17,7 @@ export function Connect4Board({ gameState, onMove }: GameBoardProps) {
   const handleClick = useCallback((col: number) => {
     if (!isYourTurn) return;
     onMove({ to: { row: 0, col } });
-  }, [gameState.board, gameState.turn, username, onMove]);
+  }, [gameState.board, gameState.turn, username, onMove, isYourTurn ]);
 
   return <div className="flex flex-col space-y-4">
     <div className="grid grid-cols-7 gap-2">

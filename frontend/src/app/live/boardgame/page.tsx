@@ -1,15 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useUserStore } from '@/hooks/userStore';
-import { GAME_NAMES, GameName } from '@/types/wsTypes';
+import { GameName } from '@/types/wsTypes';
 import { TicTacToeBoard } from '@/components/games/TicTacToeBoard';
 import { Connect4Board } from '@/components/games/Connect4Board';
 import { GameStatus } from '@/components/games/GameStatus';
 import { CreateGame } from '@/components/games/CreateGame';
 import { GameBoardProps } from '@/types/gameTypes';
 import useBoardGame from '@/hooks/useBoardGame';
-import { GAME_DISPLAY_NAMES } from '@/config/consts';
 
 type GameBoardComponent = React.ComponentType<GameBoardProps>;
 

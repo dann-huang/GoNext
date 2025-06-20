@@ -130,7 +130,7 @@ export default function DrawPage() {
     }
   };
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = () => {
     if (isPanning) {
       stopPan();
     } else {
@@ -171,8 +171,6 @@ export default function DrawPage() {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 0) return;
-
-    // Only prevent default for single touch to allow two-finger scrolling
     if (e.touches.length === 1) {
       e.preventDefault();
     }

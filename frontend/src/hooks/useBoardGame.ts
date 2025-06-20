@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from './webSocket';
-import { useUserStore } from './userStore';
 import { BoardGameState, GameMove, GameName } from '@/types/wsTypes';
 
 export default function useBoardGame() {
   const { sendGameMsg, setGameHandler } = useWebSocket();
-  const username = useUserStore(state => state.username);
   const [isLoading, setIsLoading] = useState(false);
 
   const [gameState, setGameState] = useState<BoardGameState>({
@@ -20,7 +18,7 @@ export default function useBoardGame() {
   const createGame = useCallback(async (gameName: GameName) => {
     try {
       setIsLoading(true);
-      await sendGameMsg({ action: 'create', gameName });
+      sendGameMsg({ action: 'create', gameName });
     } catch (error) {
       console.error('Error creating game:', error);
       throw error;

@@ -13,7 +13,7 @@ interface WSState {
   msgLog: t.DisplayableMsg[];
   clients: string[];
 
-  gameStates: t.GameStateMsg[];
+  gameStates: t.IncomingGameState[];
   boardGameState: t.BoardGameState | null;
 
   getStatus: () => t.WsStatus;
@@ -177,7 +177,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     const msg: t.OutgoingMsg = {
       type: t.GameState,
       sender: '',
-      payload: payload as any,
+      payload: payload,
     };
     get().sendMessage(msg);
   },

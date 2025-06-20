@@ -119,9 +119,15 @@ export interface GamePayload {
   move?: GameMove;
 }
 
-export interface GameStateMsg {
+export interface OutgoingGameState {
   type: typeof GameState;
   sender: string;
+  payload: GamePayload;
+}
+
+export interface IncomingGameState {
+  type: typeof GameState;
+  sender: '_server';
   payload: BoardGameState;
 }
 
@@ -129,7 +135,7 @@ export interface GameStateMsg {
 export type IncomingMsg =
   | ChatMsg
   | VidSignalMsg
-  | GameStateMsg
+  | IncomingGameState
   | JoinRoomMsg
   | GetClientRes
   | ErrorMsg
@@ -139,7 +145,7 @@ export type IncomingMsg =
 export type OutgoingMsg =
   | ChatMsg
   | VidSignalMsg
-  | GameStateMsg
+  | OutgoingGameState
   | JoinRoomMsg
   | LeaveRoomMsg
   | GetClientsReq
