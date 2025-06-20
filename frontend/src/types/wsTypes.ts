@@ -91,7 +91,7 @@ export interface RawDrawMsg {
 
 
 //------------------------------Game state stuff--------------------------------
-export const GAME_NAMES = ['tictactoe', 'connect4'] as const;
+export const GAME_NAMES = ['tictactoe', 'connect4', 'chess'] as const;
 export type GameName = typeof GAME_NAMES[number];
 
 export interface BoardGameState {

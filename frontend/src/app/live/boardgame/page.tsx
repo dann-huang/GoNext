@@ -3,6 +3,7 @@
 import { GameName } from '@/types/wsTypes';
 import { TicTacToeBoard } from '@/components/games/TicTacToeBoard';
 import { Connect4Board } from '@/components/games/Connect4Board';
+import { ChessBoard } from '@/components/games/chess/ChessBoard';
 import { GameStatus } from '@/components/games/GameStatus';
 import { CreateGame } from '@/components/games/CreateGame';
 import { GameBoardProps } from '@/types/gameTypes';
@@ -16,6 +17,7 @@ type GameBoardComponent = React.ComponentType<GameBoardProps>;
 const GAME_BOARDS: Record<string, GameBoardComponent> = {
   tictactoe: TicTacToeBoard,
   connect4: Connect4Board,
+  chess: ChessBoard,
 };
 
 export default function BoardGamePage() {
