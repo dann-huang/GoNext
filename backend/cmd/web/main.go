@@ -59,7 +59,9 @@ func main() {
 		api.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))
+			if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+				slog.Error("failed to write health response", "error", err)
+			}
 		})
 
 		api.Mount("/auth", authModule.Router())
@@ -73,5 +75,7 @@ func main() {
 	// r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
 
 	println("---Server start---")
-	http.ListenAndServe(":3333", r)
+	if err := http.ListenAndServe(":3333", r); err != nil {
+		slog.Error("server error", "error", err)
+	}
 }

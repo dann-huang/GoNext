@@ -31,6 +31,7 @@ func RunInitialSchema(db *sql.DB) error {
 	return nil
 }
 
+//nolint:unused
 func main() {
 	appConfig, err := config.Load()
 	if err != nil {
