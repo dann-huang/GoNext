@@ -52,9 +52,8 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	games := game.NewRegistry()
-	games.Register("connect4", game.NewConnect4())
-	games.Register("tictactoe", game.NewTicTacToe())
+	gameReg := game.NewRegistry()
+	gameReg.RegisterAll()
 
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +63,7 @@ func main() {
 		})
 
 		api.Mount("/auth", authModule.Router())
-		api.Mount("/live", live.Router(userAccMdw, userCtxKey, games, appCfg.WS))
+		api.Mount("/live", live.Router(userAccMdw, userCtxKey, gameReg, appCfg.WS))
 	})
 
 	// static pages

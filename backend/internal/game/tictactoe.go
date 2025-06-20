@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-type TicTacToe struct {
+type ticTacToe struct {
 	baseGame
 	board [3][3]int
 }
 
-func NewTicTacToe() Factory {
+func newTicTacToe() Factory {
 	return func(creator string, payload json.RawMessage) (Game, error) {
-		game := &TicTacToe{
+		game := &ticTacToe{
 			baseGame: newBase(2, "tictactoe"),
 			board:    [3][3]int{},
 		}
@@ -23,7 +23,7 @@ func NewTicTacToe() Factory {
 	}
 }
 
-func (t *TicTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {
+func (t *ticTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {
 	mv, idx, err := t.validateMove(sender, payload)
 	if err != nil {
 		return nil, err
@@ -50,11 +50,11 @@ func (t *TicTacToe) Move(sender string, payload json.RawMessage) (*GameState, er
 	return t.State(), nil
 }
 
-func (t *TicTacToe) State() *GameState {
+func (t *ticTacToe) State() *GameState {
 	return t.state(t.board)
 }
 
-func (t *TicTacToe) checkWin() int {
+func (t *ticTacToe) checkWin() int {
 	lines := [8][3][2]int{
 		{{0, 0}, {0, 1}, {0, 2}},
 		{{1, 0}, {1, 1}, {1, 2}},
@@ -78,7 +78,7 @@ func (t *TicTacToe) checkWin() int {
 	return 0
 }
 
-func (t *TicTacToe) checkDraw() bool {
+func (t *ticTacToe) checkDraw() bool {
 	for row := range 3 {
 		for col := range 3 {
 			if t.board[row][col] == 0 {
@@ -89,7 +89,7 @@ func (t *TicTacToe) checkDraw() bool {
 	return true
 }
 
-func (t *TicTacToe) Tick() (*GameState, string) {
+func (t *ticTacToe) Tick() (*GameState, string) {
 	if t.handleTimeout() {
 		return t.State(), TickFinished
 	}

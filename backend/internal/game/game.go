@@ -30,12 +30,13 @@ type Game interface {
 }
 
 type GameState struct {
-	GameName string   `json:"gameName"`
-	Players  []string `json:"players"`
-	Turn     int      `json:"turn"`
-	Board    any      `json:"board"`
-	Status   string   `json:"status"`
-	Winner   string   `json:"winner,omitempty"`
+	GameName   string      `json:"gameName"`
+	Players    []string    `json:"players"`
+	Turn       int         `json:"turn"`
+	Board      any         `json:"board"`
+	Status     string      `json:"status"`
+	Winner     string      `json:"winner,omitempty"`
+	ValidMoves [][]bool    `json:"validMoves,omitempty"`
 }
 
 type Position struct {
@@ -44,8 +45,9 @@ type Position struct {
 }
 
 type GameMovePayload struct {
-	From Position `json:"from"`
-	To   Position `json:"to"`
+	From   Position `json:"from"`
+	To     Position `json:"to"`
+	Change string   `json:"change,omitempty"`
 }
 
 type baseGame struct {

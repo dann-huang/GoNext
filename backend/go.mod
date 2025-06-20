@@ -13,8 +13,11 @@ require (
 	golang.org/x/crypto v0.38.0
 )
 
+require golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c // indirect
+
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/corentings/chess/v2 v2.0.9
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

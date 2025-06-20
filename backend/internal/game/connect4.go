@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-type Connect4 struct {
+type connect4 struct {
 	baseGame
 	board [6][7]int
 }
 
-func NewConnect4() Factory {
+func newConnect4() Factory {
 	return func(creator string, payload json.RawMessage) (Game, error) {
-		game := &Connect4{
+		game := &connect4{
 			baseGame: newBase(2, "connect4"),
 			board:    [6][7]int{},
 		}
@@ -23,7 +23,7 @@ func NewConnect4() Factory {
 	}
 }
 
-func (c *Connect4) Move(sender string, payload json.RawMessage) (*GameState, error) {
+func (c *connect4) Move(sender string, payload json.RawMessage) (*GameState, error) {
 	mv, idx, err := c.validateMove(sender, payload)
 	if err != nil {
 		return nil, err
@@ -60,11 +60,11 @@ func (c *Connect4) Move(sender string, payload json.RawMessage) (*GameState, err
 	return c.State(), nil
 }
 
-func (c *Connect4) State() *GameState {
+func (c *connect4) State() *GameState {
 	return c.state(c.board)
 }
 
-func (c *Connect4) checkWinner(startRow, startCol int) int {
+func (c *connect4) checkWinner(startRow, startCol int) int {
 	player := c.board[startRow][startCol]
 	if player == 0 {
 		return 0
@@ -97,7 +97,7 @@ func (c *Connect4) checkWinner(startRow, startCol int) int {
 	return 0
 }
 
-func (c *Connect4) checkDraw() bool {
+func (c *connect4) checkDraw() bool {
 	for col := range 7 {
 		if c.board[0][col] == 0 {
 			return false
@@ -106,7 +106,7 @@ func (c *Connect4) checkDraw() bool {
 	return true
 }
 
-func (c *Connect4) Tick() (*GameState, string) {
+func (c *connect4) Tick() (*GameState, string) {
 	if c.handleTimeout() {
 		return c.State(), TickFinished
 	}
