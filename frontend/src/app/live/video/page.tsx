@@ -57,19 +57,6 @@ export default function VideoPage() {
     }
   };
 
-  if (!currentRoom) {
-    return <div className="flex flex-col items-center justify-center h-full bg-background text-text p-4 text-center">
-      <p className="text-lg font-medium mb-2">No Active Room</p>
-      <p className="text-text/70 mb-6">Please join a room from chat window to start a video call</p>
-      <Button
-        onClick={() => window.open('/live', '_self')}
-        color="primary"
-      >
-        Back to Live
-      </Button>
-    </div>;
-  }
-
   // Calculate grid columns based on number of participants
   const totalParticipants = inCall ? 1 + peerStreams.length : 0;
   let gridCols = 'grid-cols-1';
@@ -79,8 +66,8 @@ export default function VideoPage() {
   return <div className="flex flex-col w-full">
     <header className="w-full border-b border-primary p-4 flex justify-between">
       <div>
-        <h1 className="text-xl font-semibold text-text truncate">Video Call</h1>
-        <p className="text-sm text-text/70 truncate">Room: {currentRoom}</p>
+        <h1 className="text-xl font-semibold">Video Call</h1>
+        <p className="text-sm text-text/70">Room: {currentRoom}</p>
       </div>
 
       <div className="flex gap-2">

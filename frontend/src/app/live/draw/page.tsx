@@ -28,24 +28,20 @@ export default function DrawPage() {
   const [isPanning, setIsPanning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Set up passive event listeners for touch events
+  // Nessesary so browser doesn't complain about prevent default in passive listeners
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    const handleTouch = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        e.preventDefault();
-      }
+    const preventDefault = (e: TouchEvent) => {
+      if (e.touches.length === 1) e.preventDefault()
     };
-
-    container.addEventListener('touchstart', handleTouch, { passive: false });
-    container.addEventListener('touchmove', handleTouch, { passive: false });
+    container.addEventListener('touchstart', preventDefault, { passive: false });
+    container.addEventListener('touchmove', preventDefault, { passive: false });
     return () => {
-      container.removeEventListener('touchstart', handleTouch);
-      container.removeEventListener('touchmove', handleTouch);
+      container.removeEventListener('touchstart', preventDefault);
+      container.removeEventListener('touchmove', preventDefault);
     };
-  }, [containerRef]);
+  }, [containerRef.current]);
 
   const panStartRef = useRef<{
     x: number;
@@ -111,11 +107,8 @@ export default function DrawPage() {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
-      // Middle mouse or Ctrl+Left click for panning
-      e.preventDefault();
       startPan(e.clientX, e.clientY);
     } else if (e.button === 0) {
-      // Left click for drawing
       const coords = getCanvasCoords(e.clientX, e.clientY);
       startDrawing(coords.x, coords.y);
     }
@@ -149,20 +142,13 @@ export default function DrawPage() {
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 0) return;
 
-    // Only prevent default for single touch to allow two-finger scrolling
-    if (e.touches.length === 1) {
-      e.preventDefault();
-    }
-
     if (e.touches.length === 2) {
-      // Two-finger pan
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
       const midX = (touch1.clientX + touch2.clientX) / 2;
       const midY = (touch1.clientY + touch2.clientY) / 2;
       startPan(midX, midY);
     } else {
-      // Single touch draw
       const touch = e.touches[0];
       const coords = getCanvasCoords(touch.clientX, touch.clientY);
       startDrawing(coords.x, coords.y);
@@ -171,9 +157,6 @@ export default function DrawPage() {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 0) return;
-    if (e.touches.length === 1) {
-      e.preventDefault();
-    }
 
     if (e.touches.length === 2) {
       const touch1 = e.touches[0];
@@ -189,22 +172,19 @@ export default function DrawPage() {
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (e.touches.length < 2) {
-      stopPan();
-    }
+    if (e.touches.length < 2) stopPan();
     stopDrawing();
   };
 
 
-  return <div className="w-full max-w-6xl mx-auto flex flex-col min-h-screen">
+  return <div className="w-full flex flex-col">
     <header className="w-full border-b border-border p-4">
       <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold">Draw</h1>
-        <InfoCard>
+        <h1 className="text-xl font-semibold">Draw</h1>
+        <InfoCard width={250}>
           <p className="text-primary">Draw with others in the room!</p>
-          <p className="text-sm">-ctl+drag/middle drag to pan</p>
-          <p className="text-sm">-2 finger to pan</p>
+          <p className="text-sm">- ctl+drag/middle drag to pan</p>
+          <p className="text-sm">- 2 finger to pan</p>
         </InfoCard>
       </div>
       <div className="flex items-center space-x-1 text-sm text-muted-foreground">

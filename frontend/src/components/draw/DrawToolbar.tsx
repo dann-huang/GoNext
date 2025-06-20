@@ -22,7 +22,7 @@ export function DrawToolbar({
   zoomOut,
   zoomReset,
 }: DrawToolbarProps) {
-  return <div className="flex items-center justify-between p-2 flex-wrap">
+  return <div className="flex items-center justify-between py-2 px-4 flex-wrap">
     <div className="flex items-center gap-2">
       <label htmlFor="color" className="text-xs">
         Color:

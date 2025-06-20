@@ -20,9 +20,9 @@ export const InfoCard = ({ children, width = 64 }: InfoCardProps) => {
       />
 
       {show && (
-        <div
-          className={`absolute left-5 top-5 w-${width} bg-surface text-text 
+        <div className={`absolute left-5 top-5 bg-surface text-text 
           rounded-md shadow-lg border border-primary p-3 z-50`}
+          style={{ width: `${width}px` }}
           onMouseEnter={() => setShow(true)}
           onMouseLeave={() => setShow(false)}
         >
