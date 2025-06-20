@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/userStore';
+import { cn } from '@/lib/utils';
 
 export function Connect4Board({ gameState, onMove }: GameBoardProps) {
   const [hoveredCol, setHoveredCol] = useState<number>(-1);
@@ -38,12 +39,12 @@ export function Connect4Board({ gameState, onMove }: GameBoardProps) {
             className='aspect-square rounded-full p-1'
             onMouseEnter={() => setHoveredCol(colIndex)}
           >
-            <div className={'w-full h-full rounded-full' +
+            <div className={cn('w-full h-full rounded-full',
               cell ?
-              yourIdx >= 0 ? cell === yourIdx + 1 ? 'bg-secondary' : 'bg-accent'
-                : cell === 1 ? 'bg-secondary' : 'bg-accent'
-              : 'bg-background'
-            } />
+                yourIdx >= 0 ? cell === yourIdx + 1 ? 'bg-secondary' : 'bg-accent'
+                  : cell === 1 ? 'bg-secondary' : 'bg-accent'
+                : 'bg-background'
+            )} />
           </div>
         ))
       ))}

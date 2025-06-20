@@ -3,7 +3,6 @@ package live
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -41,13 +40,15 @@ func (r *room) run() {
 		case <-ticker.C:
 			r.mu.Lock()
 			if r.game != nil {
-				if _, changed := r.game.Tick(); changed {
-					msg, err := r.gameStateMsg()
-					if err != nil {
-						slog.Error("gameStateMsg failed", "error", err)
-					} else {
-						r.broadcast(msg)
-					}
+				_, status := r.game.Tick()
+				switch status {
+				case game.TickBroadcast:
+					r.broadcast(r.gameStateMsg())
+				case game.TickFinished:
+					r.game = nil
+					r.broadcast(r.gameStateMsg())
+				case game.TickNoChange:
+				default:
 				}
 			}
 			r.mu.Unlock()
@@ -101,7 +102,6 @@ func (r *room) getClientList() []byte {
 	for client := range r.clients {
 		clientNames = append(clientNames, client.token.Displayname)
 	}
-
 	payload := map[string]any{
 		"roomName": r.name,
 		"clients":  clientNames,
@@ -132,11 +132,7 @@ func (r *room) handleGameState(msg *roomMsg) string {
 
 	switch payload.Action {
 	case "get":
-		jsonMsg, err := r.gameStateMsg()
-		if err != nil {
-			return "failed to get game state: " + err.Error()
-		}
-		msg.Client.send <- jsonMsg
+		msg.Client.send <- r.gameStateMsg()
 		return ""
 	case "create":
 		if r.game != nil {
@@ -147,11 +143,7 @@ func (r *room) handleGameState(msg *roomMsg) string {
 			return err.Error()
 		}
 		r.game = newGame
-		msg, err := r.gameStateMsg()
-		if err != nil {
-			return "failed to get game state: " + err.Error()
-		}
-		r.broadcast(msg)
+		r.broadcast(r.gameStateMsg())
 		return ""
 	case "join":
 		if r.game == nil {
@@ -161,11 +153,7 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if err != nil {
 			return err.Error()
 		}
-		msg, err := r.gameStateMsg()
-		if err != nil {
-			return "failed to get game state: " + err.Error()
-		}
-		r.broadcast(msg)
+		r.broadcast(r.gameStateMsg())
 		return ""
 	case "move":
 		if r.game == nil {
@@ -182,11 +170,7 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if err != nil {
 			return err.Error()
 		}
-		msg, err := r.gameStateMsg()
-		if err != nil {
-			return "failed to get game state: " + err.Error()
-		}
-		r.broadcast(msg)
+		r.broadcast(r.gameStateMsg())
 		return ""
 	case "leave":
 		if r.game == nil {
@@ -195,18 +179,14 @@ func (r *room) handleGameState(msg *roomMsg) string {
 		if r.game.Leave(sender, true) {
 			r.game = nil
 		}
-		msg, err := r.gameStateMsg()
-		if err != nil {
-			return "failed to get game state: " + err.Error()
-		}
-		r.broadcast(msg)
+		r.broadcast(r.gameStateMsg())
 		return ""
 	default:
 		return "unknown action: " + payload.Action
 	}
 }
 
-func (r *room) gameStateMsg() ([]byte, error) {
+func (r *room) gameStateMsg() []byte {
 	var state *game.GameState
 
 	if r.game != nil {
@@ -219,7 +199,7 @@ func (r *room) gameStateMsg() ([]byte, error) {
 	}
 	stateBytes, err := json.Marshal(state)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal game state: %w", err)
+		return r.panicReset()
 	}
 
 	msg := &roomMsg{
@@ -229,7 +209,18 @@ func (r *room) gameStateMsg() ([]byte, error) {
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal message: %w", err)
+		return r.panicReset()
 	}
-	return jsonMsg, nil
+	return jsonMsg
+}
+
+func (r *room) panicReset() []byte {
+	r.game = nil
+
+	errorMsg := []byte(`{"type":"error","sender":"_server","payload":"Game state corrupted, resetting..."}`)
+	cleanStateMsg := []byte(`{"type":"game_state","sender":"_server","payload":"{\"status\":\"waiting\",\"players\":[],\"turn\":0,\"board\":null,\"winner\":\"\"}"}`)
+
+	r.broadcast(errorMsg)
+	r.broadcast(cleanStateMsg)
+	return cleanStateMsg
 }

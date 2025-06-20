@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type TicTacToe struct {
@@ -37,10 +38,12 @@ func (t *TicTacToe) Move(sender string, payload json.RawMessage) (*GameState, er
 	t.board[mv.To.Row][mv.To.Col] = idx + 1
 
 	if win := t.checkWin(); win != 0 {
-		t.Status = StatusWin
+		t.Status = StatusFin
 		t.Winner = t.Players[win-1]
+		t.EndedAt = time.Now()
 	} else if t.checkDraw() {
-		t.Status = StatusDraw
+		t.Status = StatusFin
+		t.EndedAt = time.Now()
 	}
 
 	t.Turn = 1 - t.Turn
@@ -86,9 +89,12 @@ func (t *TicTacToe) checkDraw() bool {
 	return true
 }
 
-func (t *TicTacToe) Tick() (*GameState, bool) {
+func (t *TicTacToe) Tick() (*GameState, string) {
 	if t.handleTimeout() {
-		return t.State(), true
+		return t.State(), TickFinished
 	}
-	return nil, false
+	if !t.EndedAt.IsZero() && time.Since(t.EndedAt) > CleanupDelay {
+		return t.State(), TickFinished
+	}
+	return nil, TickNoChange
 }

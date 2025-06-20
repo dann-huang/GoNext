@@ -10,11 +10,15 @@ import (
 const (
 	StatusWaiting      = "waiting"
 	StatusInProgress   = "in_progress"
-	StatusWin          = "win"
-	StatusDraw         = "draw"
+	StatusFin          = "finished"
 	StatusDisconnected = "disconnected"
 
+	TickFinished  = "finished"
+	TickNoChange  = "no_change"
+	TickBroadcast = "broadcast"
+
 	DisconnectTimeout = 30 * time.Second
+	CleanupDelay      = 10 * time.Second
 )
 
 type Game interface {
@@ -22,7 +26,7 @@ type Game interface {
 	Move(sender string, payload json.RawMessage) (*GameState, error)
 	State() *GameState
 	Leave(player string, intentional bool) bool
-	Tick() (*GameState, bool) // Tick handles time-based events, returns true if state changed
+	Tick() (*GameState, string)
 }
 
 type GameState struct {
@@ -52,6 +56,7 @@ type baseGame struct {
 	Status      string
 	Winner      string
 	Disconnects map[string]time.Time
+	EndedAt     time.Time
 }
 
 func newBase(numPlayers int, gameName string) baseGame {
@@ -70,7 +75,7 @@ func (g *baseGame) Join(player string) error {
 		if _, ok := g.Disconnects[player]; ok {
 			delete(g.Disconnects, player)
 			if len(g.Disconnects) == 0 {
-				g.Status = StatusInProgress // Resume the game
+				g.Status = StatusInProgress
 			}
 			return nil
 		}
@@ -108,28 +113,30 @@ func (g *baseGame) Leave(player string, intentional bool) bool {
 }
 
 func (g *baseGame) handleTimeout() bool {
-	if g.Status != StatusDisconnected {
-		return false
-	}
-
-	var timedOutPlayer string
-	for player, disconnectedAt := range g.Disconnects {
-		if time.Since(disconnectedAt) > DisconnectTimeout {
-			timedOutPlayer = player
-			break
-		}
-	}
-	if timedOutPlayer != "" {
-		g.Status = StatusWin
-		if len(g.Players) == 2 {
-			winnerIdx := 1 - slices.Index(g.Players, timedOutPlayer)
-			if winnerIdx >= 0 && winnerIdx < len(g.Players) {
-				g.Winner = g.Players[winnerIdx]
+	if g.Status == StatusDisconnected {
+		var timedOutPlayer string
+		for player, disconnectedAt := range g.Disconnects {
+			if time.Since(disconnectedAt) > DisconnectTimeout {
+				timedOutPlayer = player
+				break
 			}
 		}
-		return true
+		if timedOutPlayer != "" {
+			g.Status = StatusFin
+			if len(g.Players) == 2 {
+				winnerIdx := 1 - slices.Index(g.Players, timedOutPlayer)
+				if winnerIdx >= 0 && winnerIdx < len(g.Players) {
+					g.Winner = g.Players[winnerIdx]
+				}
+			}
+			g.EndedAt = time.Now()
+			return true
+		}
 	}
 
+	if (g.Status == StatusFin) && g.EndedAt.IsZero() {
+		g.EndedAt = time.Now()
+	}
 	return false
 }
 

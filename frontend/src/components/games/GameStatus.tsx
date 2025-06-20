@@ -27,12 +27,10 @@ export function GameStatus({
         return 'Waiting for players...';
       case 'in_progress':
         return yourTurn ? 'Your turn!' : `${gameState.players[gameState.turn]} turn`;
-      case 'win':
+      case 'finished':
         if (gameState.winner === username) return 'You won! 🎉';
         if (gameState.winner) return `${gameState.winner} wins!`;
-        return 'Game over';
-      case 'draw':
-        return 'It\'s a draw!';
+        return 'Draw!';
       default:
         return 'Game starting...';
     }

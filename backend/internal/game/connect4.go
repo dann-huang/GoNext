@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type Connect4 struct {
@@ -47,10 +48,12 @@ func (c *Connect4) Move(sender string, payload json.RawMessage) (*GameState, err
 	}
 
 	if win := c.checkWinner(droppedRow, mv.To.Col); win != 0 {
-		c.Status = StatusWin
+		c.Status = StatusFin
 		c.Winner = c.Players[win-1]
+		c.EndedAt = time.Now()
 	} else if c.checkDraw() {
-		c.Status = StatusDraw
+		c.Status = StatusFin
+		c.EndedAt = time.Now()
 	}
 
 	c.Turn = 1 - c.Turn
@@ -103,9 +106,12 @@ func (c *Connect4) checkDraw() bool {
 	return true
 }
 
-func (c *Connect4) Tick() (*GameState, bool) {
+func (c *Connect4) Tick() (*GameState, string) {
 	if c.handleTimeout() {
-		return c.State(), true
+		return c.State(), TickFinished
 	}
-	return nil, false
+	if !c.EndedAt.IsZero() && time.Since(c.EndedAt) > CleanupDelay {
+		return c.State(), TickFinished
+	}
+	return nil, TickNoChange
 }
