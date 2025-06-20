@@ -1,6 +1,5 @@
 'use client';
 
-import { useUserStore } from '@/hooks/userStore';
 import { GameName } from '@/types/wsTypes';
 import { TicTacToeBoard } from '@/components/games/TicTacToeBoard';
 import { Connect4Board } from '@/components/games/Connect4Board';
@@ -10,6 +9,7 @@ import { GameBoardProps } from '@/types/gameTypes';
 import useBoardGame from '@/hooks/useBoardGame';
 import { useWebSocket } from '@/hooks/webSocket';
 import { GAME_DISPLAY_NAMES } from '@/config/consts';
+import { useEffect } from 'react';
 
 type GameBoardComponent = React.ComponentType<GameBoardProps>;
 
@@ -21,7 +21,6 @@ const GAME_BOARDS: Record<GameName, GameBoardComponent> = {
 export default function BoardGamePage() {
   const { currentRoom } = useWebSocket();
   const { gameState, createGame, joinGame, leaveGame, makeMove } = useBoardGame();
-
   const GameBoard = gameState.gameName ? GAME_BOARDS[gameState.gameName] : null;
 
   const handleCreateGame = async (gameName: GameName) => {
