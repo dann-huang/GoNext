@@ -22,7 +22,7 @@ export function DrawToolbar({
   zoomOut,
   zoomReset,
 }: DrawToolbarProps) {
-  return <div className="flex items-center justify-between p-2">
+  return <div className="flex items-center justify-between p-2 flex-wrap">
     <div className="flex items-center gap-2">
       <label htmlFor="color" className="text-xs">
         Color:
@@ -35,10 +35,10 @@ export function DrawToolbar({
         className="w-6"
       />
 
-      <label htmlFor="line-width" className="text-sm">
-        | Width:
+      <label htmlFor="line-width" className="text-xs">
+        Width:
       </label>
-      <span className="text-sm">
+      <span className="text-xs w-2">
         {currentWidth}
       </span>
       <input
@@ -48,12 +48,12 @@ export function DrawToolbar({
         max="20"
         value={currentWidth}
         onChange={(e) => changeWidth(parseInt(e.target.value))}
-        className="w-16"
+        className="w-12"
       />
 
     </div>
 
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
       <div className="flex items-center bg-surface rounded-md shadow-sm border border-primary/50">
         <Button
           variant="ghost"
@@ -62,8 +62,8 @@ export function DrawToolbar({
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <span className="text-xs w-10 text-center">
-          Zoom {(currentZoom * 100).toFixed()}%
+        <span className="text-xs w-8 text-center">
+          {(currentZoom * 100).toFixed()}%
         </span>
         <Button
           variant="ghost"
@@ -72,7 +72,6 @@ export function DrawToolbar({
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
-
         <Button
           variant="ghost"
           size="sm"
