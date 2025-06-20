@@ -6,31 +6,31 @@ import (
 	"os"
 
 	"letsgo/internal/auth"
+	"letsgo/internal/config"
 	"letsgo/internal/db"
 	"letsgo/internal/external"
+	"letsgo/internal/game"
 	"letsgo/internal/live"
 	"letsgo/internal/mdw"
 	"letsgo/internal/repo"
 	"letsgo/internal/token"
 	"letsgo/pkg/jwt/v2"
 
-	"letsgo/internal/config"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
+	appCfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
 	slog.SetDefault(logger)
 
-	cfg, err := config.Load()
-	if err != nil {
-		panic(err)
-	}
-	postgres, redis, err := db.Open(cfg.DB)
+	postgres, redis, err := db.Open(appCfg.DB)
 	if err != nil {
 		panic(err)
 	}
@@ -38,35 +38,39 @@ func main() {
 
 	store := repo.NewStore(postgres, redis)
 
-	accessManager, err := jwt.NewManager(cfg.Auth.AccSecret,
-		cfg.Auth.AccTTL, cfg.Auth.Issuer, cfg.Auth.Audience, token.UserPayload{})
+	accessManager, err := jwt.NewManager(appCfg.Auth.AccSecret,
+		appCfg.Auth.AccTTL, appCfg.Auth.Issuer, appCfg.Auth.Audience, token.UserPayload{})
 	if err != nil {
 		panic(err)
 	}
-	authModule := auth.NewModule(store.User, store.KVStore, accessManager, cfg.Auth)
+	authModule := auth.NewModule(store.User, store.KVStore, accessManager, appCfg.Auth)
 
 	const userCtxKey mdw.ContextKey = "userPayload"
-	userAccMdw := mdw.AccessMdw(accessManager, cfg.Auth.AccCookieName, cfg.Auth.AccTTL, userCtxKey)
+	userAccMdw := mdw.AccessMdw(accessManager, appCfg.Auth.AccCookieName, appCfg.Auth.AccTTL, userCtxKey)
 
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
+	games := game.NewRegistry()
+	games.Register("connect4", game.NewConnect4())
+	games.Register("tictactoe", game.NewTicTacToe())
 
 	r.Route("/api", func(api chi.Router) {
-		api.Use(middleware.Logger)
-		api.Mount("/auth", authModule.Router())
-		api.Mount("/live", live.Router(userAccMdw, userCtxKey, cfg.WS))
 		api.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"status":"ok"}`))
 		})
+
+		api.Mount("/auth", authModule.Router())
+		api.Mount("/live", live.Router(userAccMdw, userCtxKey, games, appCfg.WS))
 	})
 
 	// static pages
-	r.Get("/stat/*", external.StaticPageHandler(cfg.StaticPages))
+	r.Get("/stat/*", external.StaticPageHandler(appCfg.StaticPages))
 
-	//frontend
+	// frontend
 	// r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
 
 	println("---Server start---")

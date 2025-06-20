@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
-import NavBar from '@/components/ui/NavBar';
-import Footer from '@/components/ui/Footer';
+import NavBar from '@/components/UI/NavBar';
+import Footer from '@/components/UI/Footer';
 import ChatWindow from '@/components/Chat/ChatWindow';
-import ThemeInitializer from '@/components/ui/ThemeInitializer';
+import ThemeInitializer from '@/components/UI/ThemeInitializer';
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -23,22 +23,20 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <ThemeInitializer />
-      </head>
-      <body className={`${roboto.variable} antialiased`}>
-        <div className="min-h-screen flex flex-col">
-          <NavBar />
-          <main className="flex flex-1 w-full mx-auto p-4 max-w-screen-sm md:max-w-screen-md
+  return <html lang="en" suppressHydrationWarning>
+    <head>
+      <ThemeInitializer />
+    </head>
+    <body className={`${roboto.variable} antialiased`}>
+      <div className="min-h-screen flex flex-col">
+        <NavBar />
+        <main className="flex flex-1 w-full mx-auto p-4 max-w-screen-sm md:max-w-screen-md
             lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-2xl">
-            {children}
-          </main>
-          <Footer />
-        </div>
-        <ChatWindow />
-      </body>
-    </html>
-  );
+          {children}
+        </main>
+        <Footer />
+      </div>
+      <ChatWindow />
+    </body>
+  </html>;
 }

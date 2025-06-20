@@ -3,62 +3,102 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --color-primary: #6A0DAD;
-  --color-secondary: #C792DF;
-  --color-accent: #FFD700;
+  --hooker-green: #607466;
+  --teal-green: #CCF5AC;
+  --english-violet: #4A314D;
+  --periwinkle: #ACACDE;
+  --carmine-pink: #E74C3C;
+  --coral: #FC7753;
+
   --color-background: #FFFFFF;
-  --color-error: #DC3545;
-
+  --color-surface: #F8F8F8;
   --color-text: #333333;
-  --color-on-primary: #FFFFFF;
-  --color-on-secondary: #333333;
-  --color-on-accent: #333333;
-  --color-on-error: #FFFFFF;
 
-  --font-sans: var(--font-roboto);
+  --color-primary: var(--hooker-green);
+  --color-on-primary: #FAFAFA;
+  --color-secondary: var(--teal-green);
+  --color-on-secondary: #171717;
+  --color-accent: var(--english-violet);
+  --color-on-accent: #FAFAFA;
+  --color-error: var(--carmine-pink);
+  --color-on-error: #FAFAFA;
 
-  --tw-duration: 300ms
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --tw-duration: 300ms;
 }
 
 .dark {
-  --color-primary: #9370DB;
-  --color-secondary: #DDA0DD;
-  --color-accent: #FFA500;
   --color-background: #171717;
-  --color-error: #EF476F;
+  --color-surface: #2C2C2C;
+  --color-text: #FAFAFA;
 
-  --color-text: #E0E0E0;
-  --color-on-primary: #E0E0E0;
-  --color-on-secondary: #171717;
+  --color-primary: var(--periwinkle);
+  --color-on-primary: #171717;
+  --color-secondary: var(--english-violet);
+  --color-on-secondary: #FAFAFA;
+  --color-accent: var(--teal-green);
   --color-on-accent: #171717;
-  --color-on-error: #171717;
+  --color-error: var(--carmine-pink);
+  --color-on-error: #FAFAFA;
 }
 
 @theme {
-  --color-primary: var(--color-primary);
-  --color-secondary: var(--color-secondary);
-  --color-accent: var(--color-accent);
   --color-background: var(--color-background);
-  --color-error: var(--color-error);
+  --color-surface: var(--color-surface);
+  --color-test: var(--color-test);
 
-  --color-text: var(--color-text);
+  --color-primary: var(--color-primary);
   --color-on-primary: var(--color-on-primary);
+  --color-secondary: var(--color-secondary);
   --color-on-secondary: var(--color-on-secondary);
+  --color-accent: var(--color-accent);
   --color-on-accent: var(--color-on-accent);
+  --color-error: var(--color-error);
   --color-on-error: var(--color-on-error);
 
   --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
   --tw-duration: var(--tw-duration);
 }
 
+* {
+  box-sizing: border-box;
+}
 
 body {
   background-color: var(--color-background);
   color: var(--color-text);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  @apply font-sans;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  transition: background-color var(--tw-duration) ease, color var(--tw-duration) ease;
+}
+
+/* Custom scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-muted-foreground), 0.3) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--color-muted-foreground), 0.3);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--color-muted-foreground), 0.5);
 }
 
 .scrollbar::-webkit-scrollbar {
@@ -79,6 +119,6 @@ body {
 }
 
 .copyleft {
-  display:inline-block;
+  display: inline-block;
   transform: rotate(180deg);
 }

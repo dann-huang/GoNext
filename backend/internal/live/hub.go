@@ -1,8 +1,8 @@
 package live
 
 import (
-	"encoding/json"
 	"letsgo/internal/config"
+	"letsgo/internal/game"
 	"log/slog"
 	"sync"
 
@@ -10,9 +10,10 @@ import (
 )
 
 type hub struct {
+	registry *game.Registry
+	cfg      *config.WS
 	rooms    map[string]*room
-	clients  map[string]*client
-	messages chan *roomMsg
+	clients  map[*client]struct{}
 
 	register   chan *client
 	unregister chan *client
@@ -22,11 +23,12 @@ type hub struct {
 	mu sync.RWMutex
 }
 
-func newHub(cfg *config.WS) *hub {
+func newhub(registry *game.Registry, cfg *config.WS) *hub {
 	return &hub{
+		registry:   registry,
+		cfg:        cfg,
 		rooms:      make(map[string]*room),
-		clients:    make(map[string]*client),
-		messages:   make(chan *roomMsg, cfg.MsgBuffer),
+		clients:    make(map[*client]struct{}),
 		register:   make(chan *client, cfg.RegisterBuffer),
 		unregister: make(chan *client, cfg.RegisterBuffer),
 		joinRoom:   make(chan *crPair, cfg.RoomBuffer),
@@ -34,69 +36,47 @@ func newHub(cfg *config.WS) *hub {
 	}
 }
 
-func (h *hub) Run() {
-	lobby := newRoom("Lobby")
+func (h *hub) run() {
+	lobby := newRoom("Lobby", h.registry)
 	h.rooms[lobby.name] = lobby
 
 	for {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
-			h.clients[client.ID] = client
+			h.clients[client] = struct{}{}
 			lobby.addClient(client)
 			h.mu.Unlock()
 			slog.Debug("Registered: ", "client", client.ID)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if room, ok := h.rooms[client.Room]; ok {
-				room.removeClient(client)
-				if room != lobby && len(room.clients) == 0 {
-					delete(h.rooms, room.name)
+			if client.room != nil {
+				client.room.removeClient(client)
+				if client.room != lobby && len(client.room.clients) == 0 {
+					delete(h.rooms, client.room.name)
 				}
 			}
-			if _, ok := h.clients[client.ID]; ok {
-				delete(h.clients, client.ID)
-				close(client.Send)
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
 				client.cancel()
-				client.Conn.Close(websocket.StatusNormalClosure, "client leaving")
+				client.conn.Close(websocket.StatusNormalClosure, "client leaving")
 				slog.Debug("Unregistered: ", "client", client.ID)
 			}
 			h.mu.Unlock()
-
-		case msg := <-h.messages:
-			slog.Debug("Sending msg", "message", msg)
-			h.mu.RLock()
-			client, ok := h.clients[msg.Sender]
-			if !ok {
-				h.mu.RUnlock()
-				continue
-			}
-			room, ok := h.rooms[client.Room]
-			h.mu.RUnlock()
-			if !ok {
-				client.Send <- createMsg(msgError, "message", "Room not found, kicking back to lobby")
-				h.joinRoom <- &crPair{client, lobby.name}
-				lobby.addClient(client)
-				continue
-			}
-			jsonMessage, err := json.Marshal(msg)
-			if err != nil {
-				slog.Error("Failed to marshal message", "error", err, "message", msg)
-				continue
-			}
-			room.broadcast(jsonMessage)
 
 		case pair := <-h.joinRoom:
 			slog.Debug("join room")
 			h.mu.Lock()
 			client := pair.Client
 			roomID := pair.RoomName
-			if client.Room == "" || client.Room == roomID {
+			if client.room != nil && client.room.name == roomID {
 				h.mu.Unlock()
 				continue
 			}
-			if oldRoom, ok := h.rooms[client.Room]; ok {
+			if client.room != nil {
+				oldRoom := client.room
 				oldRoom.removeClient(client)
 				if oldRoom != lobby && len(oldRoom.clients) == 0 {
 					delete(h.rooms, oldRoom.name)
@@ -104,7 +84,7 @@ func (h *hub) Run() {
 			}
 			room, ok := h.rooms[roomID]
 			if !ok {
-				room = newRoom(roomID)
+				room = newRoom(roomID, h.registry)
 				h.rooms[room.name] = room
 			}
 			room.addClient(client)
@@ -113,17 +93,17 @@ func (h *hub) Run() {
 
 		case client := <-h.leaveRoom:
 			h.mu.Lock()
-			roomID := client.Room
-
-			if room, ok := h.rooms[roomID]; ok {
+			if client.room != nil {
+				room := client.room
 				if room == lobby {
+					h.mu.Unlock()
 					continue
 				}
 				room.removeClient(client)
 				if len(room.clients) == 0 {
 					delete(h.rooms, room.name)
 				}
-				slog.Debug("Client left room.", "client", client.ID, "roomID", roomID)
+				slog.Debug("Client left room.", "client", client.ID, "roomID", room.name)
 				lobby.addClient(client)
 			}
 			h.mu.Unlock()

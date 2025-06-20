@@ -3,8 +3,8 @@
 import { useRef, useEffect, useState } from 'react';
 import { useWebSocket } from './webSocket';
 import type { DrawPayload } from '@/types/wsTypes';
-import { GameState } from '@/types/wsTypes';
-import { DRAW_STROKE_INTERVAL } from '@/config/consts';
+import { RawSignal } from '@/types/wsTypes';
+import { DRAW_START_COLOR, DRAW_STROKE_INTERVAL, DRAW_START_WIDTH } from '@/config/consts';
 
 interface Point {
   x: number;
@@ -20,16 +20,55 @@ export function useDraw() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawState, setDrawState] = useState<DrawState>({
-    color: '#777777',
-    lineWidth: 2
+    color: DRAW_START_COLOR,
+    lineWidth: DRAW_START_WIDTH,
   });
   const { sendMessage, setDrawHandler } = useWebSocket();
-
-  // Store points for current stroke
   const currentStroke = useRef<Point[]>([]);
   const lastSendTime = useRef<number>(0);
 
-  // Send current stroke points
+
+  useEffect(() => {
+    const handleDrawData = (data: DrawPayload) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.width;
+
+      if (data.points.length > 0) {
+        ctx.beginPath();
+        ctx.moveTo(data.points[0].x, data.points[0].y);
+
+        for (let i = 1; i < data.points.length; i++) {
+          ctx.lineTo(data.points[i].x, data.points[i].y);
+        }
+        ctx.stroke();
+      }
+    };
+    setDrawHandler(handleDrawData);
+    return () => {
+      setDrawHandler(() => { });
+    };
+  }, [setDrawHandler]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.strokeStyle = drawState.color;
+    ctx.lineWidth = drawState.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, [drawState.color, drawState.lineWidth]);
+
+
   const sendStroke = () => {
     if (currentStroke.current.length === 0) return;
 
@@ -41,67 +80,17 @@ export function useDraw() {
     };
 
     sendMessage({
-      type: GameState,
+      type: RawSignal,
       sender: 'drawer',
       payload: drawData
     });
 
-    // Clear sent points but keep the last point as the start of the next segment
     const lastPoint = currentStroke.current[currentStroke.current.length - 1];
     currentStroke.current = [lastPoint];
     lastSendTime.current = Date.now();
   };
 
-  // Initialize canvas context
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    // Set initial styles
-    ctx.strokeStyle = drawState.color;
-    ctx.lineWidth = drawState.lineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  }, [drawState.color, drawState.lineWidth]);
-
-  // Handle drawing
-  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-
-    if ('touches' in e) {
-      // Touch event
-      if (e.touches.length === 0) return null;
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      // Mouse event
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
-  };
-
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault(); // Prevent scrolling on touch devices
-    
-    const coords = getCoordinates(e);
-    if (!coords) return;
-
+  const startDrawing = (x: number, y: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -110,19 +99,14 @@ export function useDraw() {
 
     setIsDrawing(true);
     ctx.beginPath();
-    ctx.moveTo(coords.x, coords.y);
+    ctx.moveTo(x, y);
 
-    // Start new stroke
-    currentStroke.current = [{ x: coords.x, y: coords.y }];
+    currentStroke.current = [{ x, y }];
     lastSendTime.current = Date.now();
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const draw = (x: number, y: number) => {
     if (!isDrawing) return;
-    e.preventDefault(); // Prevent scrolling on touch devices
-    
-    const coords = getCoordinates(e);
-    if (!coords) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -130,13 +114,10 @@ export function useDraw() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.lineTo(coords.x, coords.y);
+    ctx.lineTo(x, y);
     ctx.stroke();
+    currentStroke.current.push({ x, y });
 
-    // Add point to current stroke
-    currentStroke.current.push({ x: coords.x, y: coords.y });
-
-    // Send stroke if enough time has passed
     if (Date.now() - lastSendTime.current >= DRAW_STROKE_INTERVAL) {
       sendStroke();
     }
@@ -145,44 +126,10 @@ export function useDraw() {
   const stopDrawing = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
-
-    // Send any remaining points
     if (currentStroke.current.length > 0) {
       sendStroke();
     }
   };
-
-  // Handle received draw data
-  useEffect(() => {
-    const handleDrawData = (data: DrawPayload) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Set received styles
-      ctx.strokeStyle = data.color;
-      ctx.lineWidth = data.width;
-
-      // Draw received points as a complete stroke
-      if (data.points.length > 0) {
-        ctx.beginPath();
-        ctx.moveTo(data.points[0].x, data.points[0].y);
-
-        for (let i = 1; i < data.points.length; i++) {
-          ctx.lineTo(data.points[i].x, data.points[i].y);
-        }
-        ctx.stroke();
-      }
-    };
-
-    setDrawHandler(handleDrawData);
-
-    return () => {
-      setDrawHandler(() => { });
-    };
-  }, [setDrawHandler]);
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
@@ -200,12 +147,5 @@ export function useDraw() {
     draw,
     stopDrawing,
     clearCanvas,
-    // Add touch-specific handlers
-    touchHandlers: {
-      onTouchStart: startDrawing,
-      onTouchMove: draw,
-      onTouchEnd: stopDrawing,
-      onTouchCancel: stopDrawing
-    }
   };
 } 
