@@ -1,15 +1,15 @@
-import Bb from '../svg/chess/bb.svg';
-import Bk from '../svg/chess/bk.svg';
-import Bn from '../svg/chess/bn.svg';
-import Bp from '../svg/chess/bp.svg';
-import Bq from '../svg/chess/bq.svg';
-import Br from '../svg/chess/br.svg';
-import Wb from '../svg/chess/wb.svg';
-import Wk from '../svg/chess/wk.svg';
-import Wn from '../svg/chess/wn.svg';
-import Wp from '../svg/chess/wp.svg';
-import Wq from '../svg/chess/wq.svg';
-import Wr from '../svg/chess/wr.svg';
+import Bb from '@/assets/chess/bb.svg';
+import Bk from '@/assets/chess/bk.svg';
+import Bn from '@/assets/chess/bn.svg';
+import Bp from '@/assets/chess/bp.svg';
+import Bq from '@/assets/chess/bq.svg';
+import Br from '@/assets/chess/br.svg';
+import Wb from '@/assets/chess/wb.svg';
+import Wk from '@/assets/chess/wk.svg';
+import Wn from '@/assets/chess/wn.svg';
+import Wp from '@/assets/chess/wp.svg';
+import Wq from '@/assets/chess/wq.svg';
+import Wr from '@/assets/chess/wr.svg';
 
 interface PieceComponentProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
@@ -22,7 +22,7 @@ const pieceMapping: Record<number, React.FC<PieceComponentProps>> = {
   4: Bb,
   5: Bn,
   6: Bp,
-  
+
   11: Wk,
   12: Wq,
   13: Wr,
