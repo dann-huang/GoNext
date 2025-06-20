@@ -12,7 +12,7 @@ export const WS_URL = typeof window === 'undefined'
 
   
   export const GAME_DISPLAY_NAMES: Record<GameName | '', string> = {
-    '': 'Game Lobby',
+    '': 'Nothing',
     tictactoe: 'Tic Tac Toe',
     connect4: 'Connect 4',
   };
