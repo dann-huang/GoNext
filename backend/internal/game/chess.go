@@ -89,9 +89,9 @@ func pieceToCode(piece chess.Piece) int {
 
 func (g *chessGame) State() *GameState {
 	board := make([][]int, 8)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		board[i] = make([]int, 8)
-		for j := 0; j < 8; j++ {
+		for j := range 8 {
 			sq := chess.Square((7-i)*8 + j)
 			piece := g.game.Position().Board().Piece(sq)
 			if piece != chess.NoPiece {

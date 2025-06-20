@@ -26,9 +26,9 @@ type roomMsg struct {
 }
 
 type GameMessagePayload struct {
-	Action   string                `json:"action"`
-	GameName string                `json:"gameName,omitempty"`
-	Move     *game.GameMovePayload `json:"move,omitempty"`
+	Action   string         `json:"action"`
+	GameName string         `json:"gameName,omitempty"`
+	Move     *game.GameMove `json:"move,omitempty"`
 }
 
 type crPair struct {

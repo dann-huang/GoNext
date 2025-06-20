@@ -30,13 +30,13 @@ type Game interface {
 }
 
 type GameState struct {
-	GameName   string      `json:"gameName"`
-	Players    []string    `json:"players"`
-	Turn       int         `json:"turn"`
-	Board      any         `json:"board"`
-	Status     string      `json:"status"`
-	Winner     string      `json:"winner,omitempty"`
-	ValidMoves [][]bool    `json:"validMoves,omitempty"`
+	GameName   string       `json:"gameName"`
+	Players    []string     `json:"players"`
+	Turn       int          `json:"turn"`
+	Board      any          `json:"board"`
+	Status     string       `json:"status"`
+	Winner     string       `json:"winner,omitempty"`
+	ValidMoves [][]GameMove `json:"validMoves,omitempty"`
 }
 
 type Position struct {
@@ -44,7 +44,7 @@ type Position struct {
 	Col int `json:"col"`
 }
 
-type GameMovePayload struct {
+type GameMove struct {
 	From   Position `json:"from"`
 	To     Position `json:"to"`
 	Change string   `json:"change,omitempty"`
@@ -142,11 +142,11 @@ func (g *baseGame) handleTimeout() bool {
 	return false
 }
 
-func (g *baseGame) validateMove(sender string, payload json.RawMessage) (*GameMovePayload, int, error) {
+func (g *baseGame) validateMove(sender string, payload json.RawMessage) (*GameMove, int, error) {
 	if g.Status != StatusInProgress {
 		return nil, -1, fmt.Errorf("game not in progress")
 	}
-	var mv GameMovePayload
+	var mv GameMove
 	if err := json.Unmarshal(payload, &mv); err != nil {
 		return nil, -1, fmt.Errorf("invalid move payload: %w", err)
 	}

@@ -101,6 +101,7 @@ export interface BoardGameState {
   board: number[][];
   status: 'waiting' | 'in_progress' | 'finished' | 'disconnected';
   winner?: string;
+  validMoves?: GameMove[][];
 }
 
 export interface Position {
@@ -111,6 +112,7 @@ export interface Position {
 export interface GameMove {
   from?: Position;
   to: Position;
+  change?: string;
 }
 
 export interface GamePayload {

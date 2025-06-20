@@ -15,7 +15,7 @@ interface PieceComponentProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
 }
 
-const pieceMapping: Record<number, React.FC<PieceComponentProps>> = {
+const numToPiece: Record<number, React.FC<PieceComponentProps>> = {
   1: Bk,
   2: Bq,
   3: Br,
@@ -31,4 +31,20 @@ const pieceMapping: Record<number, React.FC<PieceComponentProps>> = {
   16: Wp,
 } as const;
 
-export default pieceMapping;
+const numToString: Record<number, string> = {
+  1: 'k',
+  2: 'q',
+  3: 'r',
+  4: 'b',
+  5: 'n',
+  6: 'p',
+
+  11: 'K',
+  12: 'Q',
+  13: 'R',
+  14: 'B',
+  15: 'N',
+  16: 'P',
+} as const;
+
+export { numToPiece, numToString };

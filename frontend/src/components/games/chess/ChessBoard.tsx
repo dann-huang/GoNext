@@ -4,10 +4,10 @@ import React, { useState, useCallback } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/userStore';
 import { cn } from '@/lib/utils';
-import pieceMapping from './pieceMapping';
+import { numToPiece, numToString } from './pieceMapping';
+
 
 type Position = { row: number; col: number };
-
 export function ChessBoard({ gameState, onMove }: GameBoardProps) {
   const [selectedPiece, setSelectedPiece] = useState<Position | null>(null);
   const [validMoves, setValidMoves] = useState<Position[]>([]);
@@ -76,7 +76,7 @@ export function ChessBoard({ gameState, onMove }: GameBoardProps) {
       {gameState.board.map((row, rowIndex) =>
         row.map((cell, colIndex) => {
           const isLight = (rowIndex + colIndex) % 2 === 0;
-          const Piece = pieceMapping[cell];
+          const Piece = numToPiece[cell];
 
           return (
             <div
