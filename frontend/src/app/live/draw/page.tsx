@@ -30,8 +30,8 @@ export default function DrawPage() {
 
   // Nessesary so browser doesn't complain about prevent default in passive listeners
   useEffect(() => {
+    if (!containerRef.current) return;
     const container = containerRef.current;
-    if (!container) return;
     const preventDefault = (e: TouchEvent) => {
       if (e.touches.length === 1) e.preventDefault()
     };
@@ -41,7 +41,7 @@ export default function DrawPage() {
       container.removeEventListener('touchstart', preventDefault);
       container.removeEventListener('touchmove', preventDefault);
     };
-  }, [containerRef.current]);
+  }, []);
 
   const panStartRef = useRef<{
     x: number;

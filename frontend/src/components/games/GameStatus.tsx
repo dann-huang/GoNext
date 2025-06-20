@@ -2,9 +2,7 @@
 
 import { useUserStore } from '@/hooks/userStore';
 import { BoardGameState } from '@/types/wsTypes';
-import { GAME_DISPLAY_NAMES } from '@/config/consts';
 import Button from '@/components/UI/Button';
-import { cn } from '@/lib/utils';
 
 interface GameStatusProps {
   gameState: BoardGameState;

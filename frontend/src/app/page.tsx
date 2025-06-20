@@ -4,9 +4,7 @@ export default function HomePage() {
   return (
     <div className="w-full flex-1 flex flex-col items-center justify-center p-6 text-center">
       <div className="max-w-2xl space-y-6">
-        <h1 className="text-5xl font-extrabold mb-6 text-primary">
-          Let's Go!
-        </h1>
+        <h1 className="text-4xl font-bold mb-6">Let&apos;s Play Some Games!</h1>
         
         <p className="text-xl text-foreground/90">
           A collection of random things I made.
@@ -26,7 +24,7 @@ export default function HomePage() {
         </div>
         
         <p className="text-sm text-foreground/50 pt-8">
-          More static content coming soon! Let me know if you'd like to see anything specific.
+          More static content coming soon! Let me know if you&apos;d like to see anything specific.
         </p>
       </div>
     </div>
