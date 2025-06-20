@@ -28,7 +28,7 @@ type Game interface {
 type GameState struct {
 	GameName string   `json:"gameName"`
 	Players  []string `json:"players"`
-	Turn     string   `json:"turn"`
+	Turn     int      `json:"turn"`
 	Board    any      `json:"board"`
 	Status   string   `json:"status"`
 	Winner   string   `json:"winner,omitempty"`
@@ -162,14 +162,10 @@ func (g *baseGame) validateMove(sender string, payload json.RawMessage) (*GameMo
 }
 
 func (g *baseGame) state(board any) *GameState {
-	turn := ""
-	if g.Status == StatusInProgress && len(g.Players) > g.Turn {
-		turn = g.Players[g.Turn]
-	}
 	return &GameState{
 		GameName: g.GameName,
 		Players:  g.Players,
-		Turn:     turn,
+		Turn:     g.Turn,
 		Board:    board,
 		Status:   g.Status,
 		Winner:   g.Winner,

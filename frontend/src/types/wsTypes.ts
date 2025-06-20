@@ -97,7 +97,7 @@ export type GameName = typeof GAME_NAMES[number];
 export interface BoardGameState {
   gameName: GameName | '';
   players: string[];
-  turn: string;
+  turn: number;
   board: number[][];
   status: 'waiting' | 'in_progress' | 'win' | 'draw' | 'disconnected';
   winner?: string;

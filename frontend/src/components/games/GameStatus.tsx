@@ -18,10 +18,10 @@ export function GameStatus({
   leaveGame,
 }: GameStatusProps) {
   const username = useUserStore(state => state.username);
-  const isPlaying = username && gameState.players.includes(username);
-  const isTurn = gameState.turn === username;
+  const idx = gameState.players.indexOf(username);
+  const yourTurn = gameState.turn === idx;
   const isGameFull = gameState.players.length >= 2;
-  const canJoin = !isPlaying && gameState.status === 'waiting' && !isGameFull;
+  const canJoin = idx < 0 && gameState.status === 'waiting' && !isGameFull;
 
   const getStatusMessage = () => {
     if (!gameState.gameName) return 'Waiting for game...';
@@ -29,10 +29,7 @@ export function GameStatus({
       case 'waiting':
         return 'Waiting for players...';
       case 'in_progress':
-        if (isPlaying) {
-          return isTurn ? 'Your turn!' : `${gameState.turn}'s turn`;
-        }
-        return 'Game in progress';
+        return yourTurn ? 'Your turn!' : `${gameState.players[gameState.turn]} turn`;
       case 'win':
         if (gameState.winner === username) return 'You won! 🎉';
         if (gameState.winner) return `${gameState.winner} wins!`;
@@ -44,14 +41,13 @@ export function GameStatus({
     }
   };
 
-
   return <div className="flex items-center justify-between py-2 px-4 bg-background">
     <div className="text-sm">
       <span className="font-medium">Status: {getStatusMessage()}</span>
     </div>
 
     <div className="flex items-center gap-2">
-      {isPlaying ?
+      {idx >= 0 ?
         <Button
           size="sm"
           onClick={leaveGame}

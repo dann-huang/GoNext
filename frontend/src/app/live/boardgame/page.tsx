@@ -20,8 +20,7 @@ const GAME_BOARDS: Record<GameName, GameBoardComponent> = {
 
 export default function BoardGamePage() {
   const { currentRoom } = useWebSocket();
-  const { gameState, createGame, joinGame, leaveGame, makeMove, isLoading } = useBoardGame();
-  const username = useUserStore(state => state.username);
+  const { gameState, createGame, joinGame, leaveGame, makeMove } = useBoardGame();
 
   const GameBoard = gameState.gameName ? GAME_BOARDS[gameState.gameName] : null;
 
