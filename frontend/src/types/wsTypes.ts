@@ -101,7 +101,7 @@ export interface BoardGameState {
   board: number[][];
   status: 'waiting' | 'in_progress' | 'finished' | 'disconnected';
   winner?: string;
-  validMoves?: GameMove[][];
+  validMoves?: GameMove[];
 }
 
 export interface Position {
