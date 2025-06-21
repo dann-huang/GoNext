@@ -7,15 +7,16 @@ export default function useBoardGame() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [gameState, setGameState] = useState<BoardGameState>({
-    gameName: '', 
-    players: [], 
-    turn: 0, 
-    board: [[]], 
+    gameName: '',
+    players: [],
+    turn: 0,
+    board: [[]],
     status: 'waiting',
-    winner: ''
+    winner: '',
+    validMoves: []
   });
 
-  const createGame = useCallback(async (gameName: GameName) => {
+  const createGame = useCallback((gameName: GameName) => {
     try {
       setIsLoading(true);
       sendGameMsg({ action: 'create', gameName });
@@ -27,10 +28,10 @@ export default function useBoardGame() {
     }
   }, [sendGameMsg]);
 
-  const joinGame = useCallback(async () => {
+  const joinGame = useCallback(() => {
     try {
       setIsLoading(true);
-      await sendGameMsg({ action: 'join' });
+      sendGameMsg({ action: 'join' });
     } catch (error) {
       console.error('Error joining game:', error);
       throw error;
@@ -39,11 +40,11 @@ export default function useBoardGame() {
     }
   }, [sendGameMsg]);
 
-  const leaveGame = useCallback(async () => {
+  const leaveGame = useCallback(() => {
     if (confirm('Are you sure you want to leave the game?')) {
       try {
         setIsLoading(true);
-        await sendGameMsg({ action: 'leave' });
+        sendGameMsg({ action: 'leave' });
       } catch (error) {
         console.error('Error leaving game:', error);
         throw error;
@@ -53,10 +54,10 @@ export default function useBoardGame() {
     }
   }, [sendGameMsg]);
 
-  const makeMove = useCallback(async (move: GameMove) => {
+  const makeMove = useCallback((move: GameMove) => {
     try {
       setIsLoading(true);
-      await sendGameMsg({
+      sendGameMsg({
         action: 'move',
         move
       });

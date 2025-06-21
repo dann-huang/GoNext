@@ -35,8 +35,8 @@ type GameState struct {
 	Turn       int        `json:"turn"`
 	Board      any        `json:"board"`
 	Status     string     `json:"status"`
-	Winner     string     `json:"winner,omitempty"`
-	ValidMoves []GameMove `json:"validMoves,omitempty"`
+	Winner     string     `json:"winner"`
+	ValidMoves []GameMove `json:"validMoves"`
 }
 
 type Position struct {

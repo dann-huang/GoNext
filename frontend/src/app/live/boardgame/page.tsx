@@ -63,7 +63,7 @@ export default function BoardGamePage() {
           <div className='w-full max-w-md'>
             <GameBoard
               gameState={gameState}
-              onMove={makeMove}
+              makeMove={makeMove}
             />
           </div>
           : <div>Game type not supported</div>

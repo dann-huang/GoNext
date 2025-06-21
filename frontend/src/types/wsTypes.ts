@@ -100,8 +100,8 @@ export interface BoardGameState {
   turn: number;
   board: number[][];
   status: 'waiting' | 'in_progress' | 'finished' | 'disconnected';
-  winner?: string;
-  validMoves?: GameMove[];
+  winner: string;
+  validMoves: GameMove[];
 }
 
 export interface Position {
