@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/userStore';
 import { cn } from '@/lib/utils';
-import { numToPiece, numToString } from './pieceMapping';
-import { GameMove } from '@/types/wsTypes';
-import { Rowdies } from 'next/font/google';
+import { numToPiece } from './pieceMapping';
 
 type Position = { row: number; col: number };
 
@@ -26,10 +24,12 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
 
   const boardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
     const handleTouchStart = (e: TouchEvent) => e.preventDefault();
-    boardRef.current?.addEventListener('touchstart', handleTouchStart, { passive: false });
-    return () => boardRef.current?.removeEventListener('touchstart', handleTouchStart);
-  }, [boardRef.current]);
+    board.addEventListener('touchstart', handleTouchStart, { passive: false });
+    return () => board.removeEventListener('touchstart', handleTouchStart);
+  }, []);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, piece: number, row: number, col: number) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -41,6 +41,11 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
     e.preventDefault();
   };
 
+
+  const validSquares = useMemo(() => gameState.validMoves.filter(vMove =>
+    vMove.from?.row === drag?.from.row && vMove.from?.col === drag?.from.col)
+    , [gameState.validMoves, drag?.from.row, drag?.from.col]);
+
   useEffect(() => {
     if (!drag) return;
     const handlePointerMove = (e: PointerEvent) => {
@@ -50,10 +55,12 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
       }));
     };
     const handlePointerUp = (e: PointerEvent) => {
-      if (hover.current) {
+      const hoverSquare = hover.current;
+      if (hoverSquare && yourTurn && validSquares.some(vMove =>
+        vMove.to.row === hoverSquare.row && vMove.to.col === hoverSquare.col)) {//todo: remove valid check, make sure backend enforces it
         makeMove({
           from: drag.from,
-          to: hover.current,
+          to: hoverSquare,
         });
       }
       setDrag(null);
@@ -64,11 +71,7 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [drag, makeMove]);
-
-  const validSquares = useMemo(() => gameState.validMoves.filter(vMove =>
-    vMove.from?.row === drag?.from.row && vMove.from?.col === drag?.from.col)
-    , [gameState.validMoves, drag?.from.row, drag?.from.col]);
+  }, [drag, makeMove, validSquares]);
 
   return <div className="w-full grid grid-cols-8 border-3 border-secondary" ref={boardRef}>
     <h1 className='col-span-full text-center text-xl text-primary'>attention: work in progress</h1>
