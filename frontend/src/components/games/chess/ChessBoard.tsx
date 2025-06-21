@@ -54,7 +54,7 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
         pos: { x: e.clientX, y: e.clientY },
       }));
     };
-    const handlePointerUp = (e: PointerEvent) => {
+    const handlePointerUp = () => {
       const hoverSquare = hover.current;
       if (hoverSquare && yourTurn && validSquares.some(vMove =>
         vMove.to.row === hoverSquare.row && vMove.to.col === hoverSquare.col)) {//todo: remove valid check, make sure backend enforces it
@@ -71,7 +71,7 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [drag, makeMove, validSquares]);
+  }, [drag, makeMove, validSquares, yourTurn]);
 
   return <div className="w-full grid grid-cols-8 border-3 border-secondary" ref={boardRef}>
     <h1 className='col-span-full text-center text-xl text-primary'>attention: work in progress</h1>
