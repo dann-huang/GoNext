@@ -32,7 +32,7 @@ export function GameStatus({
         if (gameState.winner) return `${gameState.winner} wins!`;
         return 'Draw!';
       default:
-        return 'Game starting...';
+        return 'Waiting on disconnection...';
     }
   };
 

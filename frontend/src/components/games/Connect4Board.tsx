@@ -3,7 +3,7 @@ import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/userStore';
 import { cn } from '@/lib/utils';
 
-export function Connect4Board({ gameState, onMove }: GameBoardProps) {
+export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
   const [hoveredCol, setHoveredCol] = useState<number>(-1);
   const username = useUserStore(state => state.username);
   const yourIdx = gameState.players.indexOf(username);
@@ -12,10 +12,10 @@ export function Connect4Board({ gameState, onMove }: GameBoardProps) {
 
   const handleClick = () => {
     if (!isYourTurn || hoveredCol < 0) return;
-    onMove({ to: { row: 0, col: hoveredCol } });
+    makeMove({ to: { row: 0, col: hoveredCol } });
   };
 
-  return <div className='bg-primary p-2 rounded-lg'
+  return <div className='w-full bg-primary p-2 rounded-lg'
     onClick={handleClick}
     onMouseLeave={() => setHoveredCol(-1)}
   >
@@ -32,12 +32,12 @@ export function Connect4Board({ gameState, onMove }: GameBoardProps) {
           }}
         />
       )}
-      {gameState.board.map((row, rowIndex) => (
-        row.map((cell, colIndex) => (
+      {gameState.board.map((cellRow, row) => (
+        cellRow.map((cell, col) => (
           <div
-            key={`${rowIndex}-${colIndex}`}
+            key={`${row}-${col}`}
             className='aspect-square rounded-full p-1'
-            onMouseEnter={() => setHoveredCol(colIndex)}
+            onMouseEnter={() => setHoveredCol(col)}
           >
             <div className={cn('w-full h-full rounded-full',
               cell ?

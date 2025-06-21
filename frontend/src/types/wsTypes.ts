@@ -91,7 +91,7 @@ export interface RawDrawMsg {
 
 
 //------------------------------Game state stuff--------------------------------
-export const GAME_NAMES = ['tictactoe', 'connect4'] as const;
+export const GAME_NAMES = ['tictactoe', 'connect4', 'chess'] as const;
 export type GameName = typeof GAME_NAMES[number];
 
 export interface BoardGameState {
@@ -100,7 +100,8 @@ export interface BoardGameState {
   turn: number;
   board: number[][];
   status: 'waiting' | 'in_progress' | 'finished' | 'disconnected';
-  winner?: string;
+  winner: string;
+  validMoves: GameMove[];
 }
 
 export interface Position {
@@ -111,6 +112,7 @@ export interface Position {
 export interface GameMove {
   from?: Position;
   to: Position;
+  change?: string;
 }
 
 export interface GamePayload {

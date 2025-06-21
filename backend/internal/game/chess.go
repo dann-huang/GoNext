@@ -24,18 +24,13 @@ func newChess() Factory {
 		return game, nil
 	}
 }
-
-func rowCol2Move(x, y int) string {
-	return fmt.Sprintf("%c%d", 'a'+x, 8-y)
-}
-
 func (g *chessGame) Move(sender string, payload json.RawMessage) (*GameState, error) {
 	mv, _, err := g.validateMove(sender, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	moveStr := rowCol2Move(mv.From.Row, mv.From.Col) + rowCol2Move(mv.To.Row, mv.To.Col)
+	moveStr := rowCol2Move(mv.From) + rowCol2Move(mv.To)
 	if mv.Change != "" {
 		moveStr += mv.Change
 	}
@@ -44,9 +39,8 @@ func (g *chessGame) Move(sender string, payload json.RawMessage) (*GameState, er
 	if err != nil {
 		return nil, fmt.Errorf("invalid move format %q: %w", moveStr, err)
 	}
-
-	if err := g.game.Move(move, nil); err != nil {
-		return nil, fmt.Errorf("illegal move %q: %w", moveStr, err)
+	if g.game.Move(move, nil) != nil {
+		return nil, fmt.Errorf("invalid move %q", moveStr)
 	}
 
 	if g.game.Outcome() != chess.NoOutcome {
@@ -63,6 +57,64 @@ func (g *chessGame) Move(sender string, payload json.RawMessage) (*GameState, er
 	g.Turn = 1 - g.Turn
 
 	return g.State(), nil
+}
+
+func (g *chessGame) State() *GameState {
+	board := make([][]int, 8)
+	for i := range 8 {
+		board[i] = make([]int, 8)
+		for j := range 8 {
+			sq := chess.Square((7-i)*8 + j)
+			piece := g.game.Position().Board().Piece(sq)
+			if piece != chess.NoPiece {
+				board[i][j] = pieceToCode(piece)
+			} else {
+				board[i][j] = 0
+			}
+		}
+	}
+
+	state := g.state(board)
+	state.ValidMoves = g.validMoves()
+	return state
+}
+
+func (g *chessGame) Tick() (*GameState, string) {
+	if g.handleTimeout() {
+		return g.State(), TickBroadcast
+	}
+
+	if g.Status == StatusFin && time.Since(g.EndedAt) > CleanupDelay {
+		return nil, TickFinished
+	}
+
+	return nil, TickNoChange
+}
+
+func (g *chessGame) validMoves() []GameMove {
+	validMoves := []GameMove{}
+	if g.Status != StatusInProgress {
+		return validMoves
+	}
+	for _, mv := range g.game.ValidMoves() {
+		from := mv.S1()
+		to := mv.S2()
+		validMoves = append(validMoves, GameMove{
+			From: Position{
+				Row: 7 - int(from.Rank()),
+				Col: int(from.File()),
+			},
+			To: Position{
+				Row: 7 - int(to.Rank()),
+				Col: int(to.File()),
+			},
+		})
+	}
+	return validMoves
+}
+
+func rowCol2Move(pos Position) string {
+	return fmt.Sprintf("%c%d", 'a'+pos.Col, 8-pos.Row)
 }
 
 func pieceToCode(piece chess.Piece) int {
@@ -85,35 +137,4 @@ func pieceToCode(piece chess.Piece) int {
 		code += 10
 	}
 	return code
-}
-
-func (g *chessGame) State() *GameState {
-	board := make([][]int, 8)
-	for i := 0; i < 8; i++ {
-		board[i] = make([]int, 8)
-		for j := 0; j < 8; j++ {
-			sq := chess.Square((7-i)*8 + j)
-			piece := g.game.Position().Board().Piece(sq)
-			if piece != chess.NoPiece {
-				board[i][j] = pieceToCode(piece)
-			} else {
-				board[i][j] = 0
-			}
-		}
-	}
-
-	state := g.state(board)
-	return state
-}
-
-func (g *chessGame) Tick() (*GameState, string) {
-	if g.handleTimeout() {
-		return g.State(), TickBroadcast
-	}
-
-	if g.Status == StatusFin && time.Since(g.EndedAt) > CleanupDelay {
-		return nil, TickFinished
-	}
-
-	return nil, TickNoChange
 }

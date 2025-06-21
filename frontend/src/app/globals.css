@@ -26,6 +26,9 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --tw-duration: 300ms;
+
+  --main-color: var(--color-primary);
+  --detail-color: var(--color-secondary);
 }
 
 .dark {

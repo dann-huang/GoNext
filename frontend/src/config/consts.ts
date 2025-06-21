@@ -15,6 +15,7 @@ export const WS_URL = typeof window === 'undefined'
     '': 'Nothing',
     tictactoe: 'Tic Tac Toe',
     connect4: 'Connect 4',
+    chess: 'Chess',
   };
   
   export const DRAW_CANVAS_WIDTH = 1600;
