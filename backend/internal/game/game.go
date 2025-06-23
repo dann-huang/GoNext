@@ -246,7 +246,6 @@ func (b *baseGame) updateLoop() {
 		return
 	}
 
-	// just stop game if player doesn't come back.
 	disconnections := []string{}
 	for player, disconnectTime := range b.disconnects {
 		if time.Since(disconnectTime) > DisconnectTimeout {
@@ -266,6 +265,7 @@ func (b *baseGame) updateLoop() {
 }
 
 func (b *baseGame) handleDisconnects() {
+	// just stop game if player doesn't come back.
 	b.status = StatusFin
 	b.endedAt = time.Now()
 	if len(b.players) == 0 {

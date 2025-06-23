@@ -186,7 +186,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
 
 
 export const useWSConnect = () => {
-  const { loggedin, refresh, addRefreshDependent: addRefDependent, removeRefreshDependent: remRefDependent } = useUserStore();
+  const { loggedin, refresh, addRefDependent, remRefDependent, username } = useUserStore();
   const { connect, disconnect, getStatus } = useWebSocket();
 
   useEffect(() => {
@@ -220,5 +220,6 @@ export const useWSConnect = () => {
       remRefDependent('ws');
       console.warn('not loggedin disconnect');
     };
-  }, [loggedin, refresh, connect, disconnect, getStatus, addRefDependent, remRefDependent]);
+  }, [loggedin, refresh, connect, disconnect, getStatus,
+    addRefDependent, remRefDependent, username]);
 };
