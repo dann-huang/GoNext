@@ -1,11 +1,14 @@
 package game
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
+	"errors"
 	"slices"
+	"sync"
 	"time"
 )
+
+type GameAction int
 
 const (
 	StatusWaiting      = "waiting"
@@ -13,31 +16,13 @@ const (
 	StatusFin          = "finished"
 	StatusDisconnected = "disconnected"
 
-	TickFinished  = "finished"
-	TickNoChange  = "no_change"
-	TickBroadcast = "broadcast"
-
 	DisconnectTimeout = 30 * time.Second
 	CleanupDelay      = 10 * time.Second
+	TickInterval      = 1 * time.Second
+
+	UpdateAction GameAction = iota
+	DeleteAction
 )
-
-type Game interface {
-	Join(sender string) error
-	Move(sender string, payload json.RawMessage) (*GameState, error)
-	State() *GameState
-	Leave(player string, intentional bool) bool
-	Tick() (*GameState, string)
-}
-
-type GameState struct {
-	GameName   string     `json:"gameName"`
-	Players    []string   `json:"players"`
-	Turn       int        `json:"turn"`
-	Board      any        `json:"board"`
-	Status     string     `json:"status"`
-	Winner     string     `json:"winner"`
-	ValidMoves []GameMove `json:"validMoves"`
-}
 
 type Position struct {
 	Row int `json:"row"`
@@ -50,129 +35,249 @@ type GameMove struct {
 	Change string   `json:"change,omitempty"`
 }
 
+type Game interface {
+	Join(player string) error
+	Rejoin(player string)
+	Leave(player string, intentional bool)
+	Move(player string, mv *GameMove) error
+	Start()
+	Stop()
+
+	GetState() *GameState
+	getBoardLocked() any
+	getValidMovesLocked() []GameMove
+	updateLoop()
+	handleDisconnects()
+}
+
+type GameUpdate struct {
+	State  *GameState
+	Action GameAction
+}
+
+type GameState struct {
+	GameName   string     `json:"gameName"`
+	Players    []string   `json:"players"`
+	Turn       int        `json:"turn"`
+	Board      any        `json:"board"`
+	Status     string     `json:"status"`
+	Winner     string     `json:"winner"`
+	ValidMoves []GameMove `json:"validMoves"`
+}
+
 type baseGame struct {
-	GameName    string
-	Players     []string
-	Turn        int
-	NumPlayers  int
-	Status      string
-	Winner      string
-	Disconnects map[string]time.Time
-	EndedAt     time.Time
+	self        Game
+	mu          sync.RWMutex
+	gameName    string
+	players     []string
+	turn        int
+	numPlayers  int
+	status      string
+	disconnects map[string]time.Time
+	notify      func(GameUpdate)
+
+	winner  string
+	endedAt time.Time
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func newBase(numPlayers int, gameName string) baseGame {
+func newBase(numPlayers int, gameName string, updator func(GameUpdate)) baseGame {
+	ctx, cancel := context.WithCancel(context.Background())
 	return baseGame{
-		GameName:    gameName,
-		Players:     make([]string, 0, numPlayers),
-		Turn:        0,
-		NumPlayers:  numPlayers,
-		Status:      StatusWaiting,
-		Disconnects: make(map[string]time.Time),
+		gameName:    gameName,
+		players:     make([]string, 0, numPlayers),
+		turn:        0,
+		numPlayers:  numPlayers,
+		status:      StatusWaiting,
+		disconnects: make(map[string]time.Time),
+		notify:      updator,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 }
 
-func (g *baseGame) Join(player string) error {
-	if g.Status == StatusDisconnected {
-		if _, ok := g.Disconnects[player]; ok {
-			delete(g.Disconnects, player)
-			if len(g.Disconnects) == 0 {
-				g.Status = StatusInProgress
-			}
-			return nil
-		}
-		return fmt.Errorf("game is paused, waiting for player(s) to reconnect")
-	}
+func (b *baseGame) Start() {
+	go b.ticker()
+}
 
-	if len(g.Players) >= g.NumPlayers {
-		return fmt.Errorf("game is full")
-	}
-	if slices.Contains(g.Players, player) {
-		return fmt.Errorf("player already joined")
-	}
+func (b *baseGame) Stop() {
+	b.cancel()
+}
 
-	g.Players = append(g.Players, player)
-	if len(g.Players) == g.NumPlayers {
-		g.Status = StatusInProgress
+func (b *baseGame) Join(player string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if len(b.players) >= b.numPlayers {
+		return errors.New("game is full")
 	}
+	if slices.Contains(b.players, player) {
+		return errors.New("already joined")
+	}
+	b.players = append(b.players, player)
+	if len(b.players) == b.numPlayers {
+		b.status = StatusInProgress
+	}
+	b.notify(GameUpdate{
+		State:  b.stateLocked(),
+		Action: UpdateAction,
+	})
 	return nil
 }
 
-func (g *baseGame) Leave(player string, intentional bool) bool {
-	idx := slices.Index(g.Players, player)
+func (b *baseGame) Rejoin(player string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if _, ok := b.disconnects[player]; ok {
+		delete(b.disconnects, player)
+		if len(b.disconnects) == 0 {
+			b.status = StatusInProgress
+		}
+		b.notify(GameUpdate{
+			State:  b.stateLocked(),
+			Action: UpdateAction,
+		})
+	}
+}
+
+func (b *baseGame) Leave(player string, intentional bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	idx := slices.Index(b.players, player)
 	if idx == -1 {
-		return false
+		return
+	}
+	if !intentional && (b.status == StatusInProgress || b.status == StatusDisconnected) {
+		b.status = StatusDisconnected
+		b.disconnects[player] = time.Now()
+	} else {
+		b.players = slices.Delete(b.players, idx, idx+1)
 	}
 
-	if !intentional && (g.Status == StatusInProgress || g.Status == StatusDisconnected) {
-		g.Status = StatusDisconnected
-		g.Disconnects[player] = time.Now()
-		return false
+	if len(b.players) == 0 {
+		b.status = StatusFin
+		b.endedAt = time.Now()
+		b.notify(GameUpdate{
+			State:  b.stateLocked(),
+			Action: DeleteAction,
+		})
+		b.Stop()
+		return
 	}
-
-	g.Players = slices.Delete(g.Players, idx, idx+1)
-	return len(g.Players) == 0
+	b.notify(GameUpdate{
+		State:  b.stateLocked(),
+		Action: UpdateAction,
+	})
 }
 
-func (g *baseGame) handleTimeout() bool {
-	if g.Status == StatusDisconnected {
-		var timedOutPlayer string
-		for player, disconnectedAt := range g.Disconnects {
-			if time.Since(disconnectedAt) > DisconnectTimeout {
-				timedOutPlayer = player
-				break
-			}
-		}
-		if timedOutPlayer != "" {
-			g.Status = StatusFin
-			if len(g.Players) == 2 {
-				winnerIdx := 1 - slices.Index(g.Players, timedOutPlayer)
-				if winnerIdx >= 0 && winnerIdx < len(g.Players) {
-					g.Winner = g.Players[winnerIdx]
-				}
-			}
-			g.EndedAt = time.Now()
-			return true
-		}
-	}
-
-	if (g.Status == StatusFin) && g.EndedAt.IsZero() {
-		g.EndedAt = time.Now()
-	}
-	return false
-}
-
-func (g *baseGame) validateMove(sender string, payload json.RawMessage) (*GameMove, int, error) {
-	if g.Status != StatusInProgress {
-		return nil, -1, fmt.Errorf("game not in progress")
-	}
-	var mv GameMove
-	if err := json.Unmarshal(payload, &mv); err != nil {
-		return nil, -1, fmt.Errorf("invalid move payload: %w", err)
+func (b *baseGame) checkTurnLocked(sender string) (int, error) {
+	if b.status != StatusInProgress {
+		return -1, errors.New("game not in progress")
 	}
 	idx := -1
-	for i, p := range g.Players {
+	for i, p := range b.players {
 		if p == sender {
 			idx = i
 			break
 		}
 	}
 	if idx == -1 {
-		return nil, -1, fmt.Errorf("player not in game")
+		return -1, errors.New("player not in game")
 	}
-	if idx != g.Turn {
-		return nil, -1, fmt.Errorf("not your turn")
+	if idx != b.turn {
+		return -1, errors.New("not your turn")
 	}
-	return &mv, idx, nil
+	return idx, nil
 }
 
-func (g *baseGame) state(board any) *GameState {
+func (b *baseGame) getValidMovesLocked() []GameMove {
+	return nil
+}
+
+func (b *baseGame) GetState() *GameState {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.stateLocked()
+}
+
+func (b *baseGame) stateLocked() *GameState {
 	return &GameState{
-		GameName: g.GameName,
-		Players:  g.Players,
-		Turn:     g.Turn,
-		Board:    board,
-		Status:   g.Status,
-		Winner:   g.Winner,
+		GameName:   b.gameName,
+		Players:    b.players,
+		Turn:       b.turn,
+		Board:      b.self.getBoardLocked(),
+		ValidMoves: b.self.getValidMovesLocked(),
+		Status:     b.status,
+		Winner:     b.winner,
+	}
+}
+
+func (b *baseGame) ticker() {
+	ticker := time.NewTicker(TickInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-b.ctx.Done():
+			return
+		case <-ticker.C:
+			b.self.updateLoop()
+		}
+	}
+}
+
+func (b *baseGame) updateLoop() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.status == StatusFin {
+		if time.Since(b.endedAt) > CleanupDelay {
+			b.notify(GameUpdate{
+				State:  b.stateLocked(),
+				Action: DeleteAction,
+			})
+			b.Stop()
+		}
+		return
+	}
+
+	disconnections := []string{}
+	for player, disconnectTime := range b.disconnects {
+		if time.Since(disconnectTime) > DisconnectTimeout {
+			disconnections = append(disconnections, player)
+		}
+	}
+	if len(disconnections) > 0 {
+		for _, player := range disconnections {
+			delete(b.disconnects, player)
+			idx := slices.Index(b.players, player)
+			if idx != -1 {
+				b.players = slices.Delete(b.players, idx, idx+1)
+			}
+		}
+		b.self.handleDisconnects()
+	}
+}
+
+func (b *baseGame) handleDisconnects() {
+	// just stop game if player doesn't come back.
+	b.status = StatusFin
+	b.endedAt = time.Now()
+	if len(b.players) == 0 {
+		b.notify(GameUpdate{
+			State:  b.stateLocked(),
+			Action: DeleteAction,
+		})
+		b.Stop()
+	} else {
+		b.notify(GameUpdate{
+			State:  b.stateLocked(),
+			Action: UpdateAction,
+		})
 	}
 }

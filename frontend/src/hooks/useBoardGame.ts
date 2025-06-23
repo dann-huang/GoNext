@@ -71,7 +71,7 @@ export default function useBoardGame() {
 
   useEffect(() => {
     const handleGameState = (data: BoardGameState) => {
-      console.log('Received game state:', data);
+      console.debug('Received game state:', data);
       setGameState(data);
       setIsLoading(false);
     };

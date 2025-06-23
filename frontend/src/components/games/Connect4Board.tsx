@@ -15,39 +15,43 @@ export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
     makeMove({ to: { row: 0, col: hoveredCol } });
   };
 
-  return <div className='w-full bg-primary p-2 rounded-lg'
+  return <div className='w-full bg-primary p-2 rounded-lg touch-none grid grid-cols-7 gap-2'
     onClick={handleClick}
-    onMouseLeave={() => setHoveredCol(-1)}
+    onPointerLeave={() => setHoveredCol(-1)}
   >
-    <div className='grid grid-cols-7 gap-2 relative'>
-      {hoveredCol >= 0 && (
-        <div
-          className='absolute top-0 -bottom-2 pointer-events-none transition-all duration-200'
-          style={{
-            left: `calc(${(hoveredCol * 100 / 7)}% + ${(hoveredCol * 8) / 7}px)`,
-            width: `calc(${100 / 7}% - 8px)`,
-            background: `linear-gradient(to top, var(--color-${isYourTurn ? 'secondary' : 'background'}) 0%, transparent 100%)`,
-            opacity: 0.7,
-            borderRadius: '0.5rem',
-          }}
-        />
-      )}
-      {gameState.board.map((cellRow, row) => (
-        cellRow.map((cell, col) => (
+    {[...Array(7)].map((_, col) => (
+      <div
+        key={`col-wrapper-${col}`}
+        className='relative'
+        onPointerEnter={() => setHoveredCol(col)}
+        onPointerLeave={() => setHoveredCol(-1)}
+      >
+        {hoveredCol === col && (
+          <div
+            className='absolute top-0 -bottom-2 pointer-events-none transition-all duration-200'
+            style={{
+              left: 0,
+              width: '100%',
+              background: `linear-gradient(to top, var(--color-${isYourTurn ? 'secondary' : 'background'}) 0%, transparent 100%)`,
+              opacity: 0.7,
+              borderRadius: '0.5rem',
+            }}
+          />
+        )}
+        {gameState.board.map((cellRow, row) => (
           <div
             key={`${row}-${col}`}
             className='aspect-square rounded-full p-1'
-            onMouseEnter={() => setHoveredCol(col)}
           >
             <div className={cn('w-full h-full rounded-full',
-              cell ?
-                yourIdx >= 0 ? cell === yourIdx + 1 ? 'bg-secondary' : 'bg-accent'
-                  : cell === 1 ? 'bg-secondary' : 'bg-accent'
+              cellRow[col] ?
+                yourIdx >= 0 ? cellRow[col] === yourIdx + 1 ? 'bg-secondary' : 'bg-accent'
+                  : cellRow[col] === 1 ? 'bg-secondary' : 'bg-accent'
                 : 'bg-background'
             )} />
           </div>
-        ))
-      ))}
-    </div>
+        ))}
+      </div>
+    ))}
   </div>;
 }

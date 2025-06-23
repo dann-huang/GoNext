@@ -22,3 +22,5 @@ node_modules/
 # SSL/TLS Certificates
 /etc/letsencrypt/
 certbot/
+
+.DS_Store

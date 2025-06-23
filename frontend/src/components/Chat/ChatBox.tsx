@@ -5,7 +5,7 @@ import { useWebSocket } from '@/hooks/webSocket';
 import { useUserStore } from '@/hooks/userStore';
 import Input from '../UI/Input';
 import Button from '../UI/Button';
-import { Error } from '@/types/wsTypes';
+import { msgError } from '@/types/wsTypes';
 import { SquarePen, LogOut, DoorOpen } from 'lucide-react';
 
 export default function ChatBox() {
@@ -114,7 +114,7 @@ export default function ChatBox() {
           >
             <div className={`max-w-[75%] p-3 rounded-xl text-base break-words shadow-sm
               ${isServerMessage ?
-                msg.type == Error ? 'bg-error text-on-error, text-center italic text-sm'
+                msg.type == msgError ? 'bg-error text-on-error, text-center italic text-sm'
                   : 'bg-accent text-on-accent text-center italic text-sm'
                 : isMyMessage
                   ? 'bg-primary text-on-primary rounded-br-none'

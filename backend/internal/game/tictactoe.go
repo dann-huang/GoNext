@@ -1,7 +1,6 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -12,46 +11,52 @@ type ticTacToe struct {
 }
 
 func newTicTacToe() Factory {
-	return func(creator string, payload json.RawMessage) (Game, error) {
+	return func(updator func(GameUpdate)) (Game, error) {
 		game := &ticTacToe{
-			baseGame: newBase(2, "tictactoe"),
+			baseGame: newBase(2, "tictactoe", updator),
 			board:    [3][3]int{},
 		}
-		game.Players = []string{creator}
-		game.Turn = 0
+		game.self = game
 		return game, nil
 	}
 }
 
-func (t *ticTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {
-	mv, idx, err := t.validateMove(sender, payload)
+func (t *ticTacToe) getBoardLocked() any {
+	return t.board
+}
+
+func (t *ticTacToe) Move(sender string, mv *GameMove) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	idx, err := t.checkTurnLocked(sender)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if mv.To.Row < 0 || mv.To.Row > 2 || mv.To.Col < 0 || mv.To.Col > 2 {
-		return nil, fmt.Errorf("invalid move")
+		return fmt.Errorf("invalid move")
 	}
 	if t.board[mv.To.Row][mv.To.Col] != 0 {
-		return nil, fmt.Errorf("cell already taken")
+		return fmt.Errorf("cell already taken")
 	}
 	t.board[mv.To.Row][mv.To.Col] = idx + 1
 
 	if win := t.checkWin(); win != 0 {
-		t.Status = StatusFin
-		t.Winner = t.Players[win-1]
-		t.EndedAt = time.Now()
+		t.status = StatusFin
+		t.winner = t.players[win-1]
+		t.endedAt = time.Now()
 	} else if t.checkDraw() {
-		t.Status = StatusFin
-		t.EndedAt = time.Now()
+		t.status = StatusFin
+		t.endedAt = time.Now()
 	}
 
-	t.Turn = 1 - t.Turn
-	return t.State(), nil
-}
-
-func (t *ticTacToe) State() *GameState {
-	return t.state(t.board)
+	t.turn = 1 - t.turn
+	t.notify(GameUpdate{
+		State:  t.stateLocked(),
+		Action: UpdateAction,
+	})
+	return nil
 }
 
 func (t *ticTacToe) checkWin() int {
@@ -87,14 +92,4 @@ func (t *ticTacToe) checkDraw() bool {
 		}
 	}
 	return true
-}
-
-func (t *ticTacToe) Tick() (*GameState, string) {
-	if t.handleTimeout() {
-		return t.State(), TickFinished
-	}
-	if !t.EndedAt.IsZero() && time.Since(t.EndedAt) > CleanupDelay {
-		return t.State(), TickFinished
-	}
-	return nil, TickNoChange
 }

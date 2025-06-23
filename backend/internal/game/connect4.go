@@ -1,39 +1,44 @@
 package game
 
 import (
-	"encoding/json"
-	"fmt"
+	"errors"
 	"time"
 )
 
 type connect4 struct {
 	baseGame
-	board [6][7]int
+	GameName string
+	board    [6][7]int
 }
 
 func newConnect4() Factory {
-	return func(creator string, payload json.RawMessage) (Game, error) {
+	return func(updator func(GameUpdate)) (Game, error) {
 		game := &connect4{
-			baseGame: newBase(2, "connect4"),
+			baseGame: newBase(2, "connect4", updator),
 			board:    [6][7]int{},
 		}
-		game.Players = []string{creator}
-		game.Turn = 0
+		game.self = game
 		return game, nil
 	}
 }
 
-func (c *connect4) Move(sender string, payload json.RawMessage) (*GameState, error) {
-	mv, idx, err := c.validateMove(sender, payload)
+func (c *connect4) getBoardLocked() any {
+	return c.board
+}
+
+func (c *connect4) Move(sender string, mv *GameMove) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	idx, err := c.checkTurnLocked(sender)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if mv.To.Col < 0 || mv.To.Col > 6 {
-		return nil, fmt.Errorf("invalid move")
+		return errors.New("invalid move")
 	}
 
-	// Find the first empty row in the column
 	var droppedRow int = -1
 	for row := 5; row >= 0; row-- {
 		if c.board[row][mv.To.Col] == 0 {
@@ -44,24 +49,23 @@ func (c *connect4) Move(sender string, payload json.RawMessage) (*GameState, err
 	}
 
 	if droppedRow == -1 {
-		return nil, fmt.Errorf("invalid move")
+		return errors.New("invalid move")
 	}
 
 	if win := c.checkWinner(droppedRow, mv.To.Col); win != 0 {
-		c.Status = StatusFin
-		c.Winner = c.Players[win-1]
-		c.EndedAt = time.Now()
+		c.status = StatusFin
+		c.winner = c.players[win-1]
+		c.endedAt = time.Now()
 	} else if c.checkDraw() {
-		c.Status = StatusFin
-		c.EndedAt = time.Now()
+		c.status = StatusFin
+		c.endedAt = time.Now()
 	}
-
-	c.Turn = 1 - c.Turn
-	return c.State(), nil
-}
-
-func (c *connect4) State() *GameState {
-	return c.state(c.board)
+	c.turn = 1 - c.turn
+	c.notify(GameUpdate{
+		State:  c.stateLocked(),
+		Action: UpdateAction,
+	})
+	return nil
 }
 
 func (c *connect4) checkWinner(startRow, startCol int) int {
@@ -104,14 +108,4 @@ func (c *connect4) checkDraw() bool {
 		}
 	}
 	return true
-}
-
-func (c *connect4) Tick() (*GameState, string) {
-	if c.handleTimeout() {
-		return c.State(), TickFinished
-	}
-	if !c.EndedAt.IsZero() && time.Since(c.EndedAt) > CleanupDelay {
-		return c.State(), TickFinished
-	}
-	return nil, TickNoChange
 }

@@ -31,8 +31,8 @@ interface UserState {
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
   loggedin: () => boolean;
-  addRefreshDependent: (id: string) => void;
-  removeRefreshDependent: (id: string) => void;
+  addRefDependent: (id: string) => void;
+  remRefDependent: (id: string) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -126,11 +126,11 @@ export const useUserStore = create<UserState>()(
         }
       },
       loggedin: () => get().accessExp > Date.now(),
-      addRefreshDependent: (id: string) => {
+      addRefDependent: (id: string) => {
         refreshDependents.add(id);
         scheduleRefresh(get);
       },
-      removeRefreshDependent: (id: string) => {
+      remRefDependent: (id: string) => {
         refreshDependents.delete(id);
         if (refreshDependents.size === 0 && refreshTimeout) {
           clearTimeout(refreshTimeout);

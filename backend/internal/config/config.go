@@ -36,6 +36,7 @@ type WS struct {
 	RoomBuffer     int64
 	MsgBuffer      int64
 	SendBuffer     int64
+	RecvBuffer     int64
 }
 
 func (c *DB) ConnectionStrings() (string, string) {
@@ -89,6 +90,7 @@ func Load() (*AppConfig, error) {
 		RoomBuffer:     20,
 		MsgBuffer:      256,
 		SendBuffer:     64,
+		RecvBuffer:     64,
 	}
 
 	return cfg, nil

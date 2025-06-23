@@ -1,19 +1,18 @@
 export type WsStatus = 'disconnected' | 'connecting' | 'connected';
 
-export const Chat = 'chat' as const;
-export const VidSignal = 'video_signal' as const;
-export const RawSignal = 'raw_signal' as const;
-export const GameState = 'game_state' as const;
-export const JoinRoom = 'join_room' as const;
-export const LeaveRoom = 'leave_room' as const;
-export const GetRoom = 'get_rooms' as const;
-export const GetClients = 'get_clients' as const;
-export const Error = 'error' as const;
-export const Status = 'status' as const;
-export const Draw = 'draw' as const;
+export const msgError = 'error' as const;
+export const msgStatus = 'status' as const;
+export const msgChat = 'chat' as const;
+export const msgVidSignal = 'video_signal' as const;
+export const msgRawSignal = 'raw_signal' as const;
+export const msgGameState = 'game_state' as const;
+export const msgJoinRoom = 'join_room' as const;
+export const msgLeaveRoom = 'leave_room' as const;
+export const msgGetRooms = 'get_rooms' as const;
+export const msgGetClients = 'get_clients' as const;
 
 export interface ErrorMsg {
-  type: typeof Error;
+  type: typeof msgError;
   sender: '_server';
   payload: {
     message: string;
@@ -21,7 +20,7 @@ export interface ErrorMsg {
 }
 
 export interface StatusMsg {
-  type: typeof Status;
+  type: typeof msgStatus;
   sender: '_server';
   payload: {
     message: string;
@@ -29,7 +28,7 @@ export interface StatusMsg {
 }
 
 export interface JoinRoomMsg {
-  type: typeof JoinRoom;
+  type: typeof msgJoinRoom;
   sender: string;
   payload: {
     roomName: string;
@@ -37,12 +36,12 @@ export interface JoinRoomMsg {
 }
 
 export interface LeaveRoomMsg {
-  type: typeof LeaveRoom;
+  type: typeof msgLeaveRoom;
   // Payload: {};
 }
 
 export interface ChatMsg {
-  type: typeof Chat;
+  type: typeof msgChat;
   sender: string;
   payload: {
     message: string;
@@ -51,7 +50,7 @@ export interface ChatMsg {
 }
 
 export interface VidSignalMsg {
-  type: typeof VidSignal;
+  type: typeof msgVidSignal;
   sender: string;
   payload: {
     type: 'join' | 'leave' | 'offer' | 'answer' | 'ice';
@@ -63,17 +62,12 @@ export interface VidSignalMsg {
 }
 
 export interface GetClientRes {
-  type: typeof GetClients;
+  type: typeof msgGetClients;
   sender: '_server';
   payload: {
     roomName: string;
     clients: string[];
   };
-}
-
-export interface GetClientsReq {
-  type: typeof GetClients;
-  // Payload: {};
 }
 
 export interface DrawPayload {
@@ -84,7 +78,7 @@ export interface DrawPayload {
 }
 
 export interface RawDrawMsg {
-  type: typeof RawSignal;
+  type: typeof msgRawSignal;
   sender: string;
   payload: DrawPayload;
 }
@@ -122,13 +116,13 @@ export interface GamePayload {
 }
 
 export interface OutgoingGameState {
-  type: typeof GameState;
+  type: typeof msgGameState;
   sender: string;
   payload: GamePayload;
 }
 
 export interface IncomingGameState {
-  type: typeof GameState;
+  type: typeof msgGameState;
   sender: '_server';
   payload: BoardGameState;
 }
@@ -150,7 +144,6 @@ export type OutgoingMsg =
   | OutgoingGameState
   | JoinRoomMsg
   | LeaveRoomMsg
-  | GetClientsReq
   | RawDrawMsg
 
 export type DisplayableMsg =

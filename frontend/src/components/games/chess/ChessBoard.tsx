@@ -22,25 +22,15 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
   const idx = gameState.players.indexOf(username);
   const yourTurn = gameState.status === 'in_progress' && gameState.turn === idx;
 
-  const boardRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const board = boardRef.current;
-    if (!board) return;
-    const handleTouchStart = (e: TouchEvent) => e.preventDefault();
-    board.addEventListener('touchstart', handleTouchStart, { passive: false });
-    return () => board.removeEventListener('touchstart', handleTouchStart);
-  }, []);
-
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, piece: number, row: number, col: number) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
     setDrag({
       piece: piece,
       from: { row, col },
       pos: { x: e.clientX, y: e.clientY },
     });
-    e.preventDefault();
   };
-
 
   const validSquares = useMemo(() => gameState.validMoves.filter(vMove =>
     vMove.from?.row === drag?.from.row && vMove.from?.col === drag?.from.col)
@@ -65,6 +55,7 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
       }
       setDrag(null);
     };
+
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp, { once: true });
     return () => {
@@ -73,7 +64,7 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
     };
   }, [drag, makeMove, validSquares, yourTurn]);
 
-  return <div className="w-full grid grid-cols-8 border-3 border-secondary" ref={boardRef}>
+  return <div className="w-full grid grid-cols-8 border-3 border-secondary touch-none">
     <h1 className='col-span-full text-center text-xl text-primary'>attention: work in progress</h1>
     {gameState.board.map((cellRow, row) =>
       cellRow.map((cell, col) => {
@@ -88,7 +79,7 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
             'hover:bg-accent/30 group',
             validSquares.some(move => move.to.row === row && move.to.col === col)
               ? isLight ? 'bg-primary/33' : 'bg-primary/66'
-              : isLight ? 'bg-secondary/33' : 'bg-secondary/66',
+              : isLight ? 'bg-secondary/10' : 'bg-secondary/50',
           )}
           onPointerEnter={() => hover.current = { row, col }}
           onPointerLeave={() => hover.current = null}

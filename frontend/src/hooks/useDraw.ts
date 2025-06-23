@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useWebSocket } from './webSocket';
 import type { DrawPayload } from '@/types/wsTypes';
-import { RawSignal } from '@/types/wsTypes';
+import { msgRawSignal } from '@/types/wsTypes';
 import { DRAW_START_COLOR, DRAW_STROKE_INTERVAL, DRAW_START_WIDTH } from '@/config/consts';
 
 interface Point {
@@ -80,7 +80,7 @@ export function useDraw() {
     };
 
     sendMessage({
-      type: RawSignal,
+      type: msgRawSignal,
       sender: 'drawer',
       payload: drawData
     });
