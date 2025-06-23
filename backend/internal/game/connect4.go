@@ -13,10 +13,12 @@ type connect4 struct {
 
 func newConnect4() Factory {
 	return func(updator func(GameUpdate)) (Game, error) {
-		return &connect4{
+		game := &connect4{
 			baseGame: newBase(2, "connect4", updator),
 			board:    [6][7]int{},
-		}, nil
+		}
+		game.self = game
+		return game, nil
 	}
 }
 

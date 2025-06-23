@@ -16,6 +16,7 @@ func newTicTacToe() Factory {
 			baseGame: newBase(2, "tictactoe", updator),
 			board:    [3][3]int{},
 		}
+		game.self = game
 		return game, nil
 	}
 }

@@ -15,10 +15,12 @@ type chessGame struct {
 
 func newChess() Factory {
 	return func(updator func(GameUpdate)) (Game, error) {
-		return &chessGame{
+		game := &chessGame{
 			baseGame: newBase(2, "chess", updator),
 			game:     chess.NewGame(),
-		}, nil
+		}
+		game.self = game
+		return game, nil
 	}
 }
 
