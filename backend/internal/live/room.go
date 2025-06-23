@@ -44,11 +44,10 @@ func (r *room) addClient(client *client) {
 
 	r.clients[client] = struct{}{}
 	client.room = r
-	client.trySend(createMsg(msgJoinRoom, "roomName", r.name))
+	client.trySend(sendKeyVal(msgJoinRoom, "roomName", r.name))
 
-	r.broadcastLocked(createMsg(msgStatus, "message",
-		client.token.Displayname+" has joined "+r.name))
-	r.broadcastLocked(createPayloadMsg(msgGetClients,
+	r.broadcastLocked(sendMessage(msgStatus, client.token.Displayname+" has joined "+r.name))
+	r.broadcastLocked(sendKeyVal(msgGetClients,
 		"clients", r.clientListMsgLocked()))
 }
 
@@ -62,9 +61,8 @@ func (r *room) removeClient(client *client) {
 		}
 		delete(r.clients, client)
 
-		r.broadcastLocked(createMsg(msgStatus, "message",
-			client.token.Displayname+" has left "+r.name))
-		r.broadcastLocked(createPayloadMsg(msgGetClients,
+		r.broadcastLocked(sendMessage(msgStatus, client.token.Displayname+" has left "+r.name))
+		r.broadcastLocked(sendKeyVal(msgGetClients,
 			"clients", r.clientListMsgLocked()))
 	}
 }
@@ -81,46 +79,67 @@ func (r *room) handleRelay(msg *roomMsg) {
 }
 
 func (r *room) handleGameUpdate(update game.GameUpdate) {
-	//todo
+	switch update.Action {
+	case game.UpdateAction:
+		r.broadcastLocked(r.sendGameState(update.State))
+	case game.DeleteAction:
+		r.broadcastLocked(r.sendGameState(update.State))
+		r.game = nil
+	}
 }
 
 func (r *room) handleGameState(client *client, payload *GameMessagePayload) {
 	switch payload.Action {
 	case "get":
-
+		if r.game != nil {
+			client.trySend(r.sendGameState(r.game.GetState()))
+		}
 	case "create":
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		if r.game == nil {
 			newGame, err := r.registry.Create(payload.GameName, r.handleGameUpdate)
 			if err != nil {
-				client.trySend(createMsg(msgError, "message", "Invalid game name: "+payload.GameName))
+				client.trySend(sendMessage(msgError, "Invalid game name: "+payload.GameName))
 				return
 			}
 			r.game = newGame
 			r.game.Join(client.ID)
+			r.game.Start()
 		}
 	case "join":
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 		if r.game != nil {
-			r.game.Join(client.ID)
+			if err := r.game.Join(client.ID); err != nil {
+				client.trySend(sendMessage(msgError, err.Error()))
+			}
 		}
 	case "move":
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 		if r.game != nil {
-			r.game.Move(client.ID, payload.Move)
+			if err := r.game.Move(client.ID, payload.Move); err != nil {
+				client.trySend(sendMessage(msgError, err.Error()))
+			}
 		}
 	case "leave":
 		r.mu.RLock()
 		defer r.mu.RUnlock()
 		if r.game != nil {
-			r.game.Leave(client.ID, false)
+			r.game.Leave(client.ID, true)
 		}
 	default:
-		client.trySend(createMsg(msgError, "message", "unknown action: "+payload.Action))
+		client.trySend(sendMessage(msgError, "unknown action: "+payload.Action))
 	}
+}
+
+func (r *room) sendGameState(state *game.GameState) []byte {
+	stateBytes, err := json.Marshal(state)
+	if err != nil {
+		return r.panicReset()
+	}
+	return sendBytes(msgGameState, stateBytes)
 }
 
 func (r *room) panicReset() []byte {

@@ -70,11 +70,11 @@ func (c *client) readPump() {
 		}
 		if msgType != websocket.MessageText {
 			slog.Error("readPump: unhandled message type", "msgType", msgType.String())
-			c.trySend(createMsg(msgError, "message", "Invalid message type"))
+			c.trySend(sendMessage(msgError, "Invalid message type"))
 			continue
 		}
 		if len(msgRaw) > int(c.cfg.MaxMsgSize) {
-			c.trySend(createMsg(msgError, "message", "Message too large."))
+			c.trySend(sendMessage(msgError, "Message too large."))
 			continue
 		}
 
@@ -85,7 +85,7 @@ func (c *client) readPump() {
 		case c.recv <- msgRaw:
 		default:
 			slog.Error("readPump: Client recv queue full", "client", c.ID)
-			c.trySend(createMsg(msgError, "message", "Server busy. Please try again later."))
+			c.trySend(sendMessage(msgError, "Server busy. Please try again later."))
 		}
 	}
 }
@@ -140,7 +140,7 @@ func (c *client) processPump() {
 		case msgRaw := <-c.recv:
 			var msg roomMsg
 			if err := json.Unmarshal(msgRaw, &msg); err != nil {
-				c.trySend(createMsg(msgError, "message", "Invalid message format: "+err.Error()))
+				c.trySend(sendMessage(msgError, "Invalid message format: "+err.Error()))
 				continue
 			}
 
@@ -152,7 +152,7 @@ func (c *client) processPump() {
 			case msgGameState:
 				var payload GameMessagePayload
 				if err := json.Unmarshal(msg.Payload, &payload); err != nil {
-					c.trySend(createMsg(msgError, "message", "Invalid payload format: "+err.Error()))
+					c.trySend(sendMessage(msgError, "Invalid payload format: "+err.Error()))
 					continue
 				}
 				c.room.handleGameState(c, &payload)
@@ -163,16 +163,16 @@ func (c *client) processPump() {
 					if roomID := payload.RoomName; roomID != "" {
 						c.hub.joinRoom <- &crPair{Client: c, RoomName: roomID}
 					} else {
-						c.trySend(createMsg(msgError, "message", "invalid format: missing roomName"))
+						c.trySend(sendMessage(msgError, "invalid format: missing roomName"))
 					}
 				} else {
-					c.trySend(createMsg(msgError, "message", "invalid format for join room"))
+					c.trySend(sendMessage(msgError, "invalid format for join room"))
 				}
 			case msgLeaveRoom:
 				c.hub.leaveRoom <- c
 			default:
 				slog.Warn("processPump: Unknown message type received", "type", msg.Type, "client", c.ID)
-				c.trySend(createMsg(msgError, "message", "Unknown message type: "+msg.Type))
+				c.trySend(sendMessage(msgError, "Unknown message type: "+msg.Type))
 			}
 		}
 	}

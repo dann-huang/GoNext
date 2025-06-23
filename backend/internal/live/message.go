@@ -47,40 +47,30 @@ func internalError(err error) []byte {
 	return []byte(`{"type":"error","sender":"_server","payload":{"message":"Internal server error"}}`)
 }
 
-func createMsg(msgType, key, msg string) []byte {
-	payload := map[string]string{key: msg}
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return internalError(err)
-	}
-	statusMsg := &roomMsg{
-		Type:    msgType,
-		Sender:  "_server",
-		Payload: json.RawMessage(payloadBytes),
-	}
-	jsonMessage, err := json.Marshal(statusMsg)
-	if err != nil {
-		return internalError(err)
-	}
-	return jsonMessage
+func sendMessage(msgType, msg string) []byte {
+	return sendKeyVal(msgType, "message", msg)
 }
 
-func createPayloadMsg(msgType string, payload ...any) []byte {
-	if len(payload)%2 != 0 {
+func sendKeyVal(msgType string, keyVal ...any) []byte {
+	if len(keyVal)%2 != 0 {
 		return internalError(errors.New("odd number of arguments"))
 	}
 	payloadMap := make(map[string]any)
-	for i := 0; i < len(payload); i += 2 {
-		payloadMap[payload[i].(string)] = payload[i+1]
+	for i := 0; i < len(keyVal); i += 2 {
+		payloadMap[keyVal[i].(string)] = keyVal[i+1]
 	}
 	payloadBytes, err := json.Marshal(payloadMap)
 	if err != nil {
 		return internalError(err)
 	}
+	return sendBytes(msgType, payloadBytes)
+}
+
+func sendBytes(msgType string, bytes []byte) []byte {
 	msg := &roomMsg{
 		Type:    msgType,
 		Sender:  "_server",
-		Payload: json.RawMessage(payloadBytes),
+		Payload: json.RawMessage(bytes),
 	}
 	jsonMessage, err := json.Marshal(msg)
 	if err != nil {
