@@ -76,25 +76,25 @@ export const useWebSocket = create<WSState>()((set, get) => ({
         const msg: t.IncomingMsg = JSON.parse(e.data);
 
         switch (msg.type) {
-          case t.Chat:
-          case t.Status:
-          case t.Error:
+          case t.msgChat:
+          case t.msgStatus:
+          case t.msgError:
             set(state => ({ ...state, msgLog: [...state.msgLog, msg] }));
             break;
 
-          case t.RawSignal:
+          case t.msgRawSignal:
             if (drawHandler) {
               drawHandler(msg.payload);
             }
             break;
 
-          case t.GameState:
+          case t.msgGameState:
             if (gameHandler) {
               gameHandler(msg.payload);
             }
             break;
 
-          case t.VidSignal:
+          case t.msgVidSignal:
             if (vidSigHandler === null) {
               console.warn('WS received vid signal, but no handler');
             } else {
@@ -102,11 +102,11 @@ export const useWebSocket = create<WSState>()((set, get) => ({
             }
             break;
 
-          case t.JoinRoom:
+          case t.msgJoinRoom:
             set({ currentRoom: msg.payload.roomName });
             break;
-          case t.GetClients:
-            set({ clients: msg.payload.clients, currentRoom: msg.payload.roomName })
+          case t.msgGetClients:
+            set({ clients: msg.payload.clients })
             break;
           default:
             console.warn('Unknown message', msg);
@@ -135,6 +135,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
       ws.close(1000, 'Client wants to leave');
       ws = null;
     }
+    console.debug('WS disconnect')
     set({ currentRoom: '', msgLog: [], clients: [], error: '' })
   },
   sendMessage: (msg: t.OutgoingMsg) => {
@@ -152,30 +153,30 @@ export const useWebSocket = create<WSState>()((set, get) => ({
   sendChat: (message: string) => {
     const { username, displayName } = useUserStore.getState();
     const msg: t.ChatMsg = {
-      type: t.Chat,
+      type: t.msgChat,
       sender: username,
       payload: { message, displayName }
     }
     get().sendMessage(msg);
   },
   joinRoom: (roomName: string) => {
-    const msg: t.JoinRoomMsg = { type: t.JoinRoom, sender: '', payload: { roomName } }
+    const msg: t.JoinRoomMsg = { type: t.msgJoinRoom, sender: '', payload: { roomName } }
     get().sendMessage(msg);
   },
   leaveRoom: () => {
-    const msg: t.LeaveRoomMsg = { type: t.LeaveRoom }
+    const msg: t.LeaveRoomMsg = { type: t.msgLeaveRoom }
     get().sendMessage(msg);
   },
   setVidSigHandler: handler => { vidSigHandler = handler },
   sendVidSignal: (payload: t.VidSignalMsg['payload']) => {
-    const msg: t.VidSignalMsg = { type: t.VidSignal, sender: '', payload }
+    const msg: t.VidSignalMsg = { type: t.msgVidSignal, sender: '', payload }
     get().sendMessage(msg);
   },
   setDrawHandler: (handler: (data: t.DrawPayload) => void) => { drawHandler = handler },
   setGameHandler: handler => { gameHandler = handler },
   sendGameMsg: (payload: t.GamePayload) => {
     const msg: t.OutgoingMsg = {
-      type: t.GameState,
+      type: t.msgGameState,
       sender: '',
       payload: payload,
     };
