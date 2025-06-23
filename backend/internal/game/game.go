@@ -1,7 +1,7 @@
 package game
 
 import (
-	"fmt"
+	"errors"
 	"slices"
 	"sync"
 	"time"
@@ -40,6 +40,8 @@ type Game interface {
 	Move(player string, mv *GameMove) error
 
 	State() *GameState
+	getBoard() any
+	getValidMoves() []GameMove
 }
 
 type GameUpdate struct {
@@ -51,14 +53,16 @@ type GameState struct {
 	GameName   string     `json:"gameName"`
 	Players    []string   `json:"players"`
 	Turn       int        `json:"turn"`
-	Board      [][]int    `json:"board"`
+	Board      any        `json:"board"`
 	Status     string     `json:"status"`
 	Winner     string     `json:"winner"`
 	ValidMoves []GameMove `json:"validMoves"`
 }
 
 type baseGame struct {
+	self        Game
 	mu          sync.RWMutex
+	GameName    string
 	Players     []string
 	Turn        int
 	NumPlayers  int
@@ -66,14 +70,13 @@ type baseGame struct {
 	Disconnects map[string]time.Time
 	notify      func(GameUpdate)
 
-	GameName string
-	board    [][]int
-	Winner   string
-	EndedAt  time.Time
+	Winner  string
+	EndedAt time.Time
 }
 
-func newBase(numPlayers int, updator func(GameUpdate)) baseGame {
+func newBase(numPlayers int, gameName string, updator func(GameUpdate)) baseGame {
 	return baseGame{
+		GameName:    gameName,
 		Players:     make([]string, 0, numPlayers),
 		Turn:        0,
 		NumPlayers:  numPlayers,
@@ -85,10 +88,10 @@ func newBase(numPlayers int, updator func(GameUpdate)) baseGame {
 
 func (g *baseGame) Join(player string) error {
 	if len(g.Players) >= g.NumPlayers {
-		return fmt.Errorf("game is full")
+		return errors.New("game is full")
 	}
 	if slices.Contains(g.Players, player) {
-		return fmt.Errorf("already joined")
+		return errors.New("already joined")
 	}
 	g.Players = append(g.Players, player)
 	if len(g.Players) == g.NumPlayers {
@@ -133,9 +136,9 @@ func (g *baseGame) Leave(player string, intentional bool) {
 	})
 }
 
-func (g *baseGame) validateMove(sender string, mv *GameMove) (int, error) {
+func (g *baseGame) checkTurn(sender string) (int, error) {
 	if g.Status != StatusInProgress {
-		return -1, fmt.Errorf("game not in progress")
+		return -1, errors.New("game not in progress")
 	}
 	idx := -1
 	for i, p := range g.Players {
@@ -145,21 +148,26 @@ func (g *baseGame) validateMove(sender string, mv *GameMove) (int, error) {
 		}
 	}
 	if idx == -1 {
-		return -1, fmt.Errorf("player not in game")
+		return -1, errors.New("player not in game")
 	}
 	if idx != g.Turn {
-		return -1, fmt.Errorf("not your turn")
+		return -1, errors.New("not your turn")
 	}
 	return idx, nil
 }
 
+func (g *baseGame) getValidMoves() []GameMove {
+	return nil
+}
+
 func (g *baseGame) State() *GameState {
 	return &GameState{
-		GameName: g.GameName,
-		Players:  g.Players,
-		Turn:     g.Turn,
-		Board:    g.board,
-		Status:   g.Status,
-		Winner:   g.Winner,
+		GameName:   g.GameName,
+		Players:    g.Players,
+		Turn:       g.Turn,
+		Board:      g.self.getBoard(),
+		ValidMoves: g.self.getValidMoves(),
+		Status:     g.Status,
+		Winner:     g.Winner,
 	}
 }

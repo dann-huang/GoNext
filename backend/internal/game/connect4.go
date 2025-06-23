@@ -14,15 +14,18 @@ type connect4 struct {
 func newConnect4() Factory {
 	return func(updator func(GameUpdate)) (Game, error) {
 		return &connect4{
-			baseGame: newBase(2, updator),
-			GameName: "connect4",
+			baseGame: newBase(2, "connect4", updator),
 			board:    [6][7]int{},
 		}, nil
 	}
 }
 
+func (c *connect4) getBoard() any {
+	return c.board
+}
+
 func (c *connect4) Move(sender string, mv *GameMove) error {
-	idx, err := c.validateMove(sender, mv)
+	idx, err := c.checkTurn(sender)
 	if err != nil {
 		return err
 	}

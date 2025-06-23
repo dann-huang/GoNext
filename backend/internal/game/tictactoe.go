@@ -7,22 +7,25 @@ import (
 
 type ticTacToe struct {
 	baseGame
-	GameName string
-	board    [3][3]int
+	board [3][3]int
 }
 
 func newTicTacToe() Factory {
 	return func(updator func(GameUpdate)) (Game, error) {
-		return &ticTacToe{
-			baseGame: newBase(2, updator),
-			GameName: "tictactoe",
+		game := &ticTacToe{
+			baseGame: newBase(2, "tictactoe", updator),
 			board:    [3][3]int{},
-		}, nil
+		}
+		return game, nil
 	}
 }
 
+func (t *ticTacToe) getBoard() any {
+	return t.board
+}
+
 func (t *ticTacToe) Move(sender string, mv *GameMove) error {
-	idx, err := t.validateMove(sender, mv)
+	idx, err := t.checkTurn(sender)
 	if err != nil {
 		return err
 	}

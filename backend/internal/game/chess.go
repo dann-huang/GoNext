@@ -16,14 +16,52 @@ type chessGame struct {
 func newChess() Factory {
 	return func(updator func(GameUpdate)) (Game, error) {
 		return &chessGame{
-			baseGame: newBase(2, updator),
-			GameName: "chess",
+			baseGame: newBase(2, "chess", updator),
 			game:     chess.NewGame(),
 		}, nil
 	}
 }
+
+func (g *chessGame) getBoard() any {
+	board := make([][]int, 8)
+	for i := range 8 {
+		board[i] = make([]int, 8)
+		for j := range 8 {
+			sq := chess.Square((7-i)*8 + j)
+			piece := g.game.Position().Board().Piece(sq)
+			if piece != chess.NoPiece {
+				board[i][j] = pieceToCode(piece)
+			} else {
+				board[i][j] = 0
+			}
+		}
+	}
+	return board
+}
+
+func (g *chessGame) getValidMoves() []GameMove {
+	validMoves := []GameMove{}
+	if g.Status == StatusInProgress {
+		for _, mv := range g.game.ValidMoves() {
+			from := mv.S1()
+			to := mv.S2()
+			validMoves = append(validMoves, GameMove{
+				From: Position{
+					Row: 7 - int(from.Rank()),
+					Col: int(from.File()),
+				},
+				To: Position{
+					Row: 7 - int(to.Rank()),
+					Col: int(to.File()),
+				},
+			})
+		}
+	}
+	return validMoves
+}
+
 func (g *chessGame) Move(sender string, mv *GameMove) error {
-	_, err := g.validateMove(sender, mv)
+	_, err := g.checkTurn(sender)
 	if err != nil {
 		return err
 	}
@@ -57,43 +95,6 @@ func (g *chessGame) Move(sender string, mv *GameMove) error {
 		Action: UpdateAction,
 	})
 	return nil
-}
-
-func (g *chessGame) State() *GameState {
-	board := make([][]int, 8)
-	for i := range 8 {
-		board[i] = make([]int, 8)
-		for j := range 8 {
-			sq := chess.Square((7-i)*8 + j)
-			piece := g.game.Position().Board().Piece(sq)
-			if piece != chess.NoPiece {
-				board[i][j] = pieceToCode(piece)
-			} else {
-				board[i][j] = 0
-			}
-		}
-	}
-	validMoves := []GameMove{}
-	if g.Status == StatusInProgress {
-		for _, mv := range g.game.ValidMoves() {
-			from := mv.S1()
-			to := mv.S2()
-			validMoves = append(validMoves, GameMove{
-				From: Position{
-					Row: 7 - int(from.Rank()),
-					Col: int(from.File()),
-				},
-				To: Position{
-					Row: 7 - int(to.Rank()),
-					Col: int(to.File()),
-				},
-			})
-		}
-	}
-	state := g.baseGame.State()
-	state.Board = board
-	state.ValidMoves = validMoves
-	return state
 }
 
 func rowCol2Move(pos Position) string {
