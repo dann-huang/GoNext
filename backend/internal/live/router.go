@@ -26,9 +26,7 @@ func Router(authMdw mdw.Middleware, ctxKey mdw.ContextKey, registry *game.Regist
 		}
 		user := r.Context().Value(ctxKey).(*token.UserPayload)
 
-		client := newClient(hub, conn, user, hub.cfg)
-		hub.register <- client
-		client.start()
+		hub.register <- newClient(hub, conn, user, hub.cfg)
 	})
 
 	return r
