@@ -1,36 +1,36 @@
 package game
 
 import (
-	"encoding/json"
-	"fmt"
+	"errors"
 	"time"
 )
 
 type connect4 struct {
 	baseGame
-	board [6][7]int
+	GameName string
+	board    [6][7]int
 }
 
 func newConnect4() Factory {
-	return func() (Game, error) {
+	return func(updator func(GameUpdate)) (Game, error) {
 		return &connect4{
-			baseGame: newBase(2, "connect4"),
+			baseGame: newBase(2, updator),
+			GameName: "connect4",
 			board:    [6][7]int{},
 		}, nil
 	}
 }
 
-func (c *connect4) Move(sender string, payload json.RawMessage) (*GameState, error) {
-	mv, idx, err := c.validateMove(sender, payload)
+func (c *connect4) Move(sender string, mv *GameMove) error {
+	idx, err := c.validateMove(sender, mv)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if mv.To.Col < 0 || mv.To.Col > 6 {
-		return nil, fmt.Errorf("invalid move")
+		return errors.New("invalid move")
 	}
 
-	// Find the first empty row in the column
 	var droppedRow int = -1
 	for row := 5; row >= 0; row-- {
 		if c.board[row][mv.To.Col] == 0 {
@@ -41,7 +41,7 @@ func (c *connect4) Move(sender string, payload json.RawMessage) (*GameState, err
 	}
 
 	if droppedRow == -1 {
-		return nil, fmt.Errorf("invalid move")
+		return errors.New("invalid move")
 	}
 
 	if win := c.checkWinner(droppedRow, mv.To.Col); win != 0 {
@@ -52,13 +52,12 @@ func (c *connect4) Move(sender string, payload json.RawMessage) (*GameState, err
 		c.Status = StatusFin
 		c.EndedAt = time.Now()
 	}
-
 	c.Turn = 1 - c.Turn
-	return c.State(), nil
-}
-
-func (c *connect4) State() *GameState {
-	return c.state(c.board)
+	c.notify(GameUpdate{
+		State:  c.State(),
+		Action: UpdateAction,
+	})
+	return nil
 }
 
 func (c *connect4) checkWinner(startRow, startCol int) int {
@@ -101,14 +100,4 @@ func (c *connect4) checkDraw() bool {
 		}
 	}
 	return true
-}
-
-func (c *connect4) Tick() (*GameState, string) {
-	if c.handleTimeout() {
-		return c.State(), TickFinished
-	}
-	if !c.EndedAt.IsZero() && time.Since(c.EndedAt) > CleanupDelay {
-		return c.State(), TickFinished
-	}
-	return nil, TickNoChange
 }

@@ -38,6 +38,8 @@ type Game interface {
 	Rejoin(player string)
 	Leave(player string, intentional bool)
 	Move(player string, mv *GameMove) error
+
+	State() *GameState
 }
 
 type GameUpdate struct {
@@ -49,7 +51,7 @@ type GameState struct {
 	GameName   string     `json:"gameName"`
 	Players    []string   `json:"players"`
 	Turn       int        `json:"turn"`
-	Board      any        `json:"board"`
+	Board      [][]int    `json:"board"`
 	Status     string     `json:"status"`
 	Winner     string     `json:"winner"`
 	ValidMoves []GameMove `json:"validMoves"`
@@ -57,7 +59,6 @@ type GameState struct {
 
 type baseGame struct {
 	mu          sync.RWMutex
-	GameName    string
 	Players     []string
 	Turn        int
 	NumPlayers  int
@@ -65,13 +66,14 @@ type baseGame struct {
 	Disconnects map[string]time.Time
 	notify      func(GameUpdate)
 
-	Winner  string
-	EndedAt time.Time
+	GameName string
+	board    [][]int
+	Winner   string
+	EndedAt  time.Time
 }
 
-func newBase(numPlayers int, gameName string, updator func(GameUpdate)) baseGame {
+func newBase(numPlayers int, updator func(GameUpdate)) baseGame {
 	return baseGame{
-		GameName:    gameName,
 		Players:     make([]string, 0, numPlayers),
 		Turn:        0,
 		NumPlayers:  numPlayers,
@@ -81,7 +83,7 @@ func newBase(numPlayers int, gameName string, updator func(GameUpdate)) baseGame
 	}
 }
 
-func (g *baseGame) join(player string) error {
+func (g *baseGame) Join(player string) error {
 	if len(g.Players) >= g.NumPlayers {
 		return fmt.Errorf("game is full")
 	}
@@ -92,24 +94,30 @@ func (g *baseGame) join(player string) error {
 	if len(g.Players) == g.NumPlayers {
 		g.Status = StatusInProgress
 	}
+	g.notify(GameUpdate{
+		State:  g.State(),
+		Action: UpdateAction,
+	})
 	return nil
 }
 
-func (g *baseGame) rejoin(player string) bool {
+func (g *baseGame) Rejoin(player string) {
 	if _, ok := g.Disconnects[player]; ok {
 		delete(g.Disconnects, player)
 		if len(g.Disconnects) == 0 {
 			g.Status = StatusInProgress
 		}
-		return true
+		g.notify(GameUpdate{
+			State:  g.State(),
+			Action: UpdateAction,
+		})
 	}
-	return false
 }
 
-func (g *baseGame) leave(player string, intentional bool) bool {
+func (g *baseGame) Leave(player string, intentional bool) {
 	idx := slices.Index(g.Players, player)
 	if idx == -1 {
-		return false
+		return
 	}
 	if !intentional && (g.Status == StatusInProgress || g.Status == StatusDisconnected) {
 		g.Status = StatusDisconnected
@@ -119,7 +127,10 @@ func (g *baseGame) leave(player string, intentional bool) bool {
 	if len(g.Players) == 0 {
 		g.Status = StatusWaiting
 	}
-	return true
+	g.notify(GameUpdate{
+		State:  g.State(),
+		Action: UpdateAction,
+	})
 }
 
 func (g *baseGame) validateMove(sender string, mv *GameMove) (int, error) {
@@ -142,12 +153,12 @@ func (g *baseGame) validateMove(sender string, mv *GameMove) (int, error) {
 	return idx, nil
 }
 
-func (g *baseGame) state(board any) *GameState {
+func (g *baseGame) State() *GameState {
 	return &GameState{
 		GameName: g.GameName,
 		Players:  g.Players,
 		Turn:     g.Turn,
-		Board:    board,
+		Board:    g.board,
 		Status:   g.Status,
 		Winner:   g.Winner,
 	}

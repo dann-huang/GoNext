@@ -7,49 +7,17 @@ import (
 
 type ticTacToe struct {
 	baseGame
-	board [3][3]int
+	GameName string
+	board    [3][3]int
 }
 
 func newTicTacToe() Factory {
 	return func(updator func(GameUpdate)) (Game, error) {
 		return &ticTacToe{
-			baseGame: newBase(2, "tictactoe", updator),
+			baseGame: newBase(2, updator),
+			GameName: "tictactoe",
 			board:    [3][3]int{},
 		}, nil
-	}
-}
-
-func (t *ticTacToe) state() *GameState {
-	return t.baseGame.state(t.board)
-}
-
-func (t *ticTacToe) Join(player string) error {
-	err := t.join(player)
-	if err != nil {
-		return err
-	}
-	t.notify(GameUpdate{
-		State:  t.state(),
-		Action: UpdateAction,
-	})
-	return nil
-}
-
-func (t *ticTacToe) Rejoin(player string) {
-	t.rejoin(player)
-	t.notify(GameUpdate{
-		State:  t.state(),
-		Action: UpdateAction,
-	})
-}
-
-func (t *ticTacToe) Leave(player string, intentional bool) {
-	success := t.leave(player, intentional)
-	if success {
-		t.notify(GameUpdate{
-			State:  t.state(),
-			Action: UpdateAction,
-		})
 	}
 }
 
@@ -78,7 +46,7 @@ func (t *ticTacToe) Move(sender string, mv *GameMove) error {
 
 	t.Turn = 1 - t.Turn
 	t.notify(GameUpdate{
-		State:  t.state(),
+		State:  t.State(),
 		Action: UpdateAction,
 	})
 	return nil

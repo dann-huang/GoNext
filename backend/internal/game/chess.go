@@ -1,7 +1,6 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -10,21 +9,23 @@ import (
 
 type chessGame struct {
 	baseGame
-	game *chess.Game
+	GameName string
+	game     *chess.Game
 }
 
 func newChess() Factory {
-	return func() (Game, error) {
+	return func(updator func(GameUpdate)) (Game, error) {
 		return &chessGame{
-			baseGame: newBase(2, "chess"),
+			baseGame: newBase(2, updator),
+			GameName: "chess",
 			game:     chess.NewGame(),
 		}, nil
 	}
 }
-func (g *chessGame) Move(sender string, payload json.RawMessage) (*GameState, error) {
-	mv, _, err := g.validateMove(sender, payload)
+func (g *chessGame) Move(sender string, mv *GameMove) error {
+	_, err := g.validateMove(sender, mv)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	moveStr := rowCol2Move(mv.From) + rowCol2Move(mv.To)
@@ -34,10 +35,10 @@ func (g *chessGame) Move(sender string, payload json.RawMessage) (*GameState, er
 	notation := chess.UCINotation{}
 	move, err := notation.Decode(g.game.Position(), moveStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid move format %q: %w", moveStr, err)
+		return fmt.Errorf("invalid move format %q: %w", moveStr, err)
 	}
 	if g.game.Move(move, nil) != nil {
-		return nil, fmt.Errorf("invalid move %q", moveStr)
+		return fmt.Errorf("invalid move %q", moveStr)
 	}
 
 	if g.game.Outcome() != chess.NoOutcome {
@@ -50,10 +51,12 @@ func (g *chessGame) Move(sender string, payload json.RawMessage) (*GameState, er
 			g.Winner = g.Players[1]
 		}
 	}
-
 	g.Turn = 1 - g.Turn
-
-	return g.State(), nil
+	g.notify(GameUpdate{
+		State:  g.State(),
+		Action: UpdateAction,
+	})
+	return nil
 }
 
 func (g *chessGame) State() *GameState {
@@ -70,44 +73,27 @@ func (g *chessGame) State() *GameState {
 			}
 		}
 	}
-
-	state := g.state(board)
-	state.ValidMoves = g.validMoves()
-	return state
-}
-
-func (g *chessGame) Tick() (*GameState, string) {
-	if g.handleTimeout() {
-		return g.State(), TickBroadcast
-	}
-
-	if g.Status == StatusFin && time.Since(g.EndedAt) > CleanupDelay {
-		return nil, TickFinished
-	}
-
-	return nil, TickNoChange
-}
-
-func (g *chessGame) validMoves() []GameMove {
 	validMoves := []GameMove{}
-	if g.Status != StatusInProgress {
-		return validMoves
+	if g.Status == StatusInProgress {
+		for _, mv := range g.game.ValidMoves() {
+			from := mv.S1()
+			to := mv.S2()
+			validMoves = append(validMoves, GameMove{
+				From: Position{
+					Row: 7 - int(from.Rank()),
+					Col: int(from.File()),
+				},
+				To: Position{
+					Row: 7 - int(to.Rank()),
+					Col: int(to.File()),
+				},
+			})
+		}
 	}
-	for _, mv := range g.game.ValidMoves() {
-		from := mv.S1()
-		to := mv.S2()
-		validMoves = append(validMoves, GameMove{
-			From: Position{
-				Row: 7 - int(from.Rank()),
-				Col: int(from.File()),
-			},
-			To: Position{
-				Row: 7 - int(to.Rank()),
-				Col: int(to.File()),
-			},
-		})
-	}
-	return validMoves
+	state := g.baseGame.State()
+	state.Board = board
+	state.ValidMoves = validMoves
+	return state
 }
 
 func rowCol2Move(pos Position) string {

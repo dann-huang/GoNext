@@ -58,9 +58,7 @@ func (r *room) removeClient(client *client) {
 
 	if _, ok := r.clients[client]; ok {
 		if r.game != nil {
-			if r.game.Leave(client.ID, false) {
-				r.game = nil
-			}
+			r.game.Leave(client.ID, false)
 		}
 		delete(r.clients, client)
 
@@ -82,13 +80,19 @@ func (r *room) handleRelay(msg *roomMsg) {
 	r.mu.RUnlock()
 }
 
+func (r *room) handleGameUpdate(update game.GameUpdate) {
+	//todo
+}
+
 func (r *room) handleGameState(client *client, payload *GameMessagePayload) {
 	switch payload.Action {
 	case "get":
+
+	case "create":
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		if r.game == nil {
-			newGame, err := r.registry.Create(payload.GameName)
+			newGame, err := r.registry.Create(payload.GameName, r.handleGameUpdate)
 			if err != nil {
 				client.trySend(createMsg(msgError, "message", "Invalid game name: "+payload.GameName))
 				return
@@ -96,14 +100,24 @@ func (r *room) handleGameState(client *client, payload *GameMessagePayload) {
 			r.game = newGame
 			r.game.Join(client.ID)
 		}
-	case "create":
-
 	case "join":
-
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+		if r.game != nil {
+			r.game.Join(client.ID)
+		}
 	case "move":
-
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+		if r.game != nil {
+			r.game.Move(client.ID, payload.Move)
+		}
 	case "leave":
-
+		r.mu.RLock()
+		defer r.mu.RUnlock()
+		if r.game != nil {
+			r.game.Leave(client.ID, false)
+		}
 	default:
 		client.trySend(createMsg(msgError, "message", "unknown action: "+payload.Action))
 	}
