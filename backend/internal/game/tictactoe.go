@@ -1,7 +1,6 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -12,28 +11,59 @@ type ticTacToe struct {
 }
 
 func newTicTacToe() Factory {
-	return func(creator string, payload json.RawMessage) (Game, error) {
-		game := &ticTacToe{
-			baseGame: newBase(2, "tictactoe"),
+	return func(updator func(GameUpdate)) (Game, error) {
+		return &ticTacToe{
+			baseGame: newBase(2, "tictactoe", updator),
 			board:    [3][3]int{},
-		}
-		game.Players = []string{creator}
-		game.Turn = 0
-		return game, nil
+		}, nil
 	}
 }
 
-func (t *ticTacToe) Move(sender string, payload json.RawMessage) (*GameState, error) {
-	mv, idx, err := t.validateMove(sender, payload)
+func (t *ticTacToe) state() *GameState {
+	return t.baseGame.state(t.board)
+}
+
+func (t *ticTacToe) Join(player string) error {
+	err := t.join(player)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	t.notify(GameUpdate{
+		State:  t.state(),
+		Action: UpdateAction,
+	})
+	return nil
+}
+
+func (t *ticTacToe) Rejoin(player string) {
+	t.rejoin(player)
+	t.notify(GameUpdate{
+		State:  t.state(),
+		Action: UpdateAction,
+	})
+}
+
+func (t *ticTacToe) Leave(player string, intentional bool) {
+	success := t.leave(player, intentional)
+	if success {
+		t.notify(GameUpdate{
+			State:  t.state(),
+			Action: UpdateAction,
+		})
+	}
+}
+
+func (t *ticTacToe) Move(sender string, mv *GameMove) error {
+	idx, err := t.validateMove(sender, mv)
+	if err != nil {
+		return err
 	}
 
 	if mv.To.Row < 0 || mv.To.Row > 2 || mv.To.Col < 0 || mv.To.Col > 2 {
-		return nil, fmt.Errorf("invalid move")
+		return fmt.Errorf("invalid move")
 	}
 	if t.board[mv.To.Row][mv.To.Col] != 0 {
-		return nil, fmt.Errorf("cell already taken")
+		return fmt.Errorf("cell already taken")
 	}
 	t.board[mv.To.Row][mv.To.Col] = idx + 1
 
@@ -47,11 +77,11 @@ func (t *ticTacToe) Move(sender string, payload json.RawMessage) (*GameState, er
 	}
 
 	t.Turn = 1 - t.Turn
-	return t.State(), nil
-}
-
-func (t *ticTacToe) State() *GameState {
-	return t.state(t.board)
+	t.notify(GameUpdate{
+		State:  t.state(),
+		Action: UpdateAction,
+	})
+	return nil
 }
 
 func (t *ticTacToe) checkWin() int {
@@ -87,14 +117,4 @@ func (t *ticTacToe) checkDraw() bool {
 		}
 	}
 	return true
-}
-
-func (t *ticTacToe) Tick() (*GameState, string) {
-	if t.handleTimeout() {
-		return t.State(), TickFinished
-	}
-	if !t.EndedAt.IsZero() && time.Since(t.EndedAt) > CleanupDelay {
-		return t.State(), TickFinished
-	}
-	return nil, TickNoChange
 }

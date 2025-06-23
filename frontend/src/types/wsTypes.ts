@@ -71,11 +71,6 @@ export interface GetClientRes {
   };
 }
 
-export interface GetClientsReq {
-  type: typeof GetClients;
-  // Payload: {};
-}
-
 export interface DrawPayload {
   type: 'draw';
   points: Array<{ x: number; y: number }>;
@@ -150,7 +145,6 @@ export type OutgoingMsg =
   | OutgoingGameState
   | JoinRoomMsg
   | LeaveRoomMsg
-  | GetClientsReq
   | RawDrawMsg
 
 export type DisplayableMsg =

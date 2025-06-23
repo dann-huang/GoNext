@@ -148,18 +148,14 @@ func (c *client) processPump() {
 			msg.Client = c
 			switch msg.Type {
 			case msgChat, msgVidSignal, msgRawSignal:
-				jsonMsg, err := json.Marshal(msg)
-				if err != nil {
-					c.trySend(createMsg(msgError, "message", "Failed to marshal message: "+err.Error()))
+				c.room.handleRelay(&msg)
+			case msgGameState:
+				var payload GameMessagePayload
+				if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+					c.trySend(createMsg(msgError, "message", "Invalid payload format: "+err.Error()))
 					continue
 				}
-				c.room.broadcast(jsonMsg)
-			case msgGameState:
-				if errStr := c.room.handleGameState(&msg); errStr != "" {
-					c.trySend(createMsg(msgError, "message", "Failed to handle game state: "+errStr))
-				}
-			case msgGetClients:
-				c.trySend(c.room.getClientList())
+				c.room.handleGameState(c, &payload)
 
 			case msgJoinRoom:
 				var payload JoinRoomPayload

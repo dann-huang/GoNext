@@ -1,11 +1,13 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 )
+
+type GameAction int
 
 const (
 	StatusWaiting      = "waiting"
@@ -13,31 +15,12 @@ const (
 	StatusFin          = "finished"
 	StatusDisconnected = "disconnected"
 
-	TickFinished  = "finished"
-	TickNoChange  = "no_change"
-	TickBroadcast = "broadcast"
-
 	DisconnectTimeout = 30 * time.Second
 	CleanupDelay      = 10 * time.Second
+
+	UpdateAction GameAction = iota
+	DeleteAction
 )
-
-type Game interface {
-	Join(sender string) error
-	Move(sender string, payload json.RawMessage) (*GameState, error)
-	State() *GameState
-	Leave(player string, intentional bool) bool
-	Tick() (*GameState, string)
-}
-
-type GameState struct {
-	GameName   string     `json:"gameName"`
-	Players    []string   `json:"players"`
-	Turn       int        `json:"turn"`
-	Board      any        `json:"board"`
-	Status     string     `json:"status"`
-	Winner     string     `json:"winner"`
-	ValidMoves []GameMove `json:"validMoves"`
-}
 
 type Position struct {
 	Row int `json:"row"`
@@ -50,18 +33,43 @@ type GameMove struct {
 	Change string   `json:"change,omitempty"`
 }
 
+type Game interface {
+	Join(player string) error
+	Rejoin(player string)
+	Leave(player string, intentional bool)
+	Move(player string, mv *GameMove) error
+}
+
+type GameUpdate struct {
+	State  *GameState
+	Action GameAction
+}
+
+type GameState struct {
+	GameName   string     `json:"gameName"`
+	Players    []string   `json:"players"`
+	Turn       int        `json:"turn"`
+	Board      any        `json:"board"`
+	Status     string     `json:"status"`
+	Winner     string     `json:"winner"`
+	ValidMoves []GameMove `json:"validMoves"`
+}
+
 type baseGame struct {
+	mu          sync.RWMutex
 	GameName    string
 	Players     []string
 	Turn        int
 	NumPlayers  int
 	Status      string
-	Winner      string
 	Disconnects map[string]time.Time
-	EndedAt     time.Time
+	notify      func(GameUpdate)
+
+	Winner  string
+	EndedAt time.Time
 }
 
-func newBase(numPlayers int, gameName string) baseGame {
+func newBase(numPlayers int, gameName string, updator func(GameUpdate)) baseGame {
 	return baseGame{
 		GameName:    gameName,
 		Players:     make([]string, 0, numPlayers),
@@ -69,28 +77,17 @@ func newBase(numPlayers int, gameName string) baseGame {
 		NumPlayers:  numPlayers,
 		Status:      StatusWaiting,
 		Disconnects: make(map[string]time.Time),
+		notify:      updator,
 	}
 }
 
-func (g *baseGame) Join(player string) error {
-	if g.Status == StatusDisconnected {
-		if _, ok := g.Disconnects[player]; ok {
-			delete(g.Disconnects, player)
-			if len(g.Disconnects) == 0 {
-				g.Status = StatusInProgress
-			}
-			return nil
-		}
-		return fmt.Errorf("game is paused, waiting for player(s) to reconnect")
-	}
-
+func (g *baseGame) join(player string) error {
 	if len(g.Players) >= g.NumPlayers {
 		return fmt.Errorf("game is full")
 	}
 	if slices.Contains(g.Players, player) {
-		return fmt.Errorf("player already joined")
+		return fmt.Errorf("already joined")
 	}
-
 	g.Players = append(g.Players, player)
 	if len(g.Players) == g.NumPlayers {
 		g.Status = StatusInProgress
@@ -98,57 +95,36 @@ func (g *baseGame) Join(player string) error {
 	return nil
 }
 
-func (g *baseGame) Leave(player string, intentional bool) bool {
-	idx := slices.Index(g.Players, player)
-	if idx == -1 {
-		return false
-	}
-
-	if !intentional && (g.Status == StatusInProgress || g.Status == StatusDisconnected) {
-		g.Status = StatusDisconnected
-		g.Disconnects[player] = time.Now()
-		return false
-	}
-
-	g.Players = slices.Delete(g.Players, idx, idx+1)
-	return len(g.Players) == 0
-}
-
-func (g *baseGame) handleTimeout() bool {
-	if g.Status == StatusDisconnected {
-		var timedOutPlayer string
-		for player, disconnectedAt := range g.Disconnects {
-			if time.Since(disconnectedAt) > DisconnectTimeout {
-				timedOutPlayer = player
-				break
-			}
+func (g *baseGame) rejoin(player string) bool {
+	if _, ok := g.Disconnects[player]; ok {
+		delete(g.Disconnects, player)
+		if len(g.Disconnects) == 0 {
+			g.Status = StatusInProgress
 		}
-		if timedOutPlayer != "" {
-			g.Status = StatusFin
-			if len(g.Players) == 2 {
-				winnerIdx := 1 - slices.Index(g.Players, timedOutPlayer)
-				if winnerIdx >= 0 && winnerIdx < len(g.Players) {
-					g.Winner = g.Players[winnerIdx]
-				}
-			}
-			g.EndedAt = time.Now()
-			return true
-		}
-	}
-
-	if (g.Status == StatusFin) && g.EndedAt.IsZero() {
-		g.EndedAt = time.Now()
+		return true
 	}
 	return false
 }
 
-func (g *baseGame) validateMove(sender string, payload json.RawMessage) (*GameMove, int, error) {
-	if g.Status != StatusInProgress {
-		return nil, -1, fmt.Errorf("game not in progress")
+func (g *baseGame) leave(player string, intentional bool) bool {
+	idx := slices.Index(g.Players, player)
+	if idx == -1 {
+		return false
 	}
-	var mv GameMove
-	if err := json.Unmarshal(payload, &mv); err != nil {
-		return nil, -1, fmt.Errorf("invalid move payload: %w", err)
+	if !intentional && (g.Status == StatusInProgress || g.Status == StatusDisconnected) {
+		g.Status = StatusDisconnected
+		g.Disconnects[player] = time.Now()
+	}
+	g.Players = slices.Delete(g.Players, idx, idx+1)
+	if len(g.Players) == 0 {
+		g.Status = StatusWaiting
+	}
+	return true
+}
+
+func (g *baseGame) validateMove(sender string, mv *GameMove) (int, error) {
+	if g.Status != StatusInProgress {
+		return -1, fmt.Errorf("game not in progress")
 	}
 	idx := -1
 	for i, p := range g.Players {
@@ -158,12 +134,12 @@ func (g *baseGame) validateMove(sender string, payload json.RawMessage) (*GameMo
 		}
 	}
 	if idx == -1 {
-		return nil, -1, fmt.Errorf("player not in game")
+		return -1, fmt.Errorf("player not in game")
 	}
 	if idx != g.Turn {
-		return nil, -1, fmt.Errorf("not your turn")
+		return -1, fmt.Errorf("not your turn")
 	}
-	return &mv, idx, nil
+	return idx, nil
 }
 
 func (g *baseGame) state(board any) *GameState {

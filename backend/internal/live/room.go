@@ -1,4 +1,3 @@
-// room/room.go
 package live
 
 import (
@@ -25,23 +24,10 @@ func newRoom(name string, registry *game.Registry) *room {
 	}
 }
 
-func (r *room) broadcast(msg []byte) {
-	r.mu.RLock()
-	r.broadcastLocked(msg)
-	r.mu.RUnlock()
-}
-
 func (r *room) broadcastLocked(msg []byte) {
 	for client := range r.clients {
 		client.trySend(msg)
 	}
-}
-
-func (r *room) getClientList() []byte {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return createPayloadMsg(msgGetClients,
-		"clients", r.clientListMsgLocked())
 }
 
 func (r *room) clientListMsgLocked() [][2]string {
@@ -85,33 +71,41 @@ func (r *room) removeClient(client *client) {
 	}
 }
 
-func (r *room) handleGameState(msg *roomMsg) string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	var payload GameMessagePayload
-	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
-		return "invalid payload: " + err.Error()
+func (r *room) handleRelay(msg *roomMsg) {
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		msg.Client.trySend(internalError(err))
+		return
 	}
+	r.mu.RLock()
+	r.broadcastLocked(jsonMsg)
+	r.mu.RUnlock()
+}
 
+func (r *room) handleGameState(client *client, payload *GameMessagePayload) {
 	switch payload.Action {
 	case "get":
-
-		return ""
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		if r.game == nil {
+			newGame, err := r.registry.Create(payload.GameName)
+			if err != nil {
+				client.trySend(createMsg(msgError, "message", "Invalid game name: "+payload.GameName))
+				return
+			}
+			r.game = newGame
+			r.game.Join(client.ID)
+		}
 	case "create":
 
-		return ""
 	case "join":
 
-		return ""
 	case "move":
 
-		return ""
 	case "leave":
 
-		return ""
 	default:
-		return "unknown action: " + payload.Action
+		client.trySend(createMsg(msgError, "message", "unknown action: "+payload.Action))
 	}
 }
 

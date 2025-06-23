@@ -12,14 +12,11 @@ type connect4 struct {
 }
 
 func newConnect4() Factory {
-	return func(creator string, payload json.RawMessage) (Game, error) {
-		game := &connect4{
+	return func() (Game, error) {
+		return &connect4{
 			baseGame: newBase(2, "connect4"),
 			board:    [6][7]int{},
-		}
-		game.Players = []string{creator}
-		game.Turn = 0
-		return game, nil
+		}, nil
 	}
 }
 

@@ -1,13 +1,11 @@
 package game
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
-type Factory func(creator string, payload json.RawMessage) (Game, error)
+type Factory func(updator func(GameUpdate)) (Game, error)
 
-// just in case we need payload for alternative modes
 type GameInfo struct {
 	Factory Factory
 }
@@ -32,10 +30,10 @@ func (r *Registry) RegisterAll() {
 	r.register("chess", newChess())
 }
 
-func (r *Registry) Create(name, creator string, payload json.RawMessage) (Game, error) {
+func (r *Registry) Create(name string, updator func(GameUpdate)) (Game, error) {
 	info, ok := r.games[name]
 	if !ok {
 		return nil, fmt.Errorf("game type not supported: %s", name)
 	}
-	return info.Factory(creator, payload)
+	return info.Factory(updator)
 }

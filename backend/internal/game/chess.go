@@ -14,14 +14,11 @@ type chessGame struct {
 }
 
 func newChess() Factory {
-	return func(creator string, payload json.RawMessage) (Game, error) {
-		game := &chessGame{
+	return func() (Game, error) {
+		return &chessGame{
 			baseGame: newBase(2, "chess"),
 			game:     chess.NewGame(),
-		}
-		game.Players = []string{creator}
-		game.Turn = 0
-		return game, nil
+		}, nil
 	}
 }
 func (g *chessGame) Move(sender string, payload json.RawMessage) (*GameState, error) {
