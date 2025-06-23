@@ -20,12 +20,15 @@ func newTicTacToe() Factory {
 	}
 }
 
-func (t *ticTacToe) getBoard() any {
+func (t *ticTacToe) getBoardLocked() any {
 	return t.board
 }
 
 func (t *ticTacToe) Move(sender string, mv *GameMove) error {
-	idx, err := t.checkTurn(sender)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	idx, err := t.checkTurnLocked(sender)
 	if err != nil {
 		return err
 	}
@@ -39,17 +42,17 @@ func (t *ticTacToe) Move(sender string, mv *GameMove) error {
 	t.board[mv.To.Row][mv.To.Col] = idx + 1
 
 	if win := t.checkWin(); win != 0 {
-		t.Status = StatusFin
-		t.Winner = t.Players[win-1]
-		t.EndedAt = time.Now()
+		t.status = StatusFin
+		t.winner = t.players[win-1]
+		t.endedAt = time.Now()
 	} else if t.checkDraw() {
-		t.Status = StatusFin
-		t.EndedAt = time.Now()
+		t.status = StatusFin
+		t.endedAt = time.Now()
 	}
 
-	t.Turn = 1 - t.Turn
+	t.turn = 1 - t.turn
 	t.notify(GameUpdate{
-		State:  t.State(),
+		State:  t.stateLocked(),
 		Action: UpdateAction,
 	})
 	return nil

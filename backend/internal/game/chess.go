@@ -22,13 +22,13 @@ func newChess() Factory {
 	}
 }
 
-func (b *chessGame) getBoard() any {
+func (c *chessGame) getBoardLocked() any {
 	board := make([][]int, 8)
 	for i := range 8 {
 		board[i] = make([]int, 8)
 		for j := range 8 {
 			sq := chess.Square((7-i)*8 + j)
-			piece := b.game.Position().Board().Piece(sq)
+			piece := c.game.Position().Board().Piece(sq)
 			if piece != chess.NoPiece {
 				board[i][j] = pieceToCode(piece)
 			} else {
@@ -39,10 +39,10 @@ func (b *chessGame) getBoard() any {
 	return board
 }
 
-func (b *chessGame) getValidMoves() []GameMove {
+func (c *chessGame) getValidMovesLocked() []GameMove {
 	validMoves := []GameMove{}
-	if b.Status == StatusInProgress {
-		for _, mv := range b.game.ValidMoves() {
+	if c.status == StatusInProgress {
+		for _, mv := range c.game.ValidMoves() {
 			from := mv.S1()
 			to := mv.S2()
 			validMoves = append(validMoves, GameMove{
@@ -60,8 +60,11 @@ func (b *chessGame) getValidMoves() []GameMove {
 	return validMoves
 }
 
-func (b *chessGame) Move(sender string, mv *GameMove) error {
-	_, err := b.checkTurn(sender)
+func (c *chessGame) Move(sender string, mv *GameMove) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, err := c.checkTurnLocked(sender)
 	if err != nil {
 		return err
 	}
@@ -71,27 +74,27 @@ func (b *chessGame) Move(sender string, mv *GameMove) error {
 		moveStr += mv.Change
 	}
 	notation := chess.UCINotation{}
-	move, err := notation.Decode(b.game.Position(), moveStr)
+	move, err := notation.Decode(c.game.Position(), moveStr)
 	if err != nil {
 		return fmt.Errorf("invalid move format %q: %w", moveStr, err)
 	}
-	if b.game.Move(move, nil) != nil {
+	if c.game.Move(move, nil) != nil {
 		return fmt.Errorf("invalid move %q", moveStr)
 	}
 
-	if b.game.Outcome() != chess.NoOutcome {
-		b.Status = StatusFin
-		b.EndedAt = time.Now()
-		switch b.game.Outcome() {
+	if c.game.Outcome() != chess.NoOutcome {
+		c.status = StatusFin
+		c.endedAt = time.Now()
+		switch c.game.Outcome() {
 		case chess.WhiteWon:
-			b.Winner = b.Players[0]
+			c.winner = c.players[0]
 		case chess.BlackWon:
-			b.Winner = b.Players[1]
+			c.winner = c.players[1]
 		}
 	}
-	b.Turn = 1 - b.Turn
-	b.notify(GameUpdate{
-		State:  b.State(),
+	c.turn = 1 - c.turn
+	c.notify(GameUpdate{
+		State:  c.stateLocked(),
 		Action: UpdateAction,
 	})
 	return nil

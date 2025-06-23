@@ -20,12 +20,15 @@ func newConnect4() Factory {
 	}
 }
 
-func (c *connect4) getBoard() any {
+func (c *connect4) getBoardLocked() any {
 	return c.board
 }
 
 func (c *connect4) Move(sender string, mv *GameMove) error {
-	idx, err := c.checkTurn(sender)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	idx, err := c.checkTurnLocked(sender)
 	if err != nil {
 		return err
 	}
@@ -48,16 +51,16 @@ func (c *connect4) Move(sender string, mv *GameMove) error {
 	}
 
 	if win := c.checkWinner(droppedRow, mv.To.Col); win != 0 {
-		c.Status = StatusFin
-		c.Winner = c.Players[win-1]
-		c.EndedAt = time.Now()
+		c.status = StatusFin
+		c.winner = c.players[win-1]
+		c.endedAt = time.Now()
 	} else if c.checkDraw() {
-		c.Status = StatusFin
-		c.EndedAt = time.Now()
+		c.status = StatusFin
+		c.endedAt = time.Now()
 	}
-	c.Turn = 1 - c.Turn
+	c.turn = 1 - c.turn
 	c.notify(GameUpdate{
-		State:  c.State(),
+		State:  c.stateLocked(),
 		Action: UpdateAction,
 	})
 	return nil
