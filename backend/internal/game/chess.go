@@ -22,13 +22,13 @@ func newChess() Factory {
 	}
 }
 
-func (g *chessGame) getBoard() any {
+func (b *chessGame) getBoard() any {
 	board := make([][]int, 8)
 	for i := range 8 {
 		board[i] = make([]int, 8)
 		for j := range 8 {
 			sq := chess.Square((7-i)*8 + j)
-			piece := g.game.Position().Board().Piece(sq)
+			piece := b.game.Position().Board().Piece(sq)
 			if piece != chess.NoPiece {
 				board[i][j] = pieceToCode(piece)
 			} else {
@@ -39,10 +39,10 @@ func (g *chessGame) getBoard() any {
 	return board
 }
 
-func (g *chessGame) getValidMoves() []GameMove {
+func (b *chessGame) getValidMoves() []GameMove {
 	validMoves := []GameMove{}
-	if g.Status == StatusInProgress {
-		for _, mv := range g.game.ValidMoves() {
+	if b.Status == StatusInProgress {
+		for _, mv := range b.game.ValidMoves() {
 			from := mv.S1()
 			to := mv.S2()
 			validMoves = append(validMoves, GameMove{
@@ -60,8 +60,8 @@ func (g *chessGame) getValidMoves() []GameMove {
 	return validMoves
 }
 
-func (g *chessGame) Move(sender string, mv *GameMove) error {
-	_, err := g.checkTurn(sender)
+func (b *chessGame) Move(sender string, mv *GameMove) error {
+	_, err := b.checkTurn(sender)
 	if err != nil {
 		return err
 	}
@@ -71,27 +71,27 @@ func (g *chessGame) Move(sender string, mv *GameMove) error {
 		moveStr += mv.Change
 	}
 	notation := chess.UCINotation{}
-	move, err := notation.Decode(g.game.Position(), moveStr)
+	move, err := notation.Decode(b.game.Position(), moveStr)
 	if err != nil {
 		return fmt.Errorf("invalid move format %q: %w", moveStr, err)
 	}
-	if g.game.Move(move, nil) != nil {
+	if b.game.Move(move, nil) != nil {
 		return fmt.Errorf("invalid move %q", moveStr)
 	}
 
-	if g.game.Outcome() != chess.NoOutcome {
-		g.Status = StatusFin
-		g.EndedAt = time.Now()
-		switch g.game.Outcome() {
+	if b.game.Outcome() != chess.NoOutcome {
+		b.Status = StatusFin
+		b.EndedAt = time.Now()
+		switch b.game.Outcome() {
 		case chess.WhiteWon:
-			g.Winner = g.Players[0]
+			b.Winner = b.Players[0]
 		case chess.BlackWon:
-			g.Winner = g.Players[1]
+			b.Winner = b.Players[1]
 		}
 	}
-	g.Turn = 1 - g.Turn
-	g.notify(GameUpdate{
-		State:  g.State(),
+	b.Turn = 1 - b.Turn
+	b.notify(GameUpdate{
+		State:  b.State(),
 		Action: UpdateAction,
 	})
 	return nil

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"sync"
@@ -17,6 +18,7 @@ const (
 
 	DisconnectTimeout = 30 * time.Second
 	CleanupDelay      = 10 * time.Second
+	TickInterval      = 1 * time.Second
 
 	UpdateAction GameAction = iota
 	DeleteAction
@@ -38,10 +40,13 @@ type Game interface {
 	Rejoin(player string)
 	Leave(player string, intentional bool)
 	Move(player string, mv *GameMove) error
+	Start()
+	Stop()
 
 	State() *GameState
 	getBoard() any
 	getValidMoves() []GameMove
+	updateLoop()
 }
 
 type GameUpdate struct {
@@ -72,9 +77,13 @@ type baseGame struct {
 
 	Winner  string
 	EndedAt time.Time
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func newBase(numPlayers int, gameName string, updator func(GameUpdate)) baseGame {
+	ctx, cancel := context.WithCancel(context.Background())
 	return baseGame{
 		GameName:    gameName,
 		Players:     make([]string, 0, numPlayers),
@@ -83,65 +92,79 @@ func newBase(numPlayers int, gameName string, updator func(GameUpdate)) baseGame
 		Status:      StatusWaiting,
 		Disconnects: make(map[string]time.Time),
 		notify:      updator,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 }
 
-func (g *baseGame) Join(player string) error {
-	if len(g.Players) >= g.NumPlayers {
+func (b *baseGame) Start() {
+	go b.ticker()
+}
+
+func (b *baseGame) Stop() {
+	b.cancel()
+}
+
+func (b *baseGame) Join(player string) error {
+	if len(b.Players) >= b.NumPlayers {
 		return errors.New("game is full")
 	}
-	if slices.Contains(g.Players, player) {
+	if slices.Contains(b.Players, player) {
 		return errors.New("already joined")
 	}
-	g.Players = append(g.Players, player)
-	if len(g.Players) == g.NumPlayers {
-		g.Status = StatusInProgress
+	b.Players = append(b.Players, player)
+	if len(b.Players) == b.NumPlayers {
+		b.Status = StatusInProgress
 	}
-	g.notify(GameUpdate{
-		State:  g.State(),
+	b.notify(GameUpdate{
+		State:  b.State(),
 		Action: UpdateAction,
 	})
 	return nil
 }
 
-func (g *baseGame) Rejoin(player string) {
-	if _, ok := g.Disconnects[player]; ok {
-		delete(g.Disconnects, player)
-		if len(g.Disconnects) == 0 {
-			g.Status = StatusInProgress
+func (b *baseGame) Rejoin(player string) {
+	if _, ok := b.Disconnects[player]; ok {
+		delete(b.Disconnects, player)
+		if len(b.Disconnects) == 0 {
+			b.Status = StatusInProgress
 		}
-		g.notify(GameUpdate{
-			State:  g.State(),
+		b.notify(GameUpdate{
+			State:  b.State(),
 			Action: UpdateAction,
 		})
 	}
 }
 
-func (g *baseGame) Leave(player string, intentional bool) {
-	idx := slices.Index(g.Players, player)
+func (b *baseGame) Leave(player string, intentional bool) {
+	idx := slices.Index(b.Players, player)
 	if idx == -1 {
 		return
 	}
-	if !intentional && (g.Status == StatusInProgress || g.Status == StatusDisconnected) {
-		g.Status = StatusDisconnected
-		g.Disconnects[player] = time.Now()
+	if !intentional && (b.Status == StatusInProgress || b.Status == StatusDisconnected) {
+		b.Status = StatusDisconnected
+		b.Disconnects[player] = time.Now()
 	}
-	g.Players = slices.Delete(g.Players, idx, idx+1)
-	if len(g.Players) == 0 {
-		g.Status = StatusWaiting
+	b.Players = slices.Delete(b.Players, idx, idx+1)
+	if len(b.Players) == 0 {
+		b.notify(GameUpdate{
+			State:  b.State(),
+			Action: DeleteAction,
+		})
+		return
 	}
-	g.notify(GameUpdate{
-		State:  g.State(),
+	b.notify(GameUpdate{
+		State:  b.State(),
 		Action: UpdateAction,
 	})
 }
 
-func (g *baseGame) checkTurn(sender string) (int, error) {
-	if g.Status != StatusInProgress {
+func (b *baseGame) checkTurn(sender string) (int, error) {
+	if b.Status != StatusInProgress {
 		return -1, errors.New("game not in progress")
 	}
 	idx := -1
-	for i, p := range g.Players {
+	for i, p := range b.Players {
 		if p == sender {
 			idx = i
 			break
@@ -150,24 +173,57 @@ func (g *baseGame) checkTurn(sender string) (int, error) {
 	if idx == -1 {
 		return -1, errors.New("player not in game")
 	}
-	if idx != g.Turn {
+	if idx != b.Turn {
 		return -1, errors.New("not your turn")
 	}
 	return idx, nil
 }
 
-func (g *baseGame) getValidMoves() []GameMove {
+func (b *baseGame) getValidMoves() []GameMove {
 	return nil
 }
 
-func (g *baseGame) State() *GameState {
+func (b *baseGame) State() *GameState {
 	return &GameState{
-		GameName:   g.GameName,
-		Players:    g.Players,
-		Turn:       g.Turn,
-		Board:      g.self.getBoard(),
-		ValidMoves: g.self.getValidMoves(),
-		Status:     g.Status,
-		Winner:     g.Winner,
+		GameName:   b.GameName,
+		Players:    b.Players,
+		Turn:       b.Turn,
+		Board:      b.self.getBoard(),
+		ValidMoves: b.self.getValidMoves(),
+		Status:     b.Status,
+		Winner:     b.Winner,
+	}
+}
+
+func (b *baseGame) ticker() {
+	ticker := time.NewTicker(TickInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-b.ctx.Done():
+			return
+		case <-ticker.C:
+			b.self.updateLoop()
+		}
+	}
+}
+
+func (b *baseGame) updateLoop() {
+	// just stop game if player doesn't come back.
+	for _, disconnectTime := range b.Disconnects {
+		if time.Since(disconnectTime) > DisconnectTimeout {
+			b.notify(GameUpdate{
+				State:  b.State(),
+				Action: DeleteAction,
+			})
+		}
+	}
+
+	if time.Since(b.EndedAt) > CleanupDelay {
+		b.notify(GameUpdate{
+			State:  b.State(),
+			Action: DeleteAction,
+		})
 	}
 }
