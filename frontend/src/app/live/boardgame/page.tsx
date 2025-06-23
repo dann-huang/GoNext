@@ -19,7 +19,6 @@ const GAME_BOARDS: Record<string, GameBoardComponent> = {
   connect4: Connect4Board,
   chess: ChessBoard,
 };
-
 export default function BoardGamePage() {
   const { currentRoom } = useWebSocket();
   const { gameState, createGame, joinGame, leaveGame, makeMove } = useBoardGame();
@@ -27,7 +26,7 @@ export default function BoardGamePage() {
 
   const handleCreateGame = async (gameName: GameName) => {
     try {
-      await createGame(gameName);
+      createGame(gameName);
     } catch (error) {
       console.error('Failed to create game:', error);
     }

@@ -70,7 +70,7 @@ func sendBytes(msgType string, bytes []byte) []byte {
 	msg := &roomMsg{
 		Type:    msgType,
 		Sender:  "_server",
-		Payload: json.RawMessage(bytes),
+		Payload: bytes,
 	}
 	jsonMessage, err := json.Marshal(msg)
 	if err != nil {

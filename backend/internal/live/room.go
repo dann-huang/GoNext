@@ -7,22 +7,10 @@ import (
 	"letsgo/internal/game"
 )
 
-type room struct {
-	registry *game.Registry
-	name     string
-	clients  map[*client]struct{}
-	mu       sync.RWMutex
-	game     game.Game
-}
-
-func newRoom(name string, registry *game.Registry) *room {
-	return &room{
-		name:     name,
-		clients:  make(map[*client]struct{}),
-		mu:       sync.RWMutex{},
-		registry: registry,
-	}
-}
+const (
+	errorMsg      = `{"type":"error","sender":"_server","payload":"Game state corrupted, resetting..."}`
+	cleanStateMsg = `{"type":"game_state","sender":"_server","payload":{"gameName":"","status":"waiting","players":[],"turn":0,"board":[[]],"winner":"","validMoves":[]}}`
+)
 
 func (r *room) broadcastLocked(msg []byte) {
 	for client := range r.clients {
@@ -49,6 +37,23 @@ func (r *room) addClient(client *client) {
 	r.broadcastLocked(sendMessage(msgStatus, client.token.Displayname+" has joined "+r.name))
 	r.broadcastLocked(sendKeyVal(msgGetClients,
 		"clients", r.clientListMsgLocked()))
+}
+
+type room struct {
+	registry *game.Registry
+	name     string
+	clients  map[*client]struct{}
+	mu       sync.RWMutex
+	game     game.Game
+}
+
+func newRoom(name string, registry *game.Registry) *room {
+	return &room{
+		name:     name,
+		clients:  make(map[*client]struct{}),
+		mu:       sync.RWMutex{},
+		registry: registry,
+	}
 }
 
 func (r *room) removeClient(client *client) {
@@ -83,7 +88,7 @@ func (r *room) handleGameUpdate(update game.GameUpdate) {
 	case game.UpdateAction:
 		r.broadcastLocked(r.sendGameState(update.State))
 	case game.DeleteAction:
-		r.broadcastLocked(r.sendGameState(update.State))
+		r.broadcastLocked([]byte(cleanStateMsg))
 		r.game = nil
 	}
 }
@@ -91,7 +96,9 @@ func (r *room) handleGameUpdate(update game.GameUpdate) {
 func (r *room) handleGameState(client *client, payload *GameMessagePayload) {
 	switch payload.Action {
 	case "get":
-		if r.game != nil {
+		if r.game == nil {
+			client.trySend([]byte(cleanStateMsg))
+		} else {
 			client.trySend(r.sendGameState(r.game.GetState()))
 		}
 	case "create":
@@ -146,11 +153,8 @@ func (r *room) panicReset() []byte {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	errorMsg := []byte(`{"type":"error","sender":"_server","payload":"Game state corrupted, resetting..."}`)
-	cleanStateMsg := []byte(`{"type":"game_state","sender":"_server","payload":"{\"status\":\"waiting\",\"players\":[],\"turn\":0,\"board\":null,\"winner\":\"\"}"}`)
-
 	r.game = nil
-	r.broadcastLocked(errorMsg)
-	r.broadcastLocked(cleanStateMsg)
-	return cleanStateMsg
+	r.broadcastLocked([]byte(errorMsg))
+	r.broadcastLocked([]byte(cleanStateMsg))
+	return []byte(cleanStateMsg)
 }
