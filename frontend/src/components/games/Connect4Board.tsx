@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
@@ -28,7 +27,7 @@ export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
         className='relative'
         {...getCellProps(col)}
       >
-        {true && (
+        {hoveredCell === col && (
           <div
             className='absolute top-0 -bottom-2 w-full duration-200 opacity-70'
             style={{

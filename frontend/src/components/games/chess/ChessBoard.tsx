@@ -1,19 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
 import { numToPiece } from './pieceMapping';
 import { useGameBoard } from '@/hooks/useGameBoard';
-
-type Position = { row: number; col: number };
-
-interface DragState {
-  piece: number;
-  from: Position;
-  pos: { x: number; y: number };
-}
 
 export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
   const username = useUserStore(state => state.username);
