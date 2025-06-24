@@ -52,7 +52,7 @@ export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y:
           setDrag({ from: cellIndex, pos: { x, y } })
         } else {
           setDrag({ ...noDrag })
-          onCellDrop && onCellDrop(dragging.from, cellIndex);
+          if (onCellDrop) onCellDrop(dragging.from, cellIndex);
         }
       } else {
         setDrag({ from: cellIndex, pos: { x: e.clientX, y: e.clientY } });
