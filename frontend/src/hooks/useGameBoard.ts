@@ -15,46 +15,45 @@ export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y:
 
   const lastInputType = useRef<React.PointerEvent['pointerType']>(null);
   const setInputType = (type: React.PointerEvent['pointerType']) => {
-    if (lastInputType.current && lastInputType.current !== type) setDrag(noDrag);
+    if (lastInputType.current && lastInputType.current !== type) setDrag({ ...noDrag });
     lastInputType.current = type;
   };
 
-  const captured = useRef<{ ele: Element | null; ptr: number | null }>
-    ({ ele: null, ptr: null });
-  const capture = (e: React.PointerEvent) => {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    captured.current = { ele: e.currentTarget, ptr: e.pointerId };
-  }
-  const release = () => {
-    if (captured.current.ele && captured.current.ptr !== null) {
-      try {
-        captured.current.ele.releasePointerCapture(captured.current.ptr);
-      } finally {
-        captured.current = { ele: null, ptr: null };
-      }
-    }
-  }
+  /* causing problems with mouse drag. Prolly need to be used with manual hit test */
+  // const captured = useRef<{ ele: Element | null; ptr: number | null }>
+  //   ({ ele: null, ptr: null });
+  // const capture = (e: React.PointerEvent) => {
+  //   e.currentTarget.setPointerCapture(e.pointerId);
+  //   captured.current = { ele: e.currentTarget, ptr: e.pointerId };
+  // }
+  // const release = () => {
+  //   if (captured.current.ele && captured.current.ptr !== null) {
+  //     try {
+  //       captured.current.ele.releasePointerCapture(captured.current.ptr);
+  //     } finally {
+  //       captured.current = { ele: null, ptr: null };
+  //     }
+  //   }
+  // }
 
 
   const getCellProps = (cellIndex: number) => ({
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
       e.stopPropagation()
       setInputType(e.pointerType);
-      capture(e);
+      // capture(e);
       if (e.pointerType === 'touch') {
         if (onCellClick) onCellClick(cellIndex);
 
-        const rect = e.currentTarget.getBoundingClientRect();
-        setDrag(drag => {
-          if (drag.from === null) {
-            const x = rect.left + rect.width / 2 + touchOffset.x;
-            const y = rect.top + rect.height / 2 - touchOffset.y;
-            return { from: cellIndex, pos: { x, y } }
-          }
-
-          onCellDrop && onCellDrop(drag.from, cellIndex);
-          return { from: null, pos: { x: 0, y: 0 } }
-        });
+        if (dragging.from === null) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = rect.left + rect.width / 2 + touchOffset.x;
+          const y = rect.top + rect.height / 2 - touchOffset.y;
+          setDrag({ from: cellIndex, pos: { x, y } })
+        } else {
+          setDrag({ ...noDrag })
+          onCellDrop && onCellDrop(dragging.from, cellIndex);
+        }
       } else {
         setDrag({ from: cellIndex, pos: { x: e.clientX, y: e.clientY } });
         sameCell.current = true;
@@ -62,15 +61,15 @@ export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y:
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
       e.stopPropagation()
-      release();
+      // release();
       setInputType(e.pointerType);
       if (e.pointerType === 'touch') return;
 
-      if (sameCell.current && onCellClick)
+      if (onCellClick && sameCell.current)
         onCellClick(cellIndex);
-      if (dragging.from !== null && onCellDrop)
-        onCellDrop(dragging.from, cellIndex);
-      setDrag({ from: null, pos: { x: e.clientX, y: e.clientY } });
+      if (onCellDrop && dragging.from !== null && hoveredCell !== null)
+        onCellDrop(dragging.from, hoveredCell);
+      setDrag({ ...noDrag });
     },
 
     onPointerEnter: () => { setHoveredCell(cellIndex) },
@@ -89,8 +88,8 @@ export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y:
     }
 
     const reset = () => {
-      release();
-      setDrag(noDrag)
+      // release();
+      setDrag({ ...noDrag })
     }
 
     //cancel drag if outside. Up needed for mouse and down for touch

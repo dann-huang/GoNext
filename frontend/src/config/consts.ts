@@ -1,6 +1,6 @@
 import { GameName } from '@/types/wsTypes';
 
-export const RECONNECT_INITIAL_DELAY = 5000;
+export const RECONNECT_INITIAL_DELAY = 100;
 export const RECONNECT_MAX_DELAY = 10000;
 export const RECONNECT_MAX_ATTEMPTS = 10;
 

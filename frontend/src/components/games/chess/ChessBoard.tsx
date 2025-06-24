@@ -27,7 +27,7 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
       const fromCol = from % 8;
       const toRow = Math.floor(to / 8);
       const toCol = to % 8;
-      console.log(fromRow + '-' + fromCol, toRow + '-' + toCol);
+
       if (gameState.validMoves.some(mv =>
         mv.from?.row === fromRow && mv.from?.col === fromCol &&
         mv.to.row === toRow && mv.to.col === toCol))
