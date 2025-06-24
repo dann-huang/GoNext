@@ -47,7 +47,7 @@ type Game interface {
 	getBoardLocked() any
 	getValidMovesLocked() []GameMove
 	updateLoop()
-	handleDisconnects()
+	handleDisconnectLocked()
 }
 
 type GameUpdate struct {
@@ -158,20 +158,7 @@ func (b *baseGame) Leave(player string, intentional bool) {
 		b.players = slices.Delete(b.players, idx, idx+1)
 	}
 
-	if len(b.players) == 0 {
-		b.status = StatusFin
-		b.endedAt = time.Now()
-		b.notify(GameUpdate{
-			State:  b.stateLocked(),
-			Action: DeleteAction,
-		})
-		b.Stop()
-		return
-	}
-	b.notify(GameUpdate{
-		State:  b.stateLocked(),
-		Action: UpdateAction,
-	})
+	b.handleDisconnectLocked()
 }
 
 func (b *baseGame) checkTurnLocked(sender string) (int, error) {
@@ -260,11 +247,11 @@ func (b *baseGame) updateLoop() {
 				b.players = slices.Delete(b.players, idx, idx+1)
 			}
 		}
-		b.self.handleDisconnects()
+		b.self.handleDisconnectLocked()
 	}
 }
 
-func (b *baseGame) handleDisconnects() {
+func (b *baseGame) handleDisconnectLocked() {
 	// just stop game if player doesn't come back.
 	b.status = StatusFin
 	b.endedAt = time.Now()
