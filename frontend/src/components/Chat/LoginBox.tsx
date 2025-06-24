@@ -42,6 +42,7 @@ export default function LoginBox() {
         placeholder='Username'
         value={username}
         onChange={e => setUsername(e.target.value)}
+        autoComplete='username'
         required
       />
       <Input
@@ -49,6 +50,7 @@ export default function LoginBox() {
         placeholder='Password'
         value={password}
         onChange={e => setPassword(e.target.value)}
+        autoComplete='password'
         required
       />
 
