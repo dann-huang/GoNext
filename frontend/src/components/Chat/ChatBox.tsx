@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useWebSocket } from '@/hooks/webSocket';
-import { useUserStore } from '@/hooks/userStore';
+import { useWebSocket } from '@/hooks/useWebsocket';
+import { useUserStore } from '@/hooks/useUserStore';
 import Input from '../UI/Input';
 import Button from '../UI/Button';
 import { msgError } from '@/types/wsTypes';

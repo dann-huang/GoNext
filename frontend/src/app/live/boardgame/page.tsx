@@ -7,8 +7,8 @@ import { ChessBoard } from '@/components/games/chess/ChessBoard';
 import { GameStatus } from '@/components/games/GameStatus';
 import { CreateGame } from '@/components/games/CreateGame';
 import { GameBoardProps } from '@/types/gameTypes';
-import useBoardGame from '@/hooks/useBoardGame';
-import { useWebSocket } from '@/hooks/webSocket';
+import useBoardGame from '@/hooks/useWSGame';
+import { useWebSocket } from '@/hooks/useWebsocket';
 import { GAME_DISPLAY_NAMES } from '@/config/consts';
 import { Trophy } from 'lucide-react';
 

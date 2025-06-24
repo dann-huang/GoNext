@@ -72,7 +72,7 @@ export const useThemeStore = create<ThemeState>()(
   )
 );
 
-// Optional: Listen for system preference changes and update if theme is 'system'
+//for handling system pref change
 if (typeof window !== 'undefined') {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     const currentTheme = useThemeStore.getState().theme;

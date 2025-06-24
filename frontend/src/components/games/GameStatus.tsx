@@ -1,6 +1,6 @@
 'use client';
 
-import { useUserStore } from '@/hooks/userStore';
+import { useUserStore } from '@/hooks/useUserStore';
 import { BoardGameState } from '@/types/wsTypes';
 import Button from '@/components/UI/Button';
 

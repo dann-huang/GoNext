@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
-import { useUserStore } from '@/hooks/userStore';
+import { useUserStore } from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
 import { numToPiece } from './pieceMapping';
 

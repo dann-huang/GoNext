@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useReducer, useCallback, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/webSocket';
-import { useUserStore } from '@/hooks/userStore';
+import { useWebSocket } from '@/hooks/useWebsocket';
+import { useUserStore } from '@/hooks/useUserStore';
 import { VidSignalMsg } from '@/types/wsTypes';
 
 interface Peer {

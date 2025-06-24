@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useUserStore } from './userStore';
+import { useUserStore } from './useUserStore';
 import * as t from '@/types/wsTypes';
 import { create } from 'zustand';
 import { RECONNECT_INITIAL_DELAY, WS_URL } from '@/config/consts';
