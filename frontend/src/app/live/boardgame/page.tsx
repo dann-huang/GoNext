@@ -7,8 +7,8 @@ import { ChessBoard } from '@/components/games/chess/ChessBoard';
 import { GameStatus } from '@/components/games/GameStatus';
 import { CreateGame } from '@/components/games/CreateGame';
 import { GameBoardProps } from '@/types/gameTypes';
-import useBoardGame from '@/hooks/useBoardGame';
-import { useWebSocket } from '@/hooks/webSocket';
+import useBoardGame from '@/hooks/useWSGame';
+import { useWebSocket } from '@/hooks/useWebsocket';
 import { GAME_DISPLAY_NAMES } from '@/config/consts';
 import { Trophy } from 'lucide-react';
 
@@ -36,7 +36,7 @@ export default function BoardGamePage() {
     {(gameState.status === 'finished') && <div className='fixed inset-0 z-10 flex items-center justify-center pointer-events-none'>
       <div className='text-6xl font-extrabold text-accent bg-secondary/70 px-8 py-6 rounded-xl -rotate-12 flex items-center gap-6 animate-pulse'>
         <Trophy className='w-20 h-20 ' />
-        {gameState.winner ?? 'Nobody'} Wins!
+        {gameState.winner == '' ? 'Nobody' : gameState.winner} Wins!
         <Trophy className='w-20 h-20 ' />
       </div>
     </div>}
@@ -56,7 +56,7 @@ export default function BoardGamePage() {
       leaveGame={leaveGame}
     />
 
-    <div className='flex-1 flex flex-col justify-center items-center'>
+    <div className='flex-1 flex flex-col justify-center items-center touch-none select-none'>
       {gameState.gameName !== ''
         ? GameBoard ?
           <div className='w-full max-w-md'>

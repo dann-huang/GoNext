@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/webSocket';
+import { useRef, useState, useEffect } from 'react';
+import { useWebSocket } from '@/hooks/useWebsocket';
 import { useGroupCall } from '@/hooks/useGroupCall';
 import Button from '@/components/UI/Button';
 

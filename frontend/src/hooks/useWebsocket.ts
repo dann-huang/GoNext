@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useUserStore } from './userStore';
+import { useUserStore } from './useUserStore';
 import * as t from '@/types/wsTypes';
 import { create } from 'zustand';
 import { RECONNECT_INITIAL_DELAY, WS_URL } from '@/config/consts';
@@ -116,11 +116,6 @@ export const useWebSocket = create<WSState>()((set, get) => ({
         set({ error: 'WS onmessage failed' })
       }
     }
-
-    ws.onerror = (event) => {
-      console.error('WS error:', event);
-      set({ error: 'WS error' });
-    };
 
     ws.onclose = (event) => {
       console.debug('WS closed:', event.code, event.reason);

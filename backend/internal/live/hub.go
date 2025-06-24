@@ -4,6 +4,7 @@ import (
 	"letsgo/internal/config"
 	"letsgo/internal/game"
 	"log/slog"
+	"time"
 )
 
 type hub struct {
@@ -52,6 +53,7 @@ func (h *hub) run() {
 				delete(h.clients, client)
 				slog.Debug("Unregistered: ", "client", client.ID)
 			}
+			time.AfterFunc(100*time.Millisecond, client.stop)
 
 		case pair := <-h.joinRoom:
 			slog.Debug("join room")

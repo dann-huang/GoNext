@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useUserStore } from '@/hooks/userStore';
-import { useWSConnect } from '@/hooks/webSocket';
+import { useUserStore } from '@/hooks/useUserStore';
+import { useWSConnect } from '@/hooks/useWebsocket';
 import LoginBox from './LoginBox';
 import ChatBox from './ChatBox';
 import Button from '../UI/Button';

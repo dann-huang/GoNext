@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ChatIndicator from '@/components/UI/ChatIndicator';
-import { useWebSocket } from '@/hooks/webSocket';
+import { useWebSocket } from '@/hooks/useWebsocket';
 
 export default function LiveLayout({
   children,

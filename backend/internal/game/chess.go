@@ -1,7 +1,8 @@
 package game
 
 import (
-	"fmt"
+	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/corentings/chess/v2"
@@ -71,17 +72,24 @@ func (c *chessGame) Move(sender string, mv *GameMove) error {
 		return err
 	}
 
-	moveStr := rowCol2Move(mv.From) + rowCol2Move(mv.To)
-	if mv.Change != "" {
-		moveStr += mv.Change
+	from := chess.Square((7-mv.From.Row)*8 + mv.From.Col)
+	to := chess.Square((7-mv.To.Row)*8 + mv.To.Col)
+	promo := change2Piece(mv.Change)
+
+	var move *chess.Move
+	for _, m := range c.game.ValidMoves() {
+		if m.S1() == from && m.S2() == to && m.Promo() == promo {
+			move = &m
+			break
+		}
 	}
-	notation := chess.UCINotation{}
-	move, err := notation.Decode(c.game.Position(), moveStr)
-	if err != nil {
-		return fmt.Errorf("invalid move format %q: %w", moveStr, err)
+	if move == nil {
+		return errors.New("invalid move: not legal in this position")
 	}
-	if c.game.Move(move, nil) != nil {
-		return fmt.Errorf("invalid move %q", moveStr)
+
+	if err := c.game.Move(move, nil); err != nil {
+		slog.Error("Internal error", "error", err)
+		return errors.New("internal error")
 	}
 
 	if c.game.Outcome() != chess.NoOutcome {
@@ -89,9 +97,13 @@ func (c *chessGame) Move(sender string, mv *GameMove) error {
 		c.endedAt = time.Now()
 		switch c.game.Outcome() {
 		case chess.WhiteWon:
+			c.status = StatusFin
 			c.winner = c.players[0]
 		case chess.BlackWon:
+			c.status = StatusFin
 			c.winner = c.players[1]
+		case chess.Draw:
+			c.status = StatusFin
 		}
 	}
 	c.turn = 1 - c.turn
@@ -102,8 +114,18 @@ func (c *chessGame) Move(sender string, mv *GameMove) error {
 	return nil
 }
 
-func rowCol2Move(pos Position) string {
-	return fmt.Sprintf("%c%d", 'a'+pos.Col, 8-pos.Row)
+func change2Piece(change string) chess.PieceType {
+	switch change {
+	case "q", "Q":
+		return chess.Queen
+	case "r", "R":
+		return chess.Rook
+	case "b", "B":
+		return chess.Bishop
+	case "n", "N":
+		return chess.Knight
+	}
+	return chess.NoPieceType
 }
 
 func pieceToCode(piece chess.Piece) int {

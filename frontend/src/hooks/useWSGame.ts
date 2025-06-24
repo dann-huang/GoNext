@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useWebSocket } from './webSocket';
+import { useWebSocket } from './useWebsocket';
 import { BoardGameState, GameMove, GameName } from '@/types/wsTypes';
 
-export default function useBoardGame() {
+export default function useWebSocketGame() {
   const { sendGameMsg, setGameHandler } = useWebSocket();
   const [isLoading, setIsLoading] = useState(false);
 

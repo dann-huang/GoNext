@@ -1,7 +1,7 @@
 'use client';
 
 import { useDraw } from '@/hooks/useDraw';
-import { useWebSocket } from '@/hooks/webSocket';
+import { useWebSocket } from '@/hooks/useWebsocket';
 import { DrawToolbar } from '@/components/draw/DrawToolbar';
 import { useState, useRef, useEffect } from 'react';
 import { DRAW_CANVAS_WIDTH, DRAW_CANVAS_HEIGHT } from '@/config/consts';
@@ -65,7 +65,6 @@ export default function DrawPage() {
     return () => window.removeEventListener('resize', updateZoom);
   }, [containerRef]);
 
-
   const getCanvasCoords = (clientX: number, clientY: number) => {
     if (!containerRef.current) return { x: 0, y: 0 };
     const rect = containerRef.current.getBoundingClientRect();
@@ -74,6 +73,24 @@ export default function DrawPage() {
       y: ((clientY - rect.top) / containerZoom - viewState.offset.y) / viewState.zoom,
     };
   };
+
+  const handleZoom = (zoom: number) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const x = ((centerX / containerZoom) - viewState.offset.x) / viewState.zoom;
+    const y = ((centerY / containerZoom) - viewState.offset.y) / viewState.zoom;
+
+    setViewState({
+      zoom: zoom,
+      offset: {
+        x: (centerX / containerZoom) - x * zoom,
+        y: (centerY / containerZoom) - y * zoom,
+      },
+    });
+  }
 
   const startPan = (clientX: number, clientY: number) => {
     setIsPanning(true);
@@ -88,7 +105,7 @@ export default function DrawPage() {
   const handlePan = (clientX: number, clientY: number) => {
     if (!isPanning || !panStartRef.current) return;
 
-    const scale = 1 / (containerZoom * viewState.zoom);
+    const scale = 1 / (containerZoom);
     const dx = (clientX - panStartRef.current.x) * scale;
     const dy = (clientY - panStartRef.current.y) * scale;
 
@@ -197,14 +214,14 @@ export default function DrawPage() {
       currentZoom={viewState.zoom}
       changeColor={color => setDrawState(s => ({ ...s, color }))}
       changeWidth={lineWidth => setDrawState(s => ({ ...s, lineWidth }))}
-      zoomIn={() => setViewState(s => ({ ...s, zoom: Math.min(s.zoom * 1.1, 3) }))}
-      zoomOut={() => setViewState(s => ({ ...s, zoom: Math.max(s.zoom * 0.9, 1) }))}
+      zoomIn={() => handleZoom(Math.min(viewState.zoom * 1.1, 3))}
+      zoomOut={() => handleZoom(Math.max(viewState.zoom * 0.9, 1))}
       zoomReset={() => setViewState({ zoom: 1, offset: { x: 0, y: 0 } })}
     />
 
     <div
       ref={containerRef}
-      className='border border-primary border-2 rounded-md overflow-hidden'
+      className='border border-primary border-2 rounded-md overflow-hidden touch-none'
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -216,7 +233,6 @@ export default function DrawPage() {
       style={{
         transform: `scale(${containerZoom})`,
         transformOrigin: '0 0',
-        touchAction: 'none',
         width: `${DRAW_CANVAS_WIDTH}px`,
         height: `${DRAW_CANVAS_HEIGHT}px`,
       }}

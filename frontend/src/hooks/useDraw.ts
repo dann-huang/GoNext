@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { useWebSocket } from './webSocket';
+import { useWebSocket } from './useWebsocket';
 import type { DrawPayload } from '@/types/wsTypes';
 import { msgRawSignal } from '@/types/wsTypes';
 import { DRAW_START_COLOR, DRAW_STROKE_INTERVAL, DRAW_START_WIDTH } from '@/config/consts';

@@ -1,7 +1,5 @@
-'use client';
-
-import React, { useState } from 'react';
-import { useUserStore } from '@/hooks/userStore'; // Adjust path if different
+import { useState } from 'react';
+import { useUserStore } from '@/hooks/useUserStore'; // Adjust path if different
 import Input from '../UI/Input';
 import Button from '../UI/Button';
 
