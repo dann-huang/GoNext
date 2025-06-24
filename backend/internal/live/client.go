@@ -50,14 +50,15 @@ func (c *client) start() {
 
 func (c *client) stop() {
 	c.cancel()
-	c.hub.unregister <- c
 	close(c.send)
 	close(c.recv)
 	c.conn.Close(websocket.StatusNormalClosure, "client leaving")
 }
 
 func (c *client) readPump() {
-	defer c.stop()
+	defer func() {
+		c.hub.unregister <- c
+	}()
 
 	for {
 		msgType, msgRaw, err := c.conn.Read(c.ctx)
@@ -99,11 +100,18 @@ func (c *client) writePump() {
 			if !ok {
 				return
 			}
+
 			writeCtx, cancelWrite := context.WithTimeout(c.ctx, c.cfg.WriteTimeout)
 			err := c.conn.Write(writeCtx, websocket.MessageText, message)
 			cancelWrite()
+
 			if err != nil {
-				slog.Error("writePump: WebSocket write error", "error", err, "client", c.ID)
+				if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
+					websocket.CloseStatus(err) == websocket.StatusGoingAway {
+					slog.Debug("WebSocket connection closed", "client", c.ID)
+				} else {
+					slog.Error("writePump: WebSocket write error", "error", err, "client", c.ID)
+				}
 				c.cancel()
 				return
 			}
@@ -179,6 +187,12 @@ func (c *client) processPump() {
 }
 
 func (c *client) trySend(msg []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Warn("trySend: Attempted to send on closed channel", "client", c.ID, "recover", r)
+		}
+	}()
+
 	select {
 	case c.send <- msg:
 	default:
