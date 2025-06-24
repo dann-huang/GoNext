@@ -1,6 +1,3 @@
-'use client';
-
-import React from 'react';
 import { useThemeStore, Theme } from '@/hooks/useTheme';
 
 export default function ThemeSwitcher() {

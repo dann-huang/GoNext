@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '@/hooks/useWebsocket';
 import { useUserStore } from '@/hooks/useUserStore';
 import Input from '../UI/Input';

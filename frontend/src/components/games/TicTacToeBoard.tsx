@@ -40,8 +40,8 @@ export function TicTacToeBoard({ gameState, makeMove }: GameBoardProps) {
           {...getCellProps(row * 3 + col)}
         >
           {isHovered && <div className='absolute inset-0 bg-primary/10 rounded-md' />}
-          {cell === 1 ? <X className='w-30 h-30 stroke-[4px]' />
-            : cell === 2 ? <Circle className='w-23 h-23 stroke-[4px]' />
+          {cell === 1 ? <X className='w-full h-full stroke-[3.5px]' />
+            : cell === 2 ? <Circle className='w-full h-full p-3 stroke-[4px]' />
               : null}
         </div>;
       })

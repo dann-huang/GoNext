@@ -2,33 +2,35 @@ import { useState } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
+import { useGameBoard } from '@/hooks/useGameBoard';
 
 export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
-  const [hoveredCol, setHoveredCol] = useState<number>(-1);
   const username = useUserStore(state => state.username);
   const yourIdx = gameState.players.indexOf(username);
   const isYourTurn = gameState.status == 'in_progress'
     && gameState.turn === yourIdx;
 
-  const handleClick = () => {
-    if (!isYourTurn || hoveredCol < 0) return;
-    makeMove({ to: { row: 0, col: hoveredCol } });
+  const handleCellClick = (col: number) => {
+    console.log(col);
+    if (!isYourTurn) return;
+    makeMove({ to: { row: 0, col } });
   };
 
-  return <div className='w-full bg-primary p-2 rounded-lg touch-none grid grid-cols-7 gap-2'
-    onClick={handleClick}
-    onPointerLeave={() => setHoveredCol(-1)}
+  const { getCellProps, hoveredCell } = useGameBoard({
+    onCellClick: handleCellClick,
+  });
+
+  return <div className='w-full bg-primary p-2 rounded-lg touch-none grid grid-cols-7 gap-2 touch-none'
   >
     {[...Array(7)].map((_, col) => (
       <div
         key={`col-wrapper-${col}`}
         className='relative'
-        onPointerEnter={() => setHoveredCol(col)}
-        onPointerLeave={() => setHoveredCol(-1)}
+        {...getCellProps(col)}
       >
-        {hoveredCol === col && (
+        {hoveredCell === col && (
           <div
-            className='absolute top-0 -bottom-2 pointer-events-none transition-all duration-200'
+            className='absolute top-0 -bottom-2 transition-all duration-200'
             style={{
               left: 0,
               width: '100%',

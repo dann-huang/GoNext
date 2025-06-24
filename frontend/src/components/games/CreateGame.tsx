@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { GameName, GAME_NAMES } from '@/types/wsTypes';
 import { GAME_DISPLAY_NAMES } from '@/config/consts';

@@ -36,7 +36,7 @@ export default function BoardGamePage() {
     {(gameState.status === 'finished') && <div className='fixed inset-0 z-10 flex items-center justify-center pointer-events-none'>
       <div className='text-6xl font-extrabold text-accent bg-secondary/70 px-8 py-6 rounded-xl -rotate-12 flex items-center gap-6 animate-pulse'>
         <Trophy className='w-20 h-20 ' />
-        {gameState.winner ?? 'Nobody'} Wins!
+        {gameState.winner == '' ? 'Nobody' : gameState.winner} Wins!
         <Trophy className='w-20 h-20 ' />
       </div>
     </div>}
