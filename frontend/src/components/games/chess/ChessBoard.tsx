@@ -43,7 +43,6 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
   }), [gameState.validMoves, dragging.from]);
 
   return <div className="w-full grid grid-cols-8 border-3 border-secondary">
-    <h1 className='col-span-full text-center text-xl text-primary'>attention: work in progress</h1>
     {gameState.board.map((cellRow, row) =>
       cellRow.map((cell, col) => {
         const isLight = (row + col) % 2 === 0;

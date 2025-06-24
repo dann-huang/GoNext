@@ -117,11 +117,6 @@ export const useWebSocket = create<WSState>()((set, get) => ({
       }
     }
 
-    ws.onerror = (event) => {
-      console.error('WS error:', event);
-      set({ error: 'WS error' });
-    };
-
     ws.onclose = (event) => {
       console.debug('WS closed:', event.code, event.reason);
       set({ error: `WS disconnected: code ${event.code}, reason: ${event.reason || 'Unknown'}.` });
