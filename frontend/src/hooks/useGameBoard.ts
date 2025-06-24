@@ -1,71 +1,71 @@
 import { useState, useRef, useEffect } from 'react';
 
-export type UseGameBoardInput = {
+type useBoardProps = {
   onCellClick?: (cellIndex: number) => void;
   onCellDrop?: (fromIndex: number, toIndex: number) => void;
 };
 
-export type UseGameBoardOutput = {
-  hoveredCell: number | null;
-  dragging: {
-    from: number | null;
-    pointer: { x: number; y: number };
-  };
-  getCellProps: (cellIndex: number) => {
-    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
-    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
-    onPointerEnter: (e: React.PointerEvent<HTMLDivElement>) => void;
-    onPointerLeave: (e: React.PointerEvent<HTMLDivElement>) => void;
-    onPointerCancel: (e: React.PointerEvent<HTMLDivElement>) => void;
-  };
-};
+const noDrag = { from: null, pos: { x: 0, y: 0 } };
 
-export function useGameBoard({ onCellClick, onCellDrop }: UseGameBoardInput): UseGameBoardOutput {
+export function useGameBoard({ onCellClick, onCellDrop }: useBoardProps) {
   const [hoveredCell, setHoveredCell] = useState<number | null>(null);
-  const [dragging, setDragging] = useState<{ from: number | null; pointer: { x: number; y: number } }>({
-    from: null,
-    pointer: { x: 0, y: 0 },
-  });
-  const lastPointerType = useRef<React.PointerEvent['pointerType']>(null);
+  const [dragging, setDrag] = useState<{ from: number | null; pos: { x: number; y: number } }>(noDrag);
   const sameCell = useRef<boolean>(true); // for cursor cell click
 
-  const reset = () => {
-    setDragging({ from: null, pointer: { x: 0, y: 0 } });
-    setHoveredCell(null);
+  const lastInputType = useRef<React.PointerEvent['pointerType']>(null);
+  const setInputType = (type: React.PointerEvent['pointerType']) => {
+    if (lastInputType.current && lastInputType.current !== type) setDrag(noDrag);
+    lastInputType.current = type;
   };
 
-  const setInput = (type: React.PointerEvent['pointerType']) => {
-    if (lastPointerType.current && lastPointerType.current !== type) reset();
-    lastPointerType.current = type;
-  };
+  const captured = useRef<{ ele: Element | null; ptr: number | null }>
+    ({ ele: null, ptr: null });
+  const capture = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    captured.current = { ele: e.currentTarget, ptr: e.pointerId };
+  }
+  const release = () => {
+    if (captured.current.ele && captured.current.ptr !== null) {
+      try {
+        captured.current.ele.releasePointerCapture(captured.current.ptr);
+      } finally {
+        captured.current = { ele: null, ptr: null };
+      }
+    }
+  }
+
 
   const getCellProps = (cellIndex: number) => ({
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
-      setInput(e.pointerType);
+      e.stopPropagation()
+      setInputType(e.pointerType);
+      capture(e);
       if (e.pointerType === 'touch') {
         if (onCellClick) onCellClick(cellIndex);
 
-        setDragging(drag => {
+        setDrag(drag => {
           if (drag.from === null)
-            return { from: cellIndex, pointer: { x: e.clientX, y: e.clientY } }
+            return { from: cellIndex, pos: { x: e.clientX, y: e.clientY } }
 
           onCellDrop && onCellDrop(drag.from, cellIndex);
-          return { from: null, pointer: { x: 0, y: 0 } }
+          return { from: null, pos: { x: 0, y: 0 } }
         });
       } else {
-        setDragging({ from: cellIndex, pointer: { x: e.clientX, y: e.clientY } });
+        setDrag({ from: cellIndex, pos: { x: e.clientX, y: e.clientY } });
         sameCell.current = true;
       }
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
-      setInput(e.pointerType);
+      e.stopPropagation()
+      release();
+      setInputType(e.pointerType);
       if (e.pointerType === 'touch') return;
 
       if (sameCell.current && onCellClick)
         onCellClick(cellIndex);
       if (dragging.from !== null && onCellDrop)
         onCellDrop(dragging.from, cellIndex);
-      setDragging({ from: null, pointer: { x: e.clientX, y: e.clientY } });
+      setDrag({ from: null, pos: { x: e.clientX, y: e.clientY } });
     },
 
     onPointerEnter: () => { setHoveredCell(cellIndex) },
@@ -73,18 +73,30 @@ export function useGameBoard({ onCellClick, onCellDrop }: UseGameBoardInput): Us
       setHoveredCell(null);
       sameCell.current = false;
     },
-    onPointerCancel: () => { reset() },
   });
 
-  // for dragged pieces
+  // 
   useEffect(() => {
-    if (dragging.from !== null) {
-      const onPointerMove = (e: PointerEvent) => {
-        setDragging(d => ({ ...d, pointer: { x: e.clientX, y: e.clientY } }));
-      };
-      window.addEventListener('pointermove', onPointerMove);
-      return () => window.removeEventListener('pointermove', onPointerMove);
+    if (dragging.from === null) return
+    const onPointerMove = (e: PointerEvent) =>
+      setDrag(d => ({ ...d, pos: { x: e.clientX, y: e.clientY } }))
+
+    const reset = () => {
+      release();
+      setDrag(noDrag)
     }
+
+    //cancel drag if outside. Up needed for mouse and down for touch
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', reset);
+    window.addEventListener('pointerdown', reset);
+    window.addEventListener('pointercancel', reset);
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', reset);
+      window.removeEventListener('pointerdown', reset);
+      window.removeEventListener('pointercancel', reset);
+    };
   }, [dragging.from]);
 
   return {

@@ -23,7 +23,7 @@ export function TicTacToeBoard({ gameState, makeMove }: GameBoardProps) {
     onCellClick: handleCellClick,
   });
 
-  return <div className='w-full bg-secondary p-4 rounded-lg grid grid-cols-3 gap-4 touch-none'>
+  return <div className='w-full bg-secondary p-4 rounded-lg grid grid-cols-3 gap-4'>
     {gameState.board.map((cellRow, row) =>
       cellRow.map((cell, col) => {
         const isHovered = row * 3 + col === hoveredCell;

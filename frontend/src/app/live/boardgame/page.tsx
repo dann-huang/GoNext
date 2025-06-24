@@ -56,7 +56,7 @@ export default function BoardGamePage() {
       leaveGame={leaveGame}
     />
 
-    <div className='flex-1 flex flex-col justify-center items-center'>
+    <div className='flex-1 flex flex-col justify-center items-center touch-none select-none'>
       {gameState.gameName !== ''
         ? GameBoard ?
           <div className='w-full max-w-md'>

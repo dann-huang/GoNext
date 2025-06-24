@@ -20,7 +20,7 @@ export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
     onCellClick: handleCellClick,
   });
 
-  return <div className='w-full bg-primary p-2 rounded-lg touch-none grid grid-cols-7 gap-2 touch-none'
+  return <div className='w-full bg-primary p-2 rounded-lg grid grid-cols-7 gap-2'
   >
     {[...Array(7)].map((_, col) => (
       <div

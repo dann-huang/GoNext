@@ -1,3 +1,5 @@
+'use client';
+
 import { useThemeStore, Theme } from '@/hooks/useTheme';
 
 export default function ThemeSwitcher() {
