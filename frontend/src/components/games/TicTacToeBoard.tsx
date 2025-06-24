@@ -1,26 +1,32 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
 import { X, Circle } from 'lucide-react';
+import { useGameBoard } from '@/hooks/useGameBoard';
 
 export function TicTacToeBoard({ gameState, makeMove }: GameBoardProps) {
-  const [hoveredCell, setHoveredCell] = useState<{ row: number, col: number } | null>(null);
   const username = useUserStore(state => state.username);
   const yourIdx = gameState.players.indexOf(username);
   const isYourTurn = gameState.status === 'in_progress' && gameState.turn === yourIdx;
 
-  const handleCellClick = useCallback((row: number, col: number) => {
+  const handleCellClick = useCallback((cell: number) => {
+    const row = Math.floor(cell / 3);
+    const col = cell % 3;
     if (gameState.status === 'in_progress' && gameState.board[row][col] === 0 && isYourTurn)
       makeMove({ to: { row, col } });
   }, [gameState.status, gameState.board, makeMove, isYourTurn]);
 
-  return <div className='w-full bg-secondary p-4 rounded-lg grid grid-cols-3 gap-4'>
+  const { getCellProps, hoveredCell } = useGameBoard({
+    onCellClick: handleCellClick,
+  });
+
+  return <div className='w-full bg-secondary p-4 rounded-lg grid grid-cols-3 gap-4 touch-none'>
     {gameState.board.map((cellRow, row) =>
       cellRow.map((cell, col) => {
-        const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
+        const isHovered = row * 3 + col === hoveredCell;
 
         return <div key={`${row}-${col}`}
           className={cn(
@@ -31,9 +37,7 @@ export function TicTacToeBoard({ gameState, makeMove }: GameBoardProps) {
               'text-accent': cell > 0 && yourIdx !== -1 && cell !== yourIdx + 1,
             }
           )}
-          onClick={() => handleCellClick(row, col)}
-          onMouseEnter={() => setHoveredCell({ row, col })}
-          onMouseLeave={() => setHoveredCell(null)}
+          {...getCellProps(row * 3 + col)}
         >
           {isHovered && <div className='absolute inset-0 bg-primary/10 rounded-md' />}
           {cell === 1 ? <X className='w-30 h-30 stroke-[4px]' />
