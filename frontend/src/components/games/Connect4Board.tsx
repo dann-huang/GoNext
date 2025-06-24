@@ -28,15 +28,12 @@ export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
         className='relative'
         {...getCellProps(col)}
       >
-        {hoveredCell === col && (
+        {true && (
           <div
-            className='absolute top-0 -bottom-2 transition-all duration-200'
+            className='absolute top-0 -bottom-2 w-full duration-200 opacity-70'
             style={{
-              left: 0,
-              width: '100%',
-              background: `linear-gradient(to top, var(--color-${isYourTurn ? 'secondary' : 'background'}) 0%, transparent 100%)`,
-              opacity: 0.7,
-              borderRadius: '0.5rem',
+              background: `linear-gradient(to top, var(--color-
+              ${isYourTurn ? 'secondary' : 'background'}) 0%, transparent 100%)`,
             }}
           />
         )}

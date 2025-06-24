@@ -3,11 +3,12 @@ import { useState, useRef, useEffect } from 'react';
 type useBoardProps = {
   onCellClick?: (cellIndex: number) => void;
   onCellDrop?: (fromIndex: number, toIndex: number) => void;
+  touchOffset?: { x: number; y: number };
 };
 
 const noDrag = { from: null, pos: { x: 0, y: 0 } };
 
-export function useGameBoard({ onCellClick, onCellDrop }: useBoardProps) {
+export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y: 10 } }: useBoardProps) {
   const [hoveredCell, setHoveredCell] = useState<number | null>(null);
   const [dragging, setDrag] = useState<{ from: number | null; pos: { x: number; y: number } }>(noDrag);
   const sameCell = useRef<boolean>(true); // for cursor cell click
@@ -43,9 +44,13 @@ export function useGameBoard({ onCellClick, onCellDrop }: useBoardProps) {
       if (e.pointerType === 'touch') {
         if (onCellClick) onCellClick(cellIndex);
 
+        const rect = e.currentTarget.getBoundingClientRect();
         setDrag(drag => {
-          if (drag.from === null)
-            return { from: cellIndex, pos: { x: e.clientX, y: e.clientY } }
+          if (drag.from === null) {
+            const x = rect.left + rect.width / 2 + touchOffset.x;
+            const y = rect.top + rect.height / 2 - touchOffset.y;
+            return { from: cellIndex, pos: { x, y } }
+          }
 
           onCellDrop && onCellDrop(drag.from, cellIndex);
           return { from: null, pos: { x: 0, y: 0 } }
@@ -78,8 +83,10 @@ export function useGameBoard({ onCellClick, onCellDrop }: useBoardProps) {
   // 
   useEffect(() => {
     if (dragging.from === null) return
-    const onPointerMove = (e: PointerEvent) =>
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === 'touch') return;
       setDrag(d => ({ ...d, pos: { x: e.clientX, y: e.clientY } }))
+    }
 
     const reset = () => {
       release();

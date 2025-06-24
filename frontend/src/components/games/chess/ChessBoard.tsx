@@ -67,5 +67,18 @@ export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
         </div>
       })
     )}
+    {dragging.from !== null && (() => {
+      const row = Math.floor(dragging.from / 8);
+      const col = dragging.from % 8;
+      const pieceNum = gameState.board[row][col];
+      const Piece = numToPiece[pieceNum];
+      if (!Piece) return null;
+      return <Piece className='fixed pointer-events-none z-50 
+        transform -translate-x-1/2 -translate-y-1/2'
+        style={{
+          left: dragging.pos.x,
+          top: dragging.pos.y,
+        }} />;
+    })()}
   </div>;
 }

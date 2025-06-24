@@ -204,7 +204,7 @@ export default function DrawPage() {
 
     <div
       ref={containerRef}
-      className='border border-primary border-2 rounded-md overflow-hidden'
+      className='border border-primary border-2 rounded-md overflow-hidden touch-none'
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -216,7 +216,6 @@ export default function DrawPage() {
       style={{
         transform: `scale(${containerZoom})`,
         transformOrigin: '0 0',
-        touchAction: 'none',
         width: `${DRAW_CANVAS_WIDTH}px`,
         height: `${DRAW_CANVAS_HEIGHT}px`,
       }}
