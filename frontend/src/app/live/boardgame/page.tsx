@@ -1,11 +1,11 @@
 'use client';
 
 import { GameName } from '@/types/wsTypes';
-import { TicTacToeBoard } from '@/components/games/TicTacToeBoard';
-import { Connect4Board } from '@/components/games/Connect4Board';
-import { ChessBoard } from '@/components/games/chess/ChessBoard';
-import { GameStatus } from '@/components/games/GameStatus';
-import { CreateGame } from '@/components/games/CreateGame';
+import TicTacToeBoard from '@/components/games/TicTacToeBoard';
+import Connect4Board from '@/components/games/Connect4Board';
+import ChessBoard from '@/components/games/chess/ChessBoard';
+import GameStatus from '@/components/games/GameStatus';
+import CreateGame from '@/components/games/CreateGame';
 import { GameBoardProps } from '@/types/gameTypes';
 import useBoardGame from '@/hooks/useWSGame';
 import { useWebSocket } from '@/hooks/useWebsocket';
@@ -56,10 +56,10 @@ export default function BoardGamePage() {
       leaveGame={leaveGame}
     />
 
-    <div className='flex-1 flex flex-col justify-center items-center touch-none select-none'>
+    <div className='flex-1 flex justify-center items-center'>
       {gameState.gameName !== ''
         ? GameBoard ?
-          <div className='w-full max-w-md'>
+          <div className='w-full max-w-md touch-none select-none'>
             <GameBoard
               gameState={gameState}
               makeMove={makeMove}

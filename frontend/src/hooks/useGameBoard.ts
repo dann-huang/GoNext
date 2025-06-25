@@ -1,113 +1,118 @@
-import { useState, useRef, useEffect } from 'react';
+import { TOUCH_HOLD_DURATION } from '@/config/consts';
+import { useState, useRef, useEffect, useCallback } from 'react';
+
+type ClickType = 'left' | 'right';
 
 type useBoardProps = {
-  onCellClick?: (cellIndex: number) => void;
+  onCellClick?: (cellIndex: number, clickType?: ClickType) => void;
   onCellDrop?: (fromIndex: number, toIndex: number) => void;
   touchOffset?: { x: number; y: number };
 };
 
-const noDrag = { from: null, pos: { x: 0, y: 0 } };
-
 export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y: 10 } }: useBoardProps) {
   const [hoveredCell, setHoveredCell] = useState<number | null>(null);
-  const [dragging, setDrag] = useState<{ from: number | null; pos: { x: number; y: number } }>(noDrag);
-  const sameCell = useRef<boolean>(true); // for cursor cell click
+  const [dragging, setDrag] = useState<number | null>(null);
+
+  const shouldContinue = useRef<boolean>(false);
 
   const lastInputType = useRef<React.PointerEvent['pointerType']>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const touchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const reset = useCallback(() => {
+    setDrag(null);
+    touchStart.current = null;
+    if (touchTimeout.current) clearTimeout(touchTimeout.current);
+    shouldContinue.current = false;
+  }, []);
   const setInputType = (type: React.PointerEvent['pointerType']) => {
-    if (lastInputType.current && lastInputType.current !== type) setDrag({ ...noDrag });
+    if (lastInputType.current && lastInputType.current !== type) reset();
     lastInputType.current = type;
   };
 
-  /* causing problems with mouse drag. Prolly need to be used with manual hit test */
-  // const captured = useRef<{ ele: Element | null; ptr: number | null }>
-  //   ({ ele: null, ptr: null });
-  // const capture = (e: React.PointerEvent) => {
-  //   e.currentTarget.setPointerCapture(e.pointerId);
-  //   captured.current = { ele: e.currentTarget, ptr: e.pointerId };
-  // }
-  // const release = () => {
-  //   if (captured.current.ele && captured.current.ptr !== null) {
-  //     try {
-  //       captured.current.ele.releasePointerCapture(captured.current.ptr);
-  //     } finally {
-  //       captured.current = { ele: null, ptr: null };
-  //     }
-  //   }
-  // }
+  const handleMouseDown = (e: React.PointerEvent, cellIndex: number) => {
+    setDrag(cellIndex);
+    shouldContinue.current = true;
+  }
+  const handleMouseUp = (e: React.PointerEvent, cellIndex: number) => {
+    if (onCellClick && shouldContinue.current)
+      onCellClick(cellIndex, e.button === 0 ? 'left' : 'right');
+    if (onCellDrop && dragging !== null && hoveredCell !== null)
+      onCellDrop(dragging, hoveredCell);
+    reset();
+  }
 
+  const handleTouchDown = (e: React.PointerEvent, cellIndex: number) => {
+    // touch 1/2
+    if (touchTimeout.current) clearTimeout(touchTimeout.current);
+    shouldContinue.current = true;
+    touchTimeout.current = setTimeout(() => {
+      if (!shouldContinue.current || !touchStart.current) return;
+      shouldContinue.current = false;
+      if (onCellClick) onCellClick(cellIndex, 'right');
+
+    }, TOUCH_HOLD_DURATION);
+    // fake drag
+    if (dragging === null) {
+      console.debug(123)
+      setDrag(cellIndex);
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = rect.left + rect.width / 2 + touchOffset.x;
+      const y = rect.top + rect.height / 2 - touchOffset.y;
+      touchStart.current = { x, y };
+    } else {
+      if (onCellDrop) onCellDrop(dragging, cellIndex);
+      setDrag(null);
+    }
+  }
+  const handleTouchUp = (e: React.PointerEvent, cellIndex: number) => {
+    // touch 2/2
+    if (!touchStart.current || !shouldContinue.current) return;
+    shouldContinue.current = false;
+    if (onCellClick) onCellClick(cellIndex, 'left');
+  }
 
   const getCellProps = (cellIndex: number) => ({
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
       e.stopPropagation()
       setInputType(e.pointerType);
-      // capture(e);
-      if (e.pointerType === 'touch') {
-        if (onCellClick) onCellClick(cellIndex);
-
-        if (dragging.from === null) {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = rect.left + rect.width / 2 + touchOffset.x;
-          const y = rect.top + rect.height / 2 - touchOffset.y;
-          setDrag({ from: cellIndex, pos: { x, y } })
-        } else {
-          setDrag({ ...noDrag })
-          if (onCellDrop) onCellDrop(dragging.from, cellIndex);
-        }
-      } else {
-        setDrag({ from: cellIndex, pos: { x: e.clientX, y: e.clientY } });
-        sameCell.current = true;
-      }
+      if (e.pointerType === 'touch') handleTouchDown(e, cellIndex);
+      else handleMouseDown(e, cellIndex);
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
       e.stopPropagation()
-      // release();
       setInputType(e.pointerType);
-      if (e.pointerType === 'touch') return;
-
-      if (onCellClick && sameCell.current)
-        onCellClick(cellIndex);
-      if (onCellDrop && dragging.from !== null && hoveredCell !== null)
-        onCellDrop(dragging.from, hoveredCell);
-      setDrag({ ...noDrag });
+      if (e.pointerType === 'touch') handleTouchUp(e, cellIndex);
+      else handleMouseUp(e, cellIndex);
     },
-
     onPointerEnter: () => { setHoveredCell(cellIndex) },
     onPointerLeave: () => {
       setHoveredCell(null);
-      sameCell.current = false;
+      shouldContinue.current = false;
+    },
+    onContextMenu: (e: React.PointerEvent<HTMLDivElement>) => {
+      e.stopPropagation()
+      e.preventDefault()
     },
   });
 
-  // 
   useEffect(() => {
-    if (dragging.from === null) return
-    const onPointerMove = (e: PointerEvent) => {
-      if (e.pointerType === 'touch') return;
-      setDrag(d => ({ ...d, pos: { x: e.clientX, y: e.clientY } }))
-    }
-
-    const reset = () => {
-      // release();
-      setDrag({ ...noDrag })
-    }
-
     //cancel drag if outside. Up needed for mouse and down for touch
-    window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', reset);
     window.addEventListener('pointerdown', reset);
     window.addEventListener('pointercancel', reset);
     return () => {
-      window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', reset);
       window.removeEventListener('pointerdown', reset);
       window.removeEventListener('pointercancel', reset);
     };
-  }, [dragging.from]);
+  }, [reset]);
 
   return {
     hoveredCell,
     dragging,
+    hangingPos: touchStart.current,
     getCellProps,
   };
 } 

@@ -30,20 +30,23 @@ interface UserState {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
-  loggedin: () => boolean;
   addRefDependent: (id: string) => void;
   remRefDependent: (id: string) => void;
+}
+
+const blankUser = {
+  username: '',
+  displayName: '',
+  loading: false,
+  accessExp: 0,
+  refreshExp: 0,
+  error: '',
 }
 
 export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
-      username: '',
-      displayName: '',
-      loading: false,
-      accessExp: 0,
-      refreshExp: 0,
-      error: '',
+      ...blankUser,
 
       register: async (username: string, password: string) => {
         set({ loading: true, error: '' })
@@ -95,7 +98,7 @@ export const useUserStore = create<UserState>()(
             const err = await res.json()
             throw new Error(err.message)
           }
-          set({ username: '', displayName: '', loading: false, accessExp: 0, refreshExp: 0 })
+          set({ ...blankUser })
         } catch (err: unknown) {
           console.error("userstore logout err ", err)
           const msgErr = err as { message: string }
@@ -104,8 +107,10 @@ export const useUserStore = create<UserState>()(
       },
       refresh: async () => {
         const { refreshExp }: UserState = get();
+        console.log("refreshing", refreshDependents, refreshExp)
         if (refreshExp <= Date.now()) {
-          set({ username: '', displayName: '', loading: false, accessExp: 0, refreshExp: 0, error: "" })
+          set({ ...blankUser })
+          refreshDependents.clear();
           return false;
         }
         try {
@@ -121,14 +126,17 @@ export const useUserStore = create<UserState>()(
           return true;
         } catch (err: unknown) {
           console.error("userstore refresh err ", err)
-          if (refreshTimeout) clearTimeout(refreshTimeout);
+          set({ ...blankUser })
+          refreshDependents.clear();
           return false;
         }
       },
-      loggedin: () => get().accessExp > Date.now(),
       addRefDependent: (id: string) => {
-        refreshDependents.add(id);
-        scheduleRefresh(get);
+        const { refreshExp } = get();
+        if (refreshExp > Date.now()) {
+          refreshDependents.add(id);
+          scheduleRefresh(get);
+        }
       },
       remRefDependent: (id: string) => {
         refreshDependents.delete(id);

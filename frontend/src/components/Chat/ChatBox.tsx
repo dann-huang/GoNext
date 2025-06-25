@@ -11,7 +11,7 @@ export default function ChatBox() {
   const [showRoomInput, setShowRoomInput] = useState(false);
   const [newRoom, setNewRoom] = useState('');
   const { msgLog, currentRoom, joinRoom, leaveRoom, sendChat } = useWebSocket();
-  const username = useUserStore((state) => state.username);
+  const { username, displayName } = useUserStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -33,7 +33,7 @@ export default function ChatBox() {
   const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (message.trim()) {
-      sendChat(message.trim());
+      sendChat(username, displayName, message.trim());
       setMessage('');
     }
   };

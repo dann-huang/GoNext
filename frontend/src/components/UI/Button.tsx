@@ -1,8 +1,6 @@
+import { Sizes, Variants } from '@/config/variantConsts';
 import { cn } from '@/lib/utils';
 import { forwardRef } from 'react';
-
-type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'destructive' | 'ghost' | 'link';
-type ButtonSize = 'sm' | 'md' | 'lg';
 
 const baseStyles = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
 
@@ -10,7 +8,7 @@ const variantStyles = {
   primary: 'bg-primary text-on-primary hover:bg-primary/90',
   secondary: 'bg-secondary text-on-secondary hover:bg-secondary/80',
   accent: 'bg-accent text-on-accent hover:bg-accent/90',
-  destructive: 'bg-error text-on-error hover:bg-error/90',
+  error: 'bg-error text-on-error hover:bg-error/90',
   ghost: 'hover:bg-accent/10 hover:text-accent-foreground',
   link: 'text-primary underline-offset-4 hover:underline',
 } as const;
@@ -19,7 +17,7 @@ const outlineStyles = {
   primary: 'border border-primary text-primary hover:bg-primary/10',
   secondary: 'border border-secondary text-secondary hover:bg-secondary/10',
   accent: 'border border-accent text-accent hover:bg-accent/10',
-  destructive: 'border border-error text-error hover:bg-error/10',
+  error: 'border border-error text-error hover:bg-error/10',
   ghost: 'border border-muted text-foreground hover:bg-muted/50',
   link: 'border-0 text-primary underline-offset-4 hover:underline',
 } as const;
@@ -32,8 +30,8 @@ const sizeStyles = {
 
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+  variant?: Variants;
+  size?: Sizes;
   fullWidth?: boolean;
   isLoading?: boolean;
   outline?: boolean;

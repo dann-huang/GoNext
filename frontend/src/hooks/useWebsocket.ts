@@ -19,11 +19,11 @@ interface WSState {
   getStatus: () => t.WsStatus;
   getClients: () => string[];
 
-  connect: () => void;
+  connect: (username: string) => void;
   disconnect: () => void;
   sendMessage: (msg: t.OutgoingMsg) => void;
 
-  sendChat: (text: string) => void;
+  sendChat: (username: string, displayName: string, message: string) => void;
   joinRoom: (roomName: string) => void;
   leaveRoom: () => void;
 
@@ -58,10 +58,10 @@ export const useWebSocket = create<WSState>()((set, get) => ({
     return 'disconnected';
   },
   getClients: () => get().clients,
-  connect: () => {
+  connect: (username: string) => {
     if (get().getStatus() !== 'disconnected')
       return console.warn('WS nothing to connect')
-    if (!useUserStore.getState().loggedin())
+    if (!username)
       return console.error('WS needs authentication')
 
     set({ error: '' })
@@ -145,8 +145,7 @@ export const useWebSocket = create<WSState>()((set, get) => ({
       set({ error: 'WS failed to send' });
     }
   },
-  sendChat: (message: string) => {
-    const { username, displayName } = useUserStore.getState();
+  sendChat: (username: string, displayName: string, message: string) => {
     const msg: t.ChatMsg = {
       type: t.msgChat,
       sender: username,
@@ -181,40 +180,23 @@ export const useWebSocket = create<WSState>()((set, get) => ({
 
 
 export const useWSConnect = () => {
-  const { loggedin, refresh, addRefDependent, remRefDependent, username } = useUserStore();
+  const { addRefDependent, remRefDependent, username } = useUserStore();
   const { connect, disconnect, getStatus } = useWebSocket();
 
   useEffect(() => {
-    let unmounted = false;
-
-    const maybeConnect = async () => {
-      if (unmounted) return;
-
-      if (!loggedin()) {
-        const ok = await refresh();
-        if (!ok) {
-          disconnect();
-          return console.warn('not loggedin disconnect');
-        }
-      }
-
-      if (getStatus() === 'disconnected') {
-        connect();
-      }
-    };
+    if (!username) return console.warn('WS: Not logged in');
 
     addRefDependent('ws');
-    maybeConnect();
+    if (getStatus() === 'disconnected') connect(username);
 
-    const interval = setInterval(maybeConnect, RECONNECT_INITIAL_DELAY);
-
+    const interval = setInterval(() => {
+      if (getStatus() === 'disconnected') connect(username);
+    }, RECONNECT_INITIAL_DELAY);
     return () => {
-      unmounted = true;
       clearInterval(interval);
-      disconnect();
       remRefDependent('ws');
-      console.warn('not loggedin disconnect');
+      disconnect();
     };
-  }, [loggedin, refresh, connect, disconnect, getStatus,
+  }, [connect, disconnect, getStatus,
     addRefDependent, remRefDependent, username]);
 };

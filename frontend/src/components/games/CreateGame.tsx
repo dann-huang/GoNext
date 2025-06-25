@@ -8,7 +8,7 @@ interface CreateGameProps {
   isLoading?: boolean;
 }
 
-export function CreateGame({ createGame, isLoading = false }: CreateGameProps) {
+export default function CreateGame({ createGame, isLoading = false }: CreateGameProps) {
   const [selectedGame, setSelectedGame] = useState<GameName>(GAME_NAMES[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
