@@ -28,7 +28,8 @@ export function MinesweeperBoard({ gameState, reveal, flag }: MineBoardProp) {
     {gameState.board.map((cellRow, row) =>
       cellRow.map((cell, col) => <div
         key={`${row}-${col}`}
-        className={cn('aspect-square flex items-center justify-center bg-primary text-on-primary rounded-md',
+        className={cn('aspect-square flex items-center justify-center bg-primary',
+          'text-on-primary rounded-md overflow-hidden',
           cell.state === 'revealed' && 'bg-secondary text-on-secondary',
           cell.state === 'revealed' && cell.hasMine && 'bg-error text-on-error',
           hoveredCell === row * cols + col && 'bg-accent/50 text-on-accent',
@@ -38,7 +39,6 @@ export function MinesweeperBoard({ gameState, reveal, flag }: MineBoardProp) {
         {cell.state === 'flagged' && <Flag />}
         {cell.state === 'revealed' && (cell.hasMine ? <Bomb />
           : cell.adj > 0 ? <p>{cell.adj}</p> : null)}
-
       </div>)
     )}
   </div>;

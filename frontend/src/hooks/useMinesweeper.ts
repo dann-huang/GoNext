@@ -132,7 +132,8 @@ export default function useMinesweeper(props: MineProps) {
     }));
   }
   const flag = (row: number, col: number) => {
-    if (gameState.status !== 'playing') return;
+    if (gameState.status !== 'playing'
+      || gameState.board[row][col].state === 'revealed') return;
     setState(produce(state => {
       if (state.board[row][col].state === 'flagged') {
         state.board[row][col].state = 'hidden';

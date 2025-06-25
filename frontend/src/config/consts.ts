@@ -25,4 +25,4 @@ export const DRAW_START_WIDTH = 2;
 export const DRAW_STROKE_INTERVAL = 100;
 
 export const TOUCH_HOLD_DURATION = 300;
-export const TOUCH_CANCEL_DISTANCE = 50;
+export const TOUCH_CANCEL_DISTANCE = 100;
