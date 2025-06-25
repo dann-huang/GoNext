@@ -200,8 +200,8 @@ export default function DrawPage() {
         <h1 className='text-xl font-semibold'>Draw</h1>
         <InfoCard width={250}>
           <p className='text-primary'>Draw with others in the room!</p>
-          <p className='text-sm'>- ctl+drag/middle drag to pan</p>
-          <p className='text-sm'>- 2 finger to pan</p>
+          <p className='text-sm'>• ctl+drag/middle drag to pan</p>
+          <p className='text-sm'>• 2 finger to pan</p>
         </InfoCard>
       </div>
       <div className='flex items-center space-x-1 text-sm text-muted-foreground'>

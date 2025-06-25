@@ -22,9 +22,9 @@ export default function MinesweeperPage() {
         <h1 className='text-xl font-semibold'>Minesweeper</h1>
         <InfoCard width={250}>
           <p className='text-primary'>Normal Minesweeper rules</p>
-          <p className='text-sm'>- Left click to reveal cells</p>
-          <p className='text-sm'>- Right click to place flags</p>
-          <p className='text-sm'>- Reveal all non-mine cells to win</p>
+          <p className='text-sm'>• Left click to reveal cells</p>
+          <p className='text-sm'>• Right click to place flags</p>
+          <p className='text-sm'>• Reveal all non-mine cells to win</p>
         </InfoCard>
       </div>
     </header>
