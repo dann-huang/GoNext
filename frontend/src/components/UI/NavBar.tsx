@@ -16,7 +16,7 @@ export default function NavBar() {
       <Dropdown
         title='Static'
         links={[
-          { href: '/static/minesweeper', label: 'Minesweeper' },
+          { href: '/minesweeper', label: 'Minesweeper' },
           { href: '/', label: 'Thing 2' },
           { href: '/', label: 'Thing 3' },
         ]}

@@ -60,6 +60,7 @@ export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y:
 
   const getCellProps = (cellIndex: number) => ({
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault()
       e.stopPropagation()
       setInputType(e.pointerType);
       if (e.pointerType === 'touch') handleTouchDown(e, cellIndex);
@@ -76,6 +77,10 @@ export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y:
     onPointerLeave: () => {
       setHoveredCell(null);
       cursorSameCell.current = false;
+    },
+    onContextMenu: (e: React.PointerEvent<HTMLDivElement>) => {
+      e.stopPropagation()
+      e.preventDefault()
     },
   });
 

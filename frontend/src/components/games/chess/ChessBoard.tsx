@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/useUserStore';
@@ -7,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { numToPiece } from './pieceMapping';
 import { useGameBoard } from '@/hooks/useGameBoard';
 
-export function ChessBoard({ gameState, makeMove }: GameBoardProps) {
+export default function ChessBoard({ gameState, makeMove }: GameBoardProps) {
   const username = useUserStore(state => state.username);
   const idx = gameState.players.indexOf(username);
   const yourTurn = gameState.status === 'in_progress' && gameState.turn === idx;

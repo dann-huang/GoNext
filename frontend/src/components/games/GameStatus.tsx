@@ -10,7 +10,7 @@ interface GameStatusProps {
   leaveGame: () => Promise<void> | void;
 }
 
-export function GameStatus({
+export default function GameStatus({
   gameState,
   joinGame,
   leaveGame,

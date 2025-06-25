@@ -3,7 +3,7 @@ import { useUserStore } from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
 import { useGameBoard } from '@/hooks/useGameBoard';
 
-export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
+export default function Connect4Board({ gameState, makeMove }: GameBoardProps) {
   const username = useUserStore(state => state.username);
   const yourIdx = gameState.players.indexOf(username);
   const isYourTurn = gameState.status == 'in_progress'
