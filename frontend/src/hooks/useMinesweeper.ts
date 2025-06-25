@@ -90,8 +90,7 @@ const revealHelper = (state: GameStatus, row: number, col: number) => {
 
 export default function useMinesweeper(props: MineProps) {
   const [gameState, setState] = useState<GameStatus>(() => initState(props));
-  useEffect(() => { setState(initState(props)) },
-    [props.rows, props.cols, props.mines]);
+  useEffect(() => { setState(initState(props)) }, [props]);
 
   const reveal = (row: number, col: number) => {
     // start game

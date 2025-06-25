@@ -4,7 +4,7 @@ import { RefreshCw, Flag } from 'lucide-react';
 import { GameStatus } from '@/hooks/useMinesweeper';
 import { useEffect, useState } from 'react';
 
-type Difficulty = 'beginner' | 'intermediate' | 'expert';
+type Difficulty = 'Beginner' | 'Intermediate' | 'Expert';
 
 type DifficultySettings = {
   rows: number;
@@ -13,9 +13,9 @@ type DifficultySettings = {
 };
 
 const DIFFICULTIES: Record<Difficulty, DifficultySettings> = {
-  beginner: { rows: 9, cols: 16, mines: 20 },
-  intermediate: { rows: 12, cols: 20, mines: 45 },
-  expert: { rows: 16, cols: 30, mines: 99 },
+  Beginner: { rows: 9, cols: 16, mines: 20 },
+  Intermediate: { rows: 12, cols: 20, mines: 45 },
+  Expert: { rows: 16, cols: 30, mines: 99 },
 };
 
 interface ToolbarProps {

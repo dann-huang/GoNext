@@ -1,6 +1,5 @@
-import { TOUCH_CANCEL_DISTANCE, TOUCH_HOLD_DURATION } from '@/config/consts';
+import { TOUCH_HOLD_DURATION } from '@/config/consts';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import usePointerPos from './usePointerPos';
 
 type ClickType = 'left' | 'right';
 
