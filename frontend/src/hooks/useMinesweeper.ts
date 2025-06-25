@@ -73,19 +73,12 @@ const revealCascade = (state: GameStatus, row: number, col: number) => {
   if (state.board[row][col].state !== 'hidden') return;
   state.board[row][col].state = 'revealed'
   state.revealed++;
-  if (state.board[row][col].adj !== 0) return;
-  for (let r = -1; r <= 1; r++)
-    for (let c = -1; c <= 1; c++)
-      revealCascade(state, row + r, col + c);
-}
-
-const revealHelper = (state: GameStatus, row: number, col: number) => {
-  if (row < 0 || row >= state.board.length || col < 0 || col >= state.board[0].length) return;
-  if (state.board[row][col].state !== 'hidden') return;
-  state.board[row][col].state = 'revealed'
-  state.revealed++;
   if (state.board[row][col].hasMine) state.status = 'lost';
   else if (state.revealed === state.revealNeeded) state.status = 'won';
+  else if (state.board[row][col].adj === 0)
+    for (let r = -1; r <= 1; r++)
+      for (let c = -1; c <= 1; c++)
+        revealCascade(state, row + r, col + c);
 }
 
 export default function useMinesweeper(props: MineProps) {
@@ -107,17 +100,16 @@ export default function useMinesweeper(props: MineProps) {
     if (gameState.board[row][col].state === 'revealed')
       setState(produce(state => {
         let flags = 0;
-        for (let r = -1; r <= 1; r++) {
-          for (let c = -1; c <= 1; c++) {
-            if (row + r < 0 || row + r >= state.board.length
-              || col + c < 0 || col + c >= state.board[0].length) continue;
-            if (state.board[row + r][col + c].state === 'flagged') flags++;
-          }
-        }
-        if (flags === state.board[row][col].adj)
-          for (let r = -1; r <= 1; r++)
-            for (let c = -1; c <= 1; c++)
-              revealHelper(state, row + r, col + c);
+        for (let r = -1; r <= 1; r++)
+          for (let c = -1; c <= 1; c++)
+            if (row + r >= 0 && row + r < state.board.length
+              && col + c >= 0 && col + c < state.board[0].length
+              && state.board[row + r][col + c].state === 'flagged') flags++;
+
+        if (flags !== state.board[row][col].adj) return;
+        for (let r = -1; r <= 1; r++)
+          for (let c = -1; c <= 1; c++)
+            revealCascade(state, row + r, col + c);
       }))
     //manual reveal
     else setState(produce(state => {
