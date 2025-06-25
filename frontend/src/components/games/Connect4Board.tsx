@@ -9,14 +9,11 @@ export function Connect4Board({ gameState, makeMove }: GameBoardProps) {
   const isYourTurn = gameState.status == 'in_progress'
     && gameState.turn === yourIdx;
 
-  const handleCellClick = (col: number) => {
-    console.log(col);
-    if (!isYourTurn) return;
-    makeMove({ to: { row: 0, col } });
-  };
-
   const { getCellProps, hoveredCell } = useGameBoard({
-    onCellClick: handleCellClick,
+    onCellClick: (col: number) => {
+      if (!isYourTurn) return;
+      makeMove({ to: { row: 0, col } });
+    },
   });
 
   return <div className='w-full bg-primary p-2 rounded-lg grid grid-cols-7 gap-2'

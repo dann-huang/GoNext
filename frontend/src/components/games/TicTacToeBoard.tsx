@@ -1,6 +1,5 @@
 'use client';
 
-import { useCallback } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
 import { useUserStore } from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
@@ -12,15 +11,13 @@ export function TicTacToeBoard({ gameState, makeMove }: GameBoardProps) {
   const yourIdx = gameState.players.indexOf(username);
   const isYourTurn = gameState.status === 'in_progress' && gameState.turn === yourIdx;
 
-  const handleCellClick = useCallback((cell: number) => {
-    const row = Math.floor(cell / 3);
-    const col = cell % 3;
-    if (gameState.status === 'in_progress' && gameState.board[row][col] === 0 && isYourTurn)
-      makeMove({ to: { row, col } });
-  }, [gameState.status, gameState.board, makeMove, isYourTurn]);
-
   const { getCellProps, hoveredCell } = useGameBoard({
-    onCellClick: handleCellClick,
+    onCellClick: (cell: number) => {
+      const row = Math.floor(cell / 3);
+      const col = cell % 3;
+      if (gameState.status === 'in_progress' && gameState.board[row][col] === 0 && isYourTurn)
+        makeMove({ to: { row, col } });
+    },
   });
 
   return <div className='w-full bg-secondary p-4 rounded-lg grid grid-cols-3 gap-4'>

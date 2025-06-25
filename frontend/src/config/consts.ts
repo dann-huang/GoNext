@@ -10,16 +10,19 @@ export const WS_URL = typeof window === 'undefined'
   ? 'ws://localhost:3000/api/live'
   : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/live`;
 
-  
-  export const GAME_DISPLAY_NAMES: Record<GameName | '', string> = {
-    '': 'Nothing',
-    tictactoe: 'Tic Tac Toe',
-    connect4: 'Connect 4',
-    chess: 'Chess',
-  };
-  
-  export const DRAW_CANVAS_WIDTH = 1600;
-  export const DRAW_CANVAS_HEIGHT = 900;
-  export const DRAW_START_COLOR = '#777777';
-  export const DRAW_START_WIDTH = 2;
-  export const DRAW_STROKE_INTERVAL = 100;
+
+export const GAME_DISPLAY_NAMES: Record<GameName | '', string> = {
+  '': 'Nothing',
+  tictactoe: 'Tic Tac Toe',
+  connect4: 'Connect 4',
+  chess: 'Chess',
+};
+
+export const DRAW_CANVAS_WIDTH = 1600;
+export const DRAW_CANVAS_HEIGHT = 900;
+export const DRAW_START_COLOR = '#777777';
+export const DRAW_START_WIDTH = 2;
+export const DRAW_STROKE_INTERVAL = 100;
+
+export const TOUCH_HOLD_DURATION = 300;
+export const TOUCH_CANCEL_DISTANCE = 50;
