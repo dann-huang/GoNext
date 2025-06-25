@@ -1,12 +1,18 @@
 'use client';
 
 import { useGameBoard } from '@/hooks/useGameBoard';
-import useMinesweeper, { MineBoardProps } from '@/hooks/useMinesweeper';
+import { GameStatus } from '@/hooks/useMinesweeper';
 import { cn } from '@/lib/utils';
 import { Bomb, Flag } from 'lucide-react';
 
-export function MinesweeperBoard({ rows, cols, mines }: MineBoardProps) {
-  const { gameState, reveal, flag } = useMinesweeper({ rows, cols, mines });
+type MineBoardProp = {
+  gameState: GameStatus;
+  reveal: (row: number, col: number) => void;
+  flag: (row: number, col: number) => void;
+}
+
+export function MinesweeperBoard({ gameState, reveal, flag }: MineBoardProp) {
+  const cols = gameState.board[0].length;
   const { getCellProps, hoveredCell } = useGameBoard({
     onCellClick: (cell: number, clickType) => {
       const row = Math.floor(cell / cols);

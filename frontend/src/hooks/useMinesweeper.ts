@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { produce } from 'immer';
 
-export type MineBoardProps = {
+type MineProps = {
   rows: number;
   cols: number;
   mines: number;
@@ -13,14 +13,14 @@ type Cell = {
   adj: number;
 };
 
-type GameStatus = {
+export type GameStatus = {
   status: 'waiting' | 'playing' | 'won' | 'lost';
   revealed: number;
   flagged: number;
   board: Cell[][];
 };
 
-const createEmptyBoard = ({ rows, cols }: MineBoardProps) => Array(rows).fill(null).map(() =>
+const createEmptyBoard = ({ rows, cols }: MineProps) => Array(rows).fill(null).map(() =>
   Array(cols).fill(null).map((): Cell => ({
     state: 'hidden',
     hasMine: false,
@@ -65,7 +65,7 @@ const revealHelper = (state: GameStatus, row: number, col: number, recursive: bo
       revealHelper(state, row + r, col + c);
 }
 
-export default function useMinesweeper(props: MineBoardProps) {
+export default function useMinesweeper(props: MineProps) {
   const [gameState, setState] = useState<GameStatus>({
     status: 'waiting',
     revealed: 0,
@@ -108,7 +108,13 @@ export default function useMinesweeper(props: MineBoardProps) {
       }
     }));
   }
+  const reset = () => setState({
+    status: 'waiting',
+    revealed: 0,
+    flagged: 0,
+    board: createEmptyBoard(props),
+  });
 
-  return { gameState, reveal, flag };
+  return { gameState, reveal, flag, reset };
 }
 

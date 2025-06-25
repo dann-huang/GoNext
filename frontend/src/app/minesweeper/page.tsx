@@ -2,6 +2,7 @@
 
 import { MinesweeperBoard } from '@/components/games/MinesweeperBoard';
 import { InfoCard } from '@/components/UI/InfoCard';
+import useMinesweeper from '@/hooks/useMinesweeper';
 import { useState } from 'react';
 
 export default function MinesweeperPage() {
@@ -10,6 +11,7 @@ export default function MinesweeperPage() {
     cols: 4,
     mines: 2,
   });
+  const { gameState, reveal, flag, reset } = useMinesweeper(size);
 
   return <div className="w-full flex flex-col">
     <header className='w-full border-b border-border p-4'>
@@ -26,7 +28,7 @@ export default function MinesweeperPage() {
 
     <div className="flex-1 flex justify-center items-center touch-none select-none">
       <div className='w-full max-w-md'>
-        <MinesweeperBoard rows={size.rows} cols={size.cols} mines={size.mines} />
+        <MinesweeperBoard gameState={gameState} reveal={reveal} flag={flag} />
       </div>
     </div>
   </div>;
