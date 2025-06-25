@@ -23,21 +23,22 @@ export function MinesweeperBoard({ gameState, reveal, flag }: MineBoardProp) {
         reveal(row, col);
     },
   });
-  return <div className={`w-full grid bg-secondary p-2 gap-2 rounded-md`}
-    style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+  return <div className='grid bg-surface p-2 gap-1 rounded-b-lg w-fit'
+    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 60px))` }}>
     {gameState.board.map((cellRow, row) =>
       cellRow.map((cell, col) => <div
         key={`${row}-${col}`}
-        className={cn('aspect-square flex items-center justify-center bg-primary rounded-md',
-          cell.state === 'revealed' && 'bg-primary/33',
-          cell.state === 'revealed' && cell.hasMine && 'bg-error',
-          hoveredCell === row * cols + col && 'bg-accent/50',
+        className={cn('aspect-square flex items-center justify-center bg-primary text-on-primary rounded-md',
+          cell.state === 'revealed' && 'bg-secondary text-on-secondary',
+          cell.state === 'revealed' && cell.hasMine && 'bg-error text-on-error',
+          hoveredCell === row * cols + col && 'bg-accent/50 text-on-accent',
         )}
         {...getCellProps(row * cols + col)}
       >
         {cell.state === 'flagged' && <Flag />}
-        {cell.state === 'revealed' && cell.hasMine && <Bomb />}
-        {cell.state === 'revealed' && cell.adj > 0 && <p className='text-primary'>{cell.adj}</p>}
+        {cell.state === 'revealed' && (cell.hasMine ? <Bomb />
+          : cell.adj > 0 ? <p>{cell.adj}</p> : null)}
+
       </div>)
     )}
   </div>;

@@ -56,10 +56,10 @@ export default function BoardGamePage() {
       leaveGame={leaveGame}
     />
 
-    <div className='flex-1 flex justify-center items-center touch-none select-none'>
+    <div className='flex-1 flex justify-center items-center'>
       {gameState.gameName !== ''
         ? GameBoard ?
-          <div className='w-full max-w-md'>
+          <div className='w-full max-w-md touch-none select-none'>
             <GameBoard
               gameState={gameState}
               makeMove={makeMove}
