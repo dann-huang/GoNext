@@ -13,7 +13,7 @@ import (
 )
 
 type service interface {
-	createUser(ctx context.Context, username string, password string) (*model.User, error)
+	createUser(ctx context.Context, username, displayName string) (*model.User, error)
 	loginUser(ctx context.Context, username, password string) (*model.User, string, string, error)
 	logoutUser(ctx context.Context, refreshToken string) error
 	refreshUser(ctx context.Context, refreshToken string) (string, string, error)
@@ -35,18 +35,14 @@ func newService(accMngr token.UserManager, repo repo.UserRepo, kv repo.KVStore, 
 	}
 }
 
-func (s *serviceImpl) createUser(ctx context.Context, username string, password string) (*model.User, error) {
-	passhash, err := util.PasswordHash(password)
-	if err != nil {
-		return nil, fmt.Errorf("service: create user failed: %w", err)
-	}
+func (s *serviceImpl) createUser(ctx context.Context, username, displayName string) (*model.User, error) {
 	user, err := s.repo.CreateUser(ctx, &model.User{
 		Username:    username,
-		DisplayName: username,
-		PassHash:    passhash,
+		DisplayName: displayName,
+		AccountType: model.AccountTypeGuest,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("service: create user failed : %w", err)
+		return nil, fmt.Errorf("service: create user failed: %w", err)
 	}
 	return user, nil
 }

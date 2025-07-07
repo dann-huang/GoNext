@@ -27,38 +27,76 @@ type pgUserRepo struct {
 
 func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.User, error) {
 	var newUser model.User
-	query := `INSERT INTO users (username, displayname, passhash) VALUES ($1, $2, $3) RETURNING id, username, displayname, passhash`
-	if err := r.db.QueryRowContext(ctx, query, user.Username, user.DisplayName, user.PassHash).Scan(
+	query := `
+		INSERT INTO users (username, displayname, email, passhash, account_type)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, username, displayname, email, passhash, account_type, 
+		          created_at, updated_at, last_login_at
+	`
+
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		user.Username,
+		user.DisplayName,
+		sql.NullString{String: *user.Email, Valid: user.Email != nil},
+		sql.NullString{String: *user.PassHash, Valid: user.PassHash != nil},
+		user.AccountType,
+	).Scan(
 		&newUser.ID,
 		&newUser.Username,
 		&newUser.DisplayName,
+		&newUser.Email,
 		&newUser.PassHash,
-	); err != nil {
+		&newUser.AccountType,
+		&newUser.CreatedAt,
+		&newUser.UpdatedAt,
+		&newUser.LastLoginAt,
+	)
+
+	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok {
-			if pqErr.Code.Name() == "unique_violation" || pqErr.Code == "23505" {
-				err = ErrAlreadyExists
+			switch {
+			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "username"):
+				err = fmt.Errorf("%w: username already exists", ErrAlreadyExists)
+			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "email"):
+				err = fmt.Errorf("%w: email already exists", ErrAlreadyExists)
 			}
 		}
 		return nil, fmt.Errorf("repo: failed to create user: %w", err)
 	}
+
 	return &newUser, nil
 }
 
 func (r *pgUserRepo) ReadUser(ctx context.Context, username string) (*model.User, error) {
 	var user model.User
-	query := `SELECT id, username, displayname, passhash FROM users WHERE username = $1`
+	query := `
+		SELECT id, username, displayname, email, passhash, account_type, 
+		       created_at, updated_at, last_login_at
+		FROM users 
+		WHERE username = $1
+	`
+
 	err := r.db.QueryRowContext(ctx, query, username).Scan(
 		&user.ID,
 		&user.Username,
 		&user.DisplayName,
+		&user.Email,
 		&user.PassHash,
+		&user.AccountType,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.LastLoginAt,
 	)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = ErrNotFound
 		}
-		return nil, fmt.Errorf("repo: failed to to get by username=%v: %w", username, err)
+		return nil, fmt.Errorf("repo: failed to get user by username=%v: %w", username, err)
 	}
+
 	return &user, nil
 }
 
@@ -67,6 +105,16 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 	args := []any{}
 	argCounter := 1
 
+	if params.Email != nil {
+		updates = append(updates, fmt.Sprintf("email = $%d", argCounter))
+		args = append(args, *params.Email)
+		argCounter++
+	}
+	if params.Username != nil {
+		updates = append(updates, fmt.Sprintf("username = $%d", argCounter))
+		args = append(args, *params.Username)
+		argCounter++
+	}
 	if params.DisplayName != nil {
 		updates = append(updates, fmt.Sprintf("displayname = $%d", argCounter))
 		args = append(args, *params.DisplayName)
@@ -77,32 +125,62 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 		args = append(args, *params.Password)
 		argCounter++
 	}
+	if params.AccountType != nil {
+		updates = append(updates, fmt.Sprintf("account_type = $%d", argCounter))
+		args = append(args, *params.AccountType)
+		argCounter++
+	}
+
 	if len(updates) == 0 {
 		return r.ReadUser(ctx, username)
 	}
 
-	query := fmt.Sprintf("UPDATE users SET %s WHERE username = $%d RETURNING id, username, displayname, passhash",
-		strings.Join(updates, ", "), argCounter)
 	args = append(args, username)
+	whereClause := fmt.Sprintf("WHERE username = $%d", argCounter)
+
+	query := fmt.Sprintf("""
+		UPDATE users 
+		SET %s 
+		%s 
+		RETURNING id, username, displayname, email, passhash, account_type, 
+		          created_at, updated_at, last_login_at
+	""",
+		strings.Join(updates, ", "),
+		whereClause,
+	)
 
 	var updatedUser model.User
 	err := r.db.QueryRowContext(ctx, query, args...).Scan(
 		&updatedUser.ID,
 		&updatedUser.Username,
 		&updatedUser.DisplayName,
+		&updatedUser.Email,
 		&updatedUser.PassHash,
+		&updatedUser.AccountType,
+		&updatedUser.CreatedAt,
+		&updatedUser.UpdatedAt,
+		&updatedUser.LastLoginAt,
 	)
+
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch {
+			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "username"):
+				err = fmt.Errorf("%w: username already exists", ErrAlreadyExists)
+			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "email"):
+				err = fmt.Errorf("%w: email already exists", ErrAlreadyExists)
+			}
+		} else if err == sql.ErrNoRows {
 			err = ErrNotFound
 		}
 		return nil, fmt.Errorf("repo: failed to update user: %w", err)
 	}
+
 	return &updatedUser, nil
 }
 
-func (r *pgUserRepo) DeleteUser(ctx context.Context, username string) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE username = $1`, username)
+func (r *pgUserRepo) DeleteUser(ctx context.Context, id int) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("repo: failed to delete user: %w", err)
 	}
@@ -112,6 +190,29 @@ func (r *pgUserRepo) DeleteUser(ctx context.Context, username string) error {
 	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("repo: failed to delete user: %w", ErrNotFound)
+	}
+
+	return nil
+}
+
+// UpdateLastLogin updates the last login timestamp for a user
+func (r *pgUserRepo) UpdateLastLogin(ctx context.Context, id int) error {
+	result, err := r.db.ExecContext(
+		ctx,
+		`UPDATE users SET last_login_at = NOW() WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("repo: failed to update last login: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("repo: failed to update last login: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("repo: user not found: %w", ErrNotFound)
 	}
 
 	return nil

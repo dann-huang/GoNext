@@ -2,9 +2,9 @@ CREATE TYPE account_type_enum AS ENUM ('guest', 'user', 'admin');
 
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE,
-    username VARCHAR(255) UNIQUE,
+    username VARCHAR(255) NOT NULL UNIQUE,
     displayname VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
     passhash VARCHAR(255),
     account_type account_type_enum NOT NULL DEFAULT 'guest',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
