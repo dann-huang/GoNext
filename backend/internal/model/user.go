@@ -36,12 +36,12 @@ type User struct {
 	ID          int         `db:"id"`
 	Username    string      `db:"username"`
 	DisplayName string      `db:"displayname"`
+	AccountType AccountType `db:"account_type"`
 	Email       *string     `db:"email"`
 	PassHash    *string     `db:"passhash"`
-	AccountType AccountType `db:"account_type"`
 	CreatedAt   time.Time   `db:"created_at"`
 	UpdatedAt   time.Time   `db:"updated_at"`
-	LastLoginAt *time.Time  `db:"last_login_at"`
+	LastLoginAt time.Time   `db:"last_login_at"`
 }
 
 type UserCreate struct {
@@ -50,29 +50,33 @@ type UserCreate struct {
 }
 
 type UserUpdate struct {
-	Email       *string      `json:"email,omitempty" validate:"omitempty,email"`
 	Username    *string      `json:"username,omitempty" validate:"omitempty,alphanum,min=3,max=20"`
 	DisplayName *string      `json:"displayName,omitempty" validate:"omitempty,min=2,max=50"`
-	Password    *string      `json:"password,omitempty" validate:"omitempty,min=8"`
 	AccountType *AccountType `json:"accountType,omitempty"`
+	Email       *string      `json:"email,omitempty" validate:"omitempty,email"`
+	Password    *string      `json:"password,omitempty" validate:"omitempty,min=8"`
 }
 
 type UserResponse struct {
-	ID          int        `json:"id"`
-	Email       *string    `json:"email,omitempty"`
-	Username    string     `json:"username,omitempty"`
-	DisplayName string     `json:"displayName"`
-	AccountType string     `json:"accountType"`
-	LastLoginAt *time.Time `json:"lastLoginAt,omitempty"`
+	ID          int       `json:"id"`
+	Username    string    `json:"username"`
+	DisplayName string    `json:"displayName"`
+	AccountType string    `json:"accountType"`
+	Email       *string   `json:"email,omitempty"`
+	LastLoginAt time.Time `json:"lastLoginAt"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 func (u *User) ToResponse() *UserResponse {
 	return &UserResponse{
 		ID:          u.ID,
-		Email:       u.Email,
 		Username:    u.Username,
 		DisplayName: u.DisplayName,
 		AccountType: string(u.AccountType),
+		Email:       u.Email,
 		LastLoginAt: u.LastLoginAt,
+		CreatedAt:   u.CreatedAt,
+		UpdatedAt:   u.UpdatedAt,
 	}
 }
