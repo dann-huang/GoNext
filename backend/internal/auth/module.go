@@ -1,10 +1,13 @@
 package auth
 
 import (
+	"errors"
+
 	"github.com/go-chi/chi/v5"
 
 	"letsgo/internal/config"
 	"letsgo/internal/mail"
+	"letsgo/internal/mdw"
 	"letsgo/internal/model"
 	"letsgo/internal/repo"
 	"letsgo/internal/token"
@@ -24,11 +27,12 @@ func NewModule(
 	accMngr token.UserManager,
 	mailer mail.Mailer,
 	config *config.Auth,
+	authMdw mdw.Middleware,
 ) AuthModule {
 	service := newService(accMngr, userRepo, kvStore, mailer, config)
 	handler := newHandler(service, config)
-	router := newRouter(handler)
 
+	router := newRouter(handler, authMdw)
 	return &authImpl{router: router}
 }
 
@@ -41,3 +45,7 @@ type authResult struct {
 	refresh string
 	user    *model.User
 }
+
+var (
+	ErrInvalidCode = errors.New("invalid or expired verification code")
+)

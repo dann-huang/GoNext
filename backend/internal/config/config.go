@@ -17,7 +17,8 @@ type Auth struct {
 	Audience        string
 	Domain          string
 	EmailCodeTTL    time.Duration
-	CodeStoreFormat string
+	EmailSetupKey   string
+	EmailLoginKey   string
 }
 
 type DB struct {
@@ -76,7 +77,8 @@ func Load() (*AppConfig, error) {
 			Audience:        "AuthService",
 			Domain:          os.Getenv("DOMAIN"),
 			EmailCodeTTL:    10 * time.Minute,
-			CodeStoreFormat: "email:upgrade:%d",
+			EmailSetupKey:   "emailSetup:%d",
+			EmailLoginKey:   "emailLogin:%d",
 		},
 		DB: &DB{
 			PostgresUrl:  os.Getenv("POSTGRES_URL"),

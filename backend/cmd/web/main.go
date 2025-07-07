@@ -37,7 +37,6 @@ func main() {
 	}
 	defer postgres.Close()
 	store := repo.NewStore(postgres, redis)
-
 	mailer := mail.NewResendMailer(appCfg.Mail)
 
 	accessManager, err := jwt.NewManager(
@@ -50,23 +49,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	authMdw := mdw.AccessMdw(accessManager, appCfg.Auth.AccCookieName, appCfg.Auth.AccTTL)
 	authModule := auth.NewModule(
 		store.User,
 		store.KVStore,
 		accessManager,
 		mailer,
 		appCfg.Auth,
+		authMdw,
 	)
-
-	const userCtxKey mdw.ContextKey = "userPayload"
-	userAccMdw := mdw.AccessMdw(accessManager, appCfg.Auth.AccCookieName, appCfg.Auth.AccTTL, userCtxKey)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	gameReg := game.NewRegistry()
-	gameReg.RegisterAll()
+	gameRegistry := game.NewRegistry()
+	gameRegistry.RegisterAll()
 
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -78,14 +76,14 @@ func main() {
 		})
 
 		api.Mount("/auth", authModule.Router())
-		api.Mount("/live", live.Router(userAccMdw, userCtxKey, gameReg, appCfg.WS))
+
+		api.Group(func(protected chi.Router) {
+			protected.Use(authMdw)
+			protected.Mount("/live", live.Router(gameRegistry, appCfg.WS))
+		})
 	})
 
-	// static pages
 	r.Get("/stat/*", external.StaticPageHandler(appCfg.StaticPages))
-
-	// frontend
-	// r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
 
 	println("---Server start---")
 	if err := http.ListenAndServe(":3333", r); err != nil {

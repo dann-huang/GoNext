@@ -19,21 +19,21 @@ type client struct {
 	send   chan []byte
 	recv   chan []byte
 	room   *room
-	token  *token.UserPayload
+	user   *token.UserPayload
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func newClient(h *hub, conn *websocket.Conn, token *token.UserPayload, cfg *config.WS) *client {
+func newClient(h *hub, conn *websocket.Conn, user *token.UserPayload, cfg *config.WS) *client {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &client{
 		cfg:    cfg,
-		ID:     token.Username,
+		user:   user,
+		ID:     user.Username,
 		hub:    h,
 		conn:   conn,
 		send:   make(chan []byte, cfg.SendBuffer),
 		recv:   make(chan []byte, cfg.RecvBuffer),
-		token:  token,
 		ctx:    ctx,
 		cancel: cancel,
 		room:   nil,

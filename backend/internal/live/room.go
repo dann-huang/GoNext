@@ -21,7 +21,7 @@ func (r *room) broadcastLocked(msg []byte) {
 func (r *room) clientListMsgLocked() [][2]string {
 	clientList := make([][2]string, 0, len(r.clients))
 	for client := range r.clients {
-		clientList = append(clientList, [2]string{client.ID, client.token.Displayname})
+		clientList = append(clientList, [2]string{client.ID, client.user.Displayname})
 	}
 	return clientList
 }
@@ -34,7 +34,7 @@ func (r *room) addClient(client *client) {
 	client.room = r
 	client.trySend(sendKeyVal(msgJoinRoom, "roomName", r.name))
 
-	r.broadcastLocked(sendMessage(msgStatus, client.token.Displayname+" has joined "+r.name))
+	r.broadcastLocked(sendMessage(msgStatus, client.user.Displayname+" has joined "+r.name))
 	r.broadcastLocked(sendKeyVal(msgGetClients,
 		"clients", r.clientListMsgLocked()))
 }
@@ -66,7 +66,7 @@ func (r *room) removeClient(client *client) {
 		}
 		delete(r.clients, client)
 
-		r.broadcastLocked(sendMessage(msgStatus, client.token.Displayname+" has left "+r.name))
+		r.broadcastLocked(sendMessage(msgStatus, client.user.Displayname+" has left "+r.name))
 		r.broadcastLocked(sendKeyVal(msgGetClients,
 			"clients", r.clientListMsgLocked()))
 	}

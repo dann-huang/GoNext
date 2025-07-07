@@ -6,8 +6,8 @@ type UserNames struct {
 }
 
 type UserPass struct {
-	CurrentPassword string `json:"currentPassword" validate:"required"`
-	NewPassword     string `json:"newPassword" validate:"required,min=8"`
+	CurrentPass string `json:"currentPassword,omitempty"`
+	NewPass     string `json:"newPassword" validate:"required,min=8"`
 }
 
 type UserResponse struct {

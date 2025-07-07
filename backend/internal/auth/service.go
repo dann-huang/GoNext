@@ -14,12 +14,14 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type service interface {
 	createGuest(ctx context.Context, username, displayName string) (*authResult, error)
 	setupEmail(ctx context.Context, userID int, email string) error
 	verifyEmail(ctx context.Context, userID int, code string) (*authResult, error)
+	setPassword(ctx context.Context, userID int, currentPassword, newPassword string) error
 	logoutUser(ctx context.Context, refreshToken string) error
 	refreshUser(ctx context.Context, refreshToken string) (*authResult, error)
 }
@@ -32,6 +34,30 @@ type serviceImpl struct {
 	cfg        *config.Auth
 }
 
+func (s *serviceImpl) hashPass(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+func (s *serviceImpl) verifyPass(hashedPassword, password string) bool {
+	if hashedPassword == "" {
+		return false
+	}
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err == nil
+}
+
+func (s *serviceImpl) rand6d() (string, error) {
+	b := make([]byte, 3)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate random code: %w", err)
+	}
+	return hex.EncodeToString(b)[:6], nil
+}
+
 func newService(accessManager token.UserManager, repo repo.UserRepo, kv repo.KVStore, mailer mail.Mailer, config *config.Auth) service {
 	return &serviceImpl{
 		accessMngr: accessManager,
@@ -42,16 +68,9 @@ func newService(accessManager token.UserManager, repo repo.UserRepo, kv repo.KVS
 	}
 }
 
-func rand6d() (string, error) {
-	b := make([]byte, 3)
-	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("failed to generate random code: %w", err)
-	}
-	return hex.EncodeToString(b)[:6], nil
-}
-
 func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authResult, error) {
 	accessToken, err := s.accessMngr.GenerateToken(token.NewUserPayload(
+		user.ID,
 		user.Username,
 		user.DisplayName,
 		user.AccountType,
@@ -87,19 +106,48 @@ func (s *serviceImpl) createGuest(ctx context.Context, username, displayName str
 	return s.loginUser(ctx, user)
 }
 
+func (s *serviceImpl) setPassword(ctx context.Context, userID int, currentPassword, newPassword string) error {
+	user, err := s.repo.ReadUserByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	if user.PassHash != nil {
+		if currentPassword == "" {
+			return fmt.Errorf("current password is required")
+		}
+		if !s.verifyPass(*user.PassHash, currentPassword) {
+			return fmt.Errorf("invalid current password")
+		}
+	}
+	hash, err := s.hashPass(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	_, err = s.repo.UpdateUser(ctx, user.Username, &model.UserUpdate{
+		PassHash: &hash,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return nil
+}
+
 func (s *serviceImpl) setupEmail(ctx context.Context, userID int, email string) error {
-	code, err := rand6d()
+	code, err := s.rand6d()
 	if err != nil {
 		return fmt.Errorf("failed to generate verification code: %w", err)
 	}
 
-	key := fmt.Sprintf(s.cfg.CodeStoreFormat, userID)
-	if err := s.kvStore.Set(ctx, key, code, s.cfg.EmailCodeTTL); err != nil {
+	if err := s.kvStore.Set(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userID), code, s.cfg.EmailCodeTTL); err != nil {
 		return fmt.Errorf("failed to store verification code: %w", err)
 	}
 
 	if err := s.mailer.VerificationEmail(email, code); err != nil {
-		return fmt.Errorf("failed to send verification email: %w", err)
+		slog.Error("failed to send verification email", "error", err, "email", email)
+		return fmt.Errorf("failed to send verification email")
 	}
 
 	return nil
@@ -114,7 +162,8 @@ func (s *serviceImpl) verifyEmail(ctx context.Context, userID int, code string) 
 	if user.AccountType == model.AccountTypeUser || user.AccountType == model.AccountTypeAdmin {
 		return nil, fmt.Errorf("email is already set")
 	}
-	storedCode, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.CodeStoreFormat, userID))
+
+	storedCode, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userID))
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
 			return nil, fmt.Errorf("verification code expired or invalid")
@@ -133,7 +182,8 @@ func (s *serviceImpl) verifyEmail(ctx context.Context, userID int, code string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade user: %w", err)
 	}
-	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.CodeStoreFormat, userID)); err != nil {
+
+	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userID)); err != nil {
 		slog.Error("failed to delete email code from redis", "error", err)
 	}
 	return s.loginUser(ctx, user)

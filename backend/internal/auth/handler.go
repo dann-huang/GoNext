@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"letsgo/internal/config"
+	"letsgo/internal/mdw"
 	"letsgo/internal/model"
 	"letsgo/internal/repo"
 	"letsgo/pkg/util"
@@ -21,6 +22,7 @@ type handler interface {
 	refreshHandler() http.HandlerFunc
 	setupEmailHandler() http.HandlerFunc
 	verifyEmailHandler() http.HandlerFunc
+	changePasswordHandler() http.HandlerFunc
 }
 
 func newHandler(service service, config *config.Auth) handler {
@@ -30,11 +32,6 @@ func newHandler(service service, config *config.Auth) handler {
 		validate: validator.New(),
 	}
 }
-
-var (
-	// ErrInvalidCode is returned when the verification code is invalid or expired
-	ErrInvalidCode = errors.New("invalid or expired verification code")
-)
 
 type handlerImpl struct {
 	service  service
@@ -143,8 +140,8 @@ func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 
 func (h *handlerImpl) setupEmailHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, ok := r.Context().Value("user_id").(int)
-		if !ok {
+		user := mdw.GetUser(r.Context())
+		if user == nil {
 			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
@@ -161,7 +158,7 @@ func (h *handlerImpl) setupEmailHandler() http.HandlerFunc {
 			return
 		}
 
-		if err := h.service.setupEmail(r.Context(), userID, req.Email); err != nil {
+		if err := h.service.setupEmail(r.Context(), user.UserID, req.Email); err != nil {
 			slog.Error("failed to initiate upgrade", "error", err)
 			util.RespondErr(w, http.StatusInternalServerError, "Failed to initiate upgrade", nil)
 			return
@@ -175,9 +172,9 @@ func (h *handlerImpl) setupEmailHandler() http.HandlerFunc {
 
 func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, ok := r.Context().Value("userID").(int)
-		if !ok {
-			util.RespondErr(w, http.StatusUnauthorized, "User ID not found in context", nil)
+		user := mdw.GetUser(r.Context())
+		if user == nil {
+			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
 
@@ -192,7 +189,7 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 			return
 		}
 
-		result, err := h.service.verifyEmail(r.Context(), userID, req.Code)
+		result, err := h.service.verifyEmail(r.Context(), user.UserID, req.Code)
 		if err != nil {
 			if errors.Is(err, ErrInvalidCode) {
 				util.RespondErr(w, http.StatusBadRequest, "Invalid or expired verification code", nil)
@@ -206,5 +203,41 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 		h.setAuthCookie(w, "refresh_token", result.refresh, "/auth/refresh", time.Now().Add(7*24*time.Hour))
 
 		util.RespondJSON(w, http.StatusOK, result.user.ToResponse())
+	}
+}
+
+func (h *handlerImpl) changePasswordHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := mdw.GetUser(r.Context())
+		if user == nil {
+			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
+			return
+		}
+		var req model.UserPass
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
+			return
+		}
+		if err := h.validate.Struct(req); err != nil {
+			util.RespondErr(w, http.StatusBadRequest, "Validation failed", err)
+			return
+		}
+
+		if err := h.service.setPassword(r.Context(), user.UserID, req.CurrentPass, req.NewPass); err != nil {
+			slog.Error("failed to set password", "error", err)
+			switch err.Error() {
+			case "current password is required":
+				util.RespondErr(w, http.StatusBadRequest, err.Error(), nil)
+			case "invalid current password":
+				util.RespondErr(w, http.StatusUnauthorized, err.Error(), nil)
+			default:
+				util.RespondErr(w, http.StatusInternalServerError, "Failed to set password", nil)
+			}
+			return
+		}
+
+		util.RespondJSON(w, http.StatusOK, map[string]string{
+			"message": "Password updated successfully",
+		})
 	}
 }
