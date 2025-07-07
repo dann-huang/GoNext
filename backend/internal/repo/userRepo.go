@@ -136,18 +136,14 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 	}
 
 	args = append(args, username)
-	whereClause := fmt.Sprintf("WHERE username = $%d", argCounter)
-
-	query := fmt.Sprintf("""
+	
+	query := fmt.Sprintf(`
 		UPDATE users 
-		SET %s 
-		%s 
-		RETURNING id, username, displayname, email, passhash, account_type, 
-		          created_at, updated_at, last_login_at
-	""",
-		strings.Join(updates, ", "),
-		whereClause,
-	)
+		SET %s
+		WHERE username = $%d
+		RETURNING id, username, displayname, email, passhash, 
+		          account_type, created_at, updated_at, last_login_at
+	`, strings.Join(updates, ", "), argCounter)
 
 	var updatedUser model.User
 	err := r.db.QueryRowContext(ctx, query, args...).Scan(
@@ -179,8 +175,12 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 	return &updatedUser, nil
 }
 
-func (r *pgUserRepo) DeleteUser(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, id)
+func (r *pgUserRepo) DeleteUser(ctx context.Context, username string) error {
+	result, err := r.db.ExecContext(
+		ctx,
+		`DELETE FROM users WHERE username = $1`,
+		username,
+	)
 	if err != nil {
 		return fmt.Errorf("repo: failed to delete user: %w", err)
 	}

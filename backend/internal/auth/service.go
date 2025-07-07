@@ -7,14 +7,11 @@ import (
 	"letsgo/internal/model"
 	"letsgo/internal/repo"
 	"letsgo/internal/token"
-	"letsgo/pkg/util"
-
 	"github.com/google/uuid"
 )
 
 type service interface {
 	createUser(ctx context.Context, username, displayName string) (*model.User, error)
-	loginUser(ctx context.Context, username, password string) (*model.User, string, string, error)
 	logoutUser(ctx context.Context, refreshToken string) error
 	refreshUser(ctx context.Context, refreshToken string) (string, string, error)
 }
@@ -45,27 +42,6 @@ func (s *serviceImpl) createUser(ctx context.Context, username, displayName stri
 		return nil, fmt.Errorf("service: create user failed: %w", err)
 	}
 	return user, nil
-}
-
-func (s *serviceImpl) loginUser(ctx context.Context, username, password string) (*model.User, string, string, error) {
-	user, err := s.repo.ReadUser(ctx, username)
-	if err != nil {
-		return nil, "", "", fmt.Errorf("service: login user failed: %w", err)
-	}
-	if !util.PasswordCheck(password, user.PassHash) {
-		return nil, "", "", repo.ErrNotFound
-	}
-
-	accessToken, err := s.accTokenManager.GenerateToken(token.NewUserPayload(user.Username, user.DisplayName))
-	if err != nil {
-		return nil, "", "", fmt.Errorf("service: set access token failed: %w", err)
-	}
-	refreshToken := uuid.New().String()
-	if err := s.setRefreshToken(ctx, username, refreshToken); err != nil {
-		return nil, "", "", err
-	}
-
-	return user, accessToken, refreshToken, nil
 }
 
 func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error {

@@ -14,11 +14,9 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-
 type handler interface {
 	indexHandler() http.HandlerFunc
 	registerHandler() http.HandlerFunc
-	loginHandler() http.HandlerFunc
 	logoutHandler() http.HandlerFunc
 	refreshHandler() http.HandlerFunc
 }
@@ -88,40 +86,6 @@ func (h *handlerImpl) registerHandler() http.HandlerFunc {
 
 		if err := util.RespondJSON(w, http.StatusCreated, user.ToResponse()); err != nil {
 			slog.Error("failed to write register response", "error", err)
-		}
-	}
-}
-
-func (h *handlerImpl) loginHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.UserReq
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", nil)
-		}
-
-		usr, access, refresh, err := h.service.loginUser(r.Context(), req.Username, req.Password)
-		if err != nil {
-			if errors.Is(err, repo.ErrNotFound) {
-				util.RespondErr(w, http.StatusUnauthorized, "Credentials not found", nil)
-			} else {
-				util.RespondErr(w, http.StatusInternalServerError, "Something went wrong", err)
-			}
-			return
-		}
-
-		accExpire := time.Now().Add(h.config.AccTTL)
-		refExpire := time.Now().Add(h.config.RefTTL)
-		h.setAuthCookie(w, h.config.AccCookieName, access, "/", accExpire)
-		h.setAuthCookie(w, h.config.RefCookieName, refresh, "/api/auth", refExpire)
-
-		if err := util.RespondJSON(w, http.StatusOK, map[string]any{
-			"message":        "login success",
-			"username":       usr.Username,
-			"displayname":    usr.DisplayName,
-			"accessExpires":  accExpire.UnixMilli(),
-			"refreshExpires": refExpire.UnixMilli(),
-		}); err != nil {
-			slog.Error("failed to write login response", "error", err)
 		}
 	}
 }

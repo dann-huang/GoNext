@@ -9,7 +9,6 @@ func newRouter(h handler) chi.Router {
 
 	r.Get("/", h.indexHandler())
 	r.Post("/register", h.registerHandler())
-	r.Post("/login", h.loginHandler())
 	r.Post("/logout", h.logoutHandler())
 	r.Post("/refresh", h.refreshHandler())
 

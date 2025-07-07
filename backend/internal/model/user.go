@@ -2,7 +2,6 @@ package model
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"errors"
 	"time"
 )
@@ -10,9 +9,9 @@ import (
 type AccountType string
 
 const (
-	AccountTypeGuest    AccountType = "guest"
-	AccountTypeUser     AccountType = "user"
-	AccountTypeAdmin    AccountType = "admin"
+	AccountTypeGuest AccountType = "guest"
+	AccountTypeUser  AccountType = "user"
+	AccountTypeAdmin AccountType = "admin"
 )
 
 // Scan implements the sql.Scanner interface
@@ -34,15 +33,15 @@ func (a AccountType) Value() (driver.Value, error) {
 }
 
 type User struct {
-	ID           int         `db:"id"`
-	Username     string      `db:"username"`
-	DisplayName  string      `db:"displayname"`
-	Email        *string     `db:"email"`
-	PassHash     *string     `db:"passhash"`
-	AccountType  AccountType `db:"account_type"`
-	CreatedAt    time.Time   `db:"created_at"`
-	UpdatedAt    time.Time   `db:"updated_at"`
-	LastLoginAt  *time.Time  `db:"last_login_at"`
+	ID          int         `db:"id"`
+	Username    string      `db:"username"`
+	DisplayName string      `db:"displayname"`
+	Email       *string     `db:"email"`
+	PassHash    *string     `db:"passhash"`
+	AccountType AccountType `db:"account_type"`
+	CreatedAt   time.Time   `db:"created_at"`
+	UpdatedAt   time.Time   `db:"updated_at"`
+	LastLoginAt *time.Time  `db:"last_login_at"`
 }
 
 type UserCreate struct {
@@ -51,17 +50,17 @@ type UserCreate struct {
 }
 
 type UserUpdate struct {
-	Email       *string     `json:"email,omitempty" validate:"omitempty,email"`
-	Username    *string     `json:"username,omitempty" validate:"omitempty,alphanum,min=3,max=20"`
-	DisplayName *string     `json:"displayName,omitempty" validate:"omitempty,min=2,max=50"`
-	Password    *string     `json:"password,omitempty" validate:"omitempty,min=8"`
+	Email       *string      `json:"email,omitempty" validate:"omitempty,email"`
+	Username    *string      `json:"username,omitempty" validate:"omitempty,alphanum,min=3,max=20"`
+	DisplayName *string      `json:"displayName,omitempty" validate:"omitempty,min=2,max=50"`
+	Password    *string      `json:"password,omitempty" validate:"omitempty,min=8"`
 	AccountType *AccountType `json:"accountType,omitempty"`
 }
 
 type UserResponse struct {
 	ID          int        `json:"id"`
 	Email       *string    `json:"email,omitempty"`
-	Username    *string    `json:"username,omitempty"`
+	Username    string     `json:"username,omitempty"`
 	DisplayName string     `json:"displayName"`
 	AccountType string     `json:"accountType"`
 	LastLoginAt *time.Time `json:"lastLoginAt,omitempty"`
