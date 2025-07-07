@@ -11,6 +11,7 @@ import (
 	"letsgo/internal/external"
 	"letsgo/internal/game"
 	"letsgo/internal/live"
+	"letsgo/internal/mail"
 	"letsgo/internal/mdw"
 	"letsgo/internal/repo"
 	"letsgo/internal/token"
@@ -35,15 +36,27 @@ func main() {
 		panic(err)
 	}
 	defer postgres.Close()
-
 	store := repo.NewStore(postgres, redis)
 
-	accessManager, err := jwt.NewManager(appCfg.Auth.AccSecret,
-		appCfg.Auth.AccTTL, appCfg.Auth.Issuer, appCfg.Auth.Audience, token.UserPayload{})
+	mailer := mail.NewResendMailer(appCfg.Mail)
+
+	accessManager, err := jwt.NewManager(
+		appCfg.Auth.AccSecret,
+		appCfg.Auth.AccTTL,
+		appCfg.Auth.Issuer,
+		appCfg.Auth.Audience,
+		token.UserPayload{},
+	)
 	if err != nil {
 		panic(err)
 	}
-	authModule := auth.NewModule(store.User, store.KVStore, accessManager, appCfg.Auth)
+	authModule := auth.NewModule(
+		store.User,
+		store.KVStore,
+		accessManager,
+		mailer,
+		appCfg.Auth,
+	)
 
 	const userCtxKey mdw.ContextKey = "userPayload"
 	userAccMdw := mdw.AccessMdw(accessManager, appCfg.Auth.AccCookieName, appCfg.Auth.AccTTL, userCtxKey)

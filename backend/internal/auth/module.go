@@ -4,6 +4,8 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"letsgo/internal/config"
+	"letsgo/internal/mail"
+	"letsgo/internal/model"
 	"letsgo/internal/repo"
 	"letsgo/internal/token"
 )
@@ -16,8 +18,14 @@ type authImpl struct {
 	router chi.Router
 }
 
-func NewModule(userRepo repo.UserRepo, kvStore repo.KVStore, accMngr token.UserManager, config *config.Auth) AuthModule {
-	service := newService(accMngr, userRepo, kvStore, config)
+func NewModule(
+	userRepo repo.UserRepo,
+	kvStore repo.KVStore,
+	accMngr token.UserManager,
+	mailer mail.Mailer,
+	config *config.Auth,
+) AuthModule {
+	service := newService(accMngr, userRepo, kvStore, mailer, config)
 	handler := newHandler(service, config)
 	router := newRouter(handler)
 
@@ -26,4 +34,10 @@ func NewModule(userRepo repo.UserRepo, kvStore repo.KVStore, accMngr token.UserM
 
 func (m *authImpl) Router() chi.Router {
 	return m.router
+}
+
+type authResult struct {
+	access  string
+	refresh string
+	user    *model.User
 }

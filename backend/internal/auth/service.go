@@ -2,102 +2,184 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"letsgo/internal/config"
+	"letsgo/internal/mail"
 	"letsgo/internal/model"
 	"letsgo/internal/repo"
 	"letsgo/internal/token"
+	"log/slog"
+
 	"github.com/google/uuid"
 )
 
 type service interface {
-	createUser(ctx context.Context, username, displayName string) (*model.User, error)
+	createGuest(ctx context.Context, username, displayName string) (*authResult, error)
+	setupEmail(ctx context.Context, userID int, email string) error
+	verifyEmail(ctx context.Context, userID int, code string) (*authResult, error)
 	logoutUser(ctx context.Context, refreshToken string) error
-	refreshUser(ctx context.Context, refreshToken string) (string, string, error)
+	refreshUser(ctx context.Context, refreshToken string) (*authResult, error)
 }
 
 type serviceImpl struct {
-	accTokenManager token.UserManager
-	repo            repo.UserRepo
-	kv              repo.KVStore
-	config          *config.Auth
+	accessMngr token.UserManager
+	repo       repo.UserRepo
+	kvStore    repo.KVStore
+	mailer     mail.Mailer
+	cfg        *config.Auth
 }
 
-func newService(accMngr token.UserManager, repo repo.UserRepo, kv repo.KVStore, config *config.Auth) service {
+func newService(accessManager token.UserManager, repo repo.UserRepo, kv repo.KVStore, mailer mail.Mailer, config *config.Auth) service {
 	return &serviceImpl{
-		accTokenManager: accMngr,
-		repo:            repo,
-		kv:              kv,
-		config:          config,
+		accessMngr: accessManager,
+		repo:       repo,
+		kvStore:    kv,
+		mailer:     mailer,
+		cfg:        config,
 	}
 }
 
-func (s *serviceImpl) createUser(ctx context.Context, username, displayName string) (*model.User, error) {
-	user, err := s.repo.CreateUser(ctx, &model.User{
+func rand6d() (string, error) {
+	b := make([]byte, 3)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate random code: %w", err)
+	}
+	return hex.EncodeToString(b)[:6], nil
+}
+
+func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authResult, error) {
+	accessToken, err := s.accessMngr.GenerateToken(token.NewUserPayload(
+		user.Username,
+		user.DisplayName,
+		user.AccountType,
+	))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	refreshToken := uuid.New().String()
+	if err := s.setRefreshToken(ctx, user.Username, refreshToken); err != nil {
+		return nil, fmt.Errorf("failed to set refresh token: %w", err)
+	}
+
+	return &authResult{
+		access:  accessToken,
+		refresh: refreshToken,
+		user:    user,
+	}, nil
+}
+
+func (s *serviceImpl) createGuest(ctx context.Context, username, displayName string) (*authResult, error) {
+	user := &model.User{
 		Username:    username,
 		DisplayName: displayName,
 		AccountType: model.AccountTypeGuest,
+	}
+
+	user, err := s.repo.CreateUser(ctx, user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create guest user: %w", err)
+	}
+
+	return s.loginUser(ctx, user)
+}
+
+func (s *serviceImpl) setupEmail(ctx context.Context, userID int, email string) error {
+	code, err := rand6d()
+	if err != nil {
+		return fmt.Errorf("failed to generate verification code: %w", err)
+	}
+
+	key := fmt.Sprintf(s.cfg.CodeStoreFormat, userID)
+	if err := s.kvStore.Set(ctx, key, code, s.cfg.EmailCodeTTL); err != nil {
+		return fmt.Errorf("failed to store verification code: %w", err)
+	}
+
+	if err := s.mailer.VerificationEmail(email, code); err != nil {
+		return fmt.Errorf("failed to send verification email: %w", err)
+	}
+
+	return nil
+}
+
+func (s *serviceImpl) verifyEmail(ctx context.Context, userID int, code string) (*authResult, error) {
+	user, err := s.repo.ReadUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	if user.AccountType == model.AccountTypeUser || user.AccountType == model.AccountTypeAdmin {
+		return nil, fmt.Errorf("email is already set")
+	}
+	storedCode, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.CodeStoreFormat, userID))
+	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) {
+			return nil, fmt.Errorf("verification code expired or invalid")
+		}
+		return nil, fmt.Errorf("failed to verify code: %w", err)
+	}
+
+	if storedCode != code {
+		return nil, fmt.Errorf("invalid verification code")
+	}
+
+	accountType := model.AccountTypeUser
+	user, err = s.repo.UpdateUser(ctx, user.Username, &model.UserUpdate{
+		AccountType: &accountType,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("service: create user failed: %w", err)
+		return nil, fmt.Errorf("failed to upgrade user: %w", err)
 	}
-	return user, nil
+	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.CodeStoreFormat, userID)); err != nil {
+		slog.Error("failed to delete email code from redis", "error", err)
+	}
+	return s.loginUser(ctx, user)
 }
 
 func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error {
-	username, err := s.kv.Get(ctx, refreshToken)
+	username, err := s.kvStore.Get(ctx, refreshToken)
 	if err != nil {
 		return fmt.Errorf("service: logout without finding refresh token: %w", err)
 	}
 	return s.unsetRefreshToken(ctx, username, refreshToken)
 }
 
-func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (string, string, error) {
-	username, err := s.kv.Get(ctx, refreshToken)
+func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (*authResult, error) {
+	username, err := s.kvStore.Get(ctx, refreshToken)
 	if err != nil {
-		return "", "", fmt.Errorf("service: no refresh token found: %w", err)
-	}
-	user, err := s.repo.ReadUser(ctx, username)
-	if err != nil {
-		return "", "", fmt.Errorf("service: read user failed: %w", err)
+		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
 
-	newRefToken := uuid.New().String()
-	if err := s.setRefreshToken(ctx, username, newRefToken); err != nil {
-		return "", "", err
-	}
-	accessToken, err := s.accTokenManager.GenerateToken(token.NewUserPayload(user.Username, user.DisplayName))
+	user, err := s.repo.ReadUserByName(ctx, username)
 	if err != nil {
-		return "", "", fmt.Errorf("service: set access token failed: %w", err)
+		return nil, fmt.Errorf("user not found: %w", err)
 	}
 
-	if err := s.unsetRefreshToken(ctx, username, refreshToken); err != nil {
-		return accessToken, newRefToken, err
-	}
-	return accessToken, newRefToken, nil
+	return s.loginUser(ctx, user)
 }
 
 func (s *serviceImpl) setRefreshToken(ctx context.Context, username, token string) error {
-	if err := s.kv.Set(ctx, token, username, s.config.RefTTL); err != nil {
-		return fmt.Errorf("service: set refresh token failed: %w", err)
+	if err := s.kvStore.Set(ctx, token, username, s.cfg.RefTTL); err != nil {
+		return fmt.Errorf("failed to set refresh token: %w", err)
 	}
-	if err := s.kv.ListAdd(ctx, fmt.Sprintf(s.config.RefStoredFormat,
-		username), token, s.config.RefTTL); err != nil {
-		return fmt.Errorf("service: add refresh token to list failed: %w", err)
-	}
-	if err := s.kv.ListTrim(ctx, fmt.Sprintf(s.config.RefStoredFormat,
-		username), s.config.RefTTL); err != nil {
-		return fmt.Errorf("service: trim refresh token list failed: %w", err)
+
+	userTokenKey := fmt.Sprintf("user:refresh_token:%s", username)
+	if err := s.kvStore.Set(ctx, userTokenKey, token, s.cfg.RefTTL); err != nil {
+		return fmt.Errorf("failed to set user refresh token mapping: %w", err)
 	}
 	return nil
 }
 
 func (s *serviceImpl) unsetRefreshToken(ctx context.Context, username, token string) error {
 	var errList []error
-	if err := s.kv.Del(ctx, token); err != nil {
+	if err := s.kvStore.Del(ctx, token); err != nil {
 		errList = append(errList, fmt.Errorf("service: refresh token delete failed: %w", err))
 	}
-	if err := s.kv.ListDel(ctx, fmt.Sprintf(s.config.RefStoredFormat, username),
+
+	if err := s.kvStore.ListDel(ctx, fmt.Sprintf(s.cfg.RefStoredFormat, username),
 		token); err != nil {
 		errList = append(errList, fmt.Errorf("service: refresh list delete failed: %w", err))
 	}

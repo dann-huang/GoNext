@@ -12,5 +12,10 @@ func newRouter(h handler) chi.Router {
 	r.Post("/logout", h.logoutHandler())
 	r.Post("/refresh", h.refreshHandler())
 
+	r.Route("/email", func(r chi.Router) {
+		r.Post("/setup", h.setupEmailHandler())
+		r.Post("/verify", h.verifyEmailHandler())
+	})
+
 	return r
 }

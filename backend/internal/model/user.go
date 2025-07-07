@@ -14,8 +14,7 @@ const (
 	AccountTypeAdmin AccountType = "admin"
 )
 
-// Scan implements the sql.Scanner interface
-func (a *AccountType) Scan(value interface{}) error {
+func (a *AccountType) Scan(value any) error {
 	if value == nil {
 		*a = AccountTypeGuest
 		return nil
@@ -27,7 +26,6 @@ func (a *AccountType) Scan(value interface{}) error {
 	return errors.New("failed to scan AccountType")
 }
 
-// Value implements the driver.Valuer interface
 func (a AccountType) Value() (driver.Value, error) {
 	return string(a), nil
 }
@@ -44,39 +42,10 @@ type User struct {
 	LastLoginAt time.Time   `db:"last_login_at"`
 }
 
-type UserCreate struct {
-	Username    string `json:"username" validate:"required,alphanum,min=3,max=20"`
-	DisplayName string `json:"displayName" validate:"required,min=2,max=50"`
-}
-
 type UserUpdate struct {
-	Username    *string      `json:"username,omitempty" validate:"omitempty,alphanum,min=3,max=20"`
-	DisplayName *string      `json:"displayName,omitempty" validate:"omitempty,min=2,max=50"`
-	AccountType *AccountType `json:"accountType,omitempty"`
-	Email       *string      `json:"email,omitempty" validate:"omitempty,email"`
-	Password    *string      `json:"password,omitempty" validate:"omitempty,min=8"`
-}
-
-type UserResponse struct {
-	ID          int       `json:"id"`
-	Username    string    `json:"username"`
-	DisplayName string    `json:"displayName"`
-	AccountType string    `json:"accountType"`
-	Email       *string   `json:"email,omitempty"`
-	LastLoginAt time.Time `json:"lastLoginAt"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-}
-
-func (u *User) ToResponse() *UserResponse {
-	return &UserResponse{
-		ID:          u.ID,
-		Username:    u.Username,
-		DisplayName: u.DisplayName,
-		AccountType: string(u.AccountType),
-		Email:       u.Email,
-		LastLoginAt: u.LastLoginAt,
-		CreatedAt:   u.CreatedAt,
-		UpdatedAt:   u.UpdatedAt,
-	}
+	Username    *string
+	DisplayName *string
+	AccountType *AccountType
+	Email       *string
+	PassHash    *string
 }

@@ -2,39 +2,31 @@ package util
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 )
 
 func RespondErr(w http.ResponseWriter, status int, msg string, err error) {
 	if err != nil {
-		slog.Error(err.Error())
+		slog.Error(msg, "error", err)
 	}
-	if err := RespondJSON(w, status, map[string]string{"message": msg}); err != nil {
-		slog.Error("failed to write error response", "error", err)
-	}
+	RespondJSON(w, status, map[string]string{
+		"error": msg,
+	})
 }
 
-func RespondJSON(w http.ResponseWriter, code int, payload any) error {
+func RespondJSON(w http.ResponseWriter, code int, payload any) {
 	response, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal response: %w", err)
+		slog.Error("failed to marshal response", "error", err)
+		// If we can't marshal the error, we can't return a proper error response
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	if _, err := w.Write(response); err != nil {
-		return fmt.Errorf("failed to write response: %w", err)
-	}
-	return nil
-}
-
-func RespondWithError(w http.ResponseWriter, code int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if _, err := w.Write([]byte(`{"error": "` + message + `"}`)); err != nil {
-		// Log the error since we can't send it to the client if the write failed
-		slog.Error("Failed to write error response", "error", err)
+		slog.Error("failed to write response", "error", err)
 	}
 }

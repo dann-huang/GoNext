@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.9.0
+	github.com/resend/resend-go/v2 v2.21.0
 	golang.org/x/crypto v0.38.0
 )
 

@@ -12,7 +12,8 @@ import (
 
 type UserRepo interface {
 	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	ReadUser(ctx context.Context, username string) (*model.User, error)
+	ReadUserByName(ctx context.Context, username string) (*model.User, error)
+	ReadUserByID(ctx context.Context, id int) (*model.User, error)
 	UpdateUser(ctx context.Context, username string, params *model.UserUpdate) (*model.User, error)
 	DeleteUser(ctx context.Context, username string) error
 }
@@ -69,7 +70,7 @@ func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.U
 	return &newUser, nil
 }
 
-func (r *pgUserRepo) ReadUser(ctx context.Context, username string) (*model.User, error) {
+func (r *pgUserRepo) ReadUserByName(ctx context.Context, username string) (*model.User, error) {
 	var user model.User
 	query := `
 		SELECT id, username, displayname, email, passhash, account_type, 
@@ -89,12 +90,39 @@ func (r *pgUserRepo) ReadUser(ctx context.Context, username string) (*model.User
 		&user.UpdatedAt,
 		&user.LastLoginAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = ErrNotFound
 		}
 		return nil, fmt.Errorf("repo: failed to get user by username=%v: %w", username, err)
+	}
+
+	return &user, nil
+}
+
+func (r *pgUserRepo) ReadUserByID(ctx context.Context, id int) (*model.User, error) {
+	var user model.User
+	query := `
+		SELECT id, username, displayname, email, account_type, created_at, updated_at, last_login_at
+		FROM users
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&user.ID,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.AccountType,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.LastLoginAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("repo: failed to get user by ID=%v: %w", id, err)
 	}
 
 	return &user, nil
@@ -120,9 +148,9 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 		args = append(args, *params.DisplayName)
 		argCounter++
 	}
-	if params.Password != nil {
+	if params.PassHash != nil {
 		updates = append(updates, fmt.Sprintf("passhash = $%d", argCounter))
-		args = append(args, *params.Password)
+		args = append(args, *params.PassHash)
 		argCounter++
 	}
 	if params.AccountType != nil {
@@ -132,11 +160,11 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 	}
 
 	if len(updates) == 0 {
-		return r.ReadUser(ctx, username)
+		return r.ReadUserByName(ctx, username)
 	}
 
 	args = append(args, username)
-	
+
 	query := fmt.Sprintf(`
 		UPDATE users 
 		SET %s

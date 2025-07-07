@@ -19,25 +19,32 @@ type handler interface {
 	registerHandler() http.HandlerFunc
 	logoutHandler() http.HandlerFunc
 	refreshHandler() http.HandlerFunc
+	setupEmailHandler() http.HandlerFunc
+	verifyEmailHandler() http.HandlerFunc
 }
 
 func newHandler(service service, config *config.Auth) handler {
 	return &handlerImpl{
-		service: service,
-		config:  config,
+		service:  service,
+		cfg:      config,
+		validate: validator.New(),
 	}
 }
 
+var (
+	// ErrInvalidCode is returned when the verification code is invalid or expired
+	ErrInvalidCode = errors.New("invalid or expired verification code")
+)
+
 type handlerImpl struct {
-	service service
-	config  *config.Auth
+	service  service
+	cfg      *config.Auth
+	validate *validator.Validate
 }
 
 func (h *handlerImpl) indexHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := util.RespondJSON(w, http.StatusOK, map[string]string{"message": "Auth is running"}); err != nil {
-			slog.Error("failed to write health response", "error", err)
-		}
+		util.RespondJSON(w, http.StatusOK, map[string]string{"message": "Auth is running"})
 	}
 }
 
@@ -47,7 +54,7 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 		Value: value,
 		// Quoted,
 		Path: path,
-		// Domain:  h.config.Domain, // not needed when share domains apparently
+		// Domain:  h.cfg.Domain, // not needed when share domains apparently
 		Expires: expires,
 		// RawExpires,
 		// MaxAge,
@@ -62,7 +69,7 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 
 func (h *handlerImpl) registerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.UserCreate
+		var req model.UserNames
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
 			return
@@ -73,7 +80,7 @@ func (h *handlerImpl) registerHandler() http.HandlerFunc {
 			return
 		}
 
-		user, err := h.service.createUser(r.Context(), req.Username, req.DisplayName)
+		result, err := h.service.createGuest(r.Context(), req.Username, req.DisplayName)
 		if err != nil {
 			if errors.Is(err, repo.ErrAlreadyExists) {
 				util.RespondErr(w, http.StatusConflict, "Username already taken", nil)
@@ -84,57 +91,120 @@ func (h *handlerImpl) registerHandler() http.HandlerFunc {
 			return
 		}
 
-		if err := util.RespondJSON(w, http.StatusCreated, user.ToResponse()); err != nil {
-			slog.Error("failed to write register response", "error", err)
-		}
+		h.setAuthCookie(w, "access_token", result.access, "/", time.Now().Add(24*time.Hour))
+		h.setAuthCookie(w, "refresh_token", result.refresh, "/auth/refresh", time.Now().Add(7*24*time.Hour))
+
+		util.RespondJSON(w, http.StatusCreated, result.user.ToResponse())
 	}
 }
 
 func (h *handlerImpl) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		refreshCookie, err := r.Cookie(h.config.RefCookieName)
-		if err == nil {
-			if err := h.service.logoutUser(r.Context(), refreshCookie.Value); err != nil {
-				slog.Error("failed to logout user", "error", err)
-			}
-			h.setAuthCookie(w, h.config.AccCookieName, "", "/", time.Unix(0, 0))
-			h.setAuthCookie(w, h.config.RefCookieName, "", "/api/auth", time.Unix(0, 0))
-		} else {
-			slog.Error(err.Error())
+		cookie, err := r.Cookie("refresh_token")
+		if err != nil {
+			util.RespondErr(w, http.StatusBadRequest, "No refresh token provided", nil)
+			return
 		}
-		if err := util.RespondJSON(w, http.StatusOK, map[string]string{"message": "logout success"}); err != nil {
-			slog.Error("failed to write logout response", "error", err)
+
+		if err := h.service.logoutUser(r.Context(), cookie.Value); err != nil {
+			slog.Error("failed to logout user", "error", err)
+			util.RespondErr(w, http.StatusInternalServerError, "Failed to logout", nil)
+			return
 		}
+
+		h.setAuthCookie(w, "access_token", "", "/", time.Unix(0, 0))
+		h.setAuthCookie(w, "refresh_token", "", "/auth/refresh", time.Unix(0, 0))
+
+		util.RespondJSON(w, http.StatusOK, map[string]string{"message": "Successfully logged out"})
 	}
 }
 
 func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		refreshCookie, err := r.Cookie(h.config.RefCookieName)
+		cookie, err := r.Cookie("refresh_token")
 		if err != nil {
-			util.RespondErr(w, http.StatusUnauthorized, "No Refresh Token", nil)
-			return
-		}
-		access, refresh, err := h.service.refreshUser(r.Context(), refreshCookie.Value)
-		if err != nil {
-			slog.Error(err.Error())
-		}
-		if access == "" {
-			util.RespondErr(w, http.StatusInternalServerError, "Refresh failed", nil)
+			util.RespondErr(w, http.StatusBadRequest, "No refresh token provided", nil)
 			return
 		}
 
-		accExpire := time.Now().Add(h.config.AccTTL)
-		refExpire := time.Now().Add(h.config.RefTTL)
-		h.setAuthCookie(w, h.config.AccCookieName, access, "/", accExpire)
-		h.setAuthCookie(w, h.config.RefCookieName, refresh, "/api/auth", refExpire)
-
-		if err := util.RespondJSON(w, http.StatusOK, map[string]any{
-			"message":        "refresh success",
-			"accessExpires":  accExpire.UnixMilli(),
-			"refreshExpires": refExpire.UnixMilli(),
-		}); err != nil {
-			slog.Error("failed to write refresh response", "error", err)
+		result, err := h.service.refreshUser(r.Context(), cookie.Value)
+		if err != nil {
+			slog.Error("failed to refresh token", "error", err)
+			util.RespondErr(w, http.StatusUnauthorized, "Invalid refresh token", nil)
+			return
 		}
+
+		h.setAuthCookie(w, "access_token", result.access, "/", time.Now().Add(24*time.Hour))
+		h.setAuthCookie(w, "refresh_token", result.refresh, "/auth/refresh", time.Now().Add(7*24*time.Hour))
+
+		util.RespondJSON(w, http.StatusOK, result.user.ToResponse())
+	}
+}
+
+func (h *handlerImpl) setupEmailHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := r.Context().Value("user_id").(int)
+		if !ok {
+			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
+			return
+		}
+
+		var req model.SetupEmail
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			slog.Error("failed to decode request body", "error", err)
+			util.RespondErr(w, http.StatusBadRequest, "Invalid request body", nil)
+			return
+		}
+
+		if err := h.validate.Struct(req); err != nil {
+			util.RespondErr(w, http.StatusBadRequest, "Invalid email address", nil)
+			return
+		}
+
+		if err := h.service.setupEmail(r.Context(), userID, req.Email); err != nil {
+			slog.Error("failed to initiate upgrade", "error", err)
+			util.RespondErr(w, http.StatusInternalServerError, "Failed to initiate upgrade", nil)
+			return
+		}
+
+		util.RespondJSON(w, http.StatusOK, map[string]string{
+			"message": "Verification email sent",
+		})
+	}
+}
+
+func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := r.Context().Value("userID").(int)
+		if !ok {
+			util.RespondErr(w, http.StatusUnauthorized, "User ID not found in context", nil)
+			return
+		}
+
+		var req model.VerifyEmail
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
+			return
+		}
+
+		if err := h.validate.Struct(req); err != nil {
+			util.RespondErr(w, http.StatusBadRequest, "Validation failed", err)
+			return
+		}
+
+		result, err := h.service.verifyEmail(r.Context(), userID, req.Code)
+		if err != nil {
+			if errors.Is(err, ErrInvalidCode) {
+				util.RespondErr(w, http.StatusBadRequest, "Invalid or expired verification code", nil)
+			} else {
+				util.RespondErr(w, http.StatusInternalServerError, "Failed to verify email", err)
+			}
+			return
+		}
+
+		h.setAuthCookie(w, "access_token", result.access, "/", time.Now().Add(24*time.Hour))
+		h.setAuthCookie(w, "refresh_token", result.refresh, "/auth/refresh", time.Now().Add(7*24*time.Hour))
+
+		util.RespondJSON(w, http.StatusOK, result.user.ToResponse())
 	}
 }
