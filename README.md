@@ -1,9 +1,9 @@
-# LetsGo: A Real-time Full-Stack Web Application
+# GoNext: A Real-time Full-Stack Web Application based on Go and Next.js
 
-[![GitHub Actions CI Status](https://github.com/dann-huang/letsGo/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/dann-huang/letsGo/actions/workflows/pr-checks.yml)
-[![GitHub Actions Deployment Status](https://github.com/dann-huang/letsGo/actions/workflows/build-n-deploy.yml/badge.svg)](https://github.com/dann-huang/letsGo/actions/workflows/build-n-deploy.yml)
+[![GitHub Actions CI Status](https://github.com/dann-huang/gonext/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/dann-huang/gonext/actions/workflows/pr-checks.yml)
+[![GitHub Actions Deployment Status](https://github.com/dann-huang/gonext/actions/workflows/build-n-deploy.yml/badge.svg)](https://github.com/dann-huang/gonext/actions/workflows/build-n-deploy.yml)
 
-LetsGo is a personal project and portfolio piece showcasing a full-stack web application designed for interactive, real-time experiences. It highlights expertise in modern backend (Go), frontend (Next.js), and robust containerized deployment with Docker, Nginx, PostgreSQL, and Redis.
+GoNext is a personal project and portfolio piece showcasing a full-stack web application designed for interactive, real-time experiences. It highlights expertise in modern backend (Go), frontend (Next.js), and robust containerized deployment with Docker, Nginx, PostgreSQL, and Redis.
 
 **Live Demo:** [https://daniel-h.ca](https://daniel-h.ca) (If actively deployed and available)
 
@@ -41,7 +41,7 @@ This project emphasizes real-time interactivity and robust architecture, demonst
 
 ## Project Roadmap
 
-LetsGo is a continually evolving personal project. Planned enhancements include:
+GoNext is a continually evolving personal project. Planned enhancements include:
 
 * **Multiplayer Board Games:** Implementing classic real-time board games like Chess or Connect Four.
 * **Video Chat:** Integrating WebRTC for peer-to-peer video communication.
@@ -78,7 +78,7 @@ LetsGo is a continually evolving personal project. Planned enhancements include:
 
 ## Architecture
 
-LetsGo employs a fully containerized, microservices-oriented architecture. Nginx serves as the entry point, routing requests to the Next.js frontend or the Go backend. The Go backend interacts with PostgreSQL for persistent data and Redis for real-time messaging and caching. All components are defined and orchestrated via Docker Compose.
+GoNext employs a fully containerized, microservices-oriented architecture. Nginx serves as the entry point, routing requests to the Next.js frontend or the Go backend. The Go backend interacts with PostgreSQL for persistent data and Redis for real-time messaging and caching. All components are defined and orchestrated via Docker Compose.
 
 ---
 
@@ -96,8 +96,8 @@ This section provides instructions for setting up the project for local developm
 
 1.  **Clone the repository:**
     ```sh
-    git clone https://github.com/dann-huang/letsGo.git
-    cd letsGo
+    git clone https://github.com/dann-huang/gonext.git
+    cd gonext
     ```
 
 2.  **Run the application:**

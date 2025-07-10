@@ -3,7 +3,7 @@ package mail
 import (
 	"fmt"
 
-	"letsgo/internal/config"
+	"gonext/internal/config"
 
 	"github.com/resend/resend-go/v2"
 )

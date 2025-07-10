@@ -8,7 +8,7 @@ export default function NavBar() {
     <div className='flex items-center space-x-2'>
       <Link href='/' className='flex items-center'>
         <Earth />
-        <span className='text-xl text-on-primary font-bold ml-2 hidden sm:block'>LetsGo</span>
+        <span className='text-xl text-on-primary font-bold ml-2 hidden sm:block'>GoNext</span>
       </Link>
     </div>
 

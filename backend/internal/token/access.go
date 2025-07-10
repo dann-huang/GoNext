@@ -1,8 +1,8 @@
 package token
 
 import (
-	"letsgo/internal/model"
-	"letsgo/pkg/jwt/v2"
+	"gonext/internal/model"
+	"gonext/pkg/jwt/v2"
 )
 
 type UserPayload struct {

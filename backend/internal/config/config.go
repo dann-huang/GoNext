@@ -73,7 +73,7 @@ func Load() (*AppConfig, error) {
 			RefCookieName:   "refresh_token",
 			RefStoredFormat: "refToken:%v",
 			RefTTL:          24 * time.Hour,
-			Issuer:          "letsgo",
+			Issuer:          "gonext",
 			Audience:        "AuthService",
 			Domain:          os.Getenv("DOMAIN"),
 			EmailCodeTTL:    10 * time.Minute,

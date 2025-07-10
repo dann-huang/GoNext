@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"letsgo/internal/model"
+	"gonext/internal/model"
 	"strings"
 
 	"github.com/lib/pq"

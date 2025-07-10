@@ -1,9 +1,9 @@
 package live
 
 import (
-	"letsgo/internal/config"
-	"letsgo/internal/game"
-	"letsgo/internal/mdw"
+	"gonext/internal/config"
+	"gonext/internal/game"
+	"gonext/internal/mdw"
 	"log/slog"
 	"net/http"
 

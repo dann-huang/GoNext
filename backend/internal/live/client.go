@@ -3,8 +3,8 @@ package live
 import (
 	"context"
 	"encoding/json"
-	"letsgo/internal/config"
-	"letsgo/internal/token"
+	"gonext/internal/config"
+	"gonext/internal/token"
 	"log/slog"
 	"time"
 

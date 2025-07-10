@@ -5,6 +5,7 @@ import NavBar from '@/components/UI/NavBar';
 import Footer from '@/components/UI/Footer';
 import ChatWindow from '@/components/Chat/ChatWindow';
 import ThemeInitializer from '@/components/UI/ThemeInitializer';
+import CookieConsent from '@/components/UI/CookieConsent';
 
 const roboto = Roboto({
   weight: ['300', '400', '500', '700'],
@@ -37,6 +38,7 @@ export default function RootLayout({
         <Footer />
       </div>
       <ChatWindow />
+      <CookieConsent />
     </body>
   </html>;
 }

@@ -3,7 +3,7 @@ package live
 import (
 	"encoding/json"
 	"errors"
-	"letsgo/internal/game"
+	"gonext/internal/game"
 	"log/slog"
 )
 

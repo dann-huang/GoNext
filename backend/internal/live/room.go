@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"letsgo/internal/game"
+	"gonext/internal/game"
 )
 
 const (

@@ -2,7 +2,7 @@ package mdw
 
 import (
 	"context"
-	"letsgo/internal/token"
+	"gonext/internal/token"
 	"net/http"
 	"time"
 )

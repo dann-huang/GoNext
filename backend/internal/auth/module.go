@@ -5,12 +5,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"letsgo/internal/config"
-	"letsgo/internal/mail"
-	"letsgo/internal/mdw"
-	"letsgo/internal/model"
-	"letsgo/internal/repo"
-	"letsgo/internal/token"
+	"gonext/internal/config"
+	"gonext/internal/mail"
+	"gonext/internal/mdw"
+	"gonext/internal/model"
+	"gonext/internal/repo"
+	"gonext/internal/token"
 )
 
 type AuthModule interface {

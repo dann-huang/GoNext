@@ -1,4 +1,4 @@
-module letsgo
+module gonext
 
 go 1.24.3
 

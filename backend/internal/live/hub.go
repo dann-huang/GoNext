@@ -1,8 +1,8 @@
 package live
 
 import (
-	"letsgo/internal/config"
-	"letsgo/internal/game"
+	"gonext/internal/config"
+	"gonext/internal/game"
 	"log/slog"
 	"time"
 )

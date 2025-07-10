@@ -1,9 +1,9 @@
 package user
 
 import (
-	"letsgo/internal/mdw"
-	"letsgo/internal/token"
-	"letsgo/pkg/util"
+	"gonext/internal/mdw"
+	"gonext/internal/token"
+	"gonext/pkg/util"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
