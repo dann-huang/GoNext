@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import api from '@/lib/api'
-import { LoginSuccessResponse, RefreshSuccessResponse, RegisterSuccessResponse } from '@/types/authTypes';
+import api from '@/lib/api';
+import {
+  LoginSuccessResponse,
+  RefreshSuccessResponse,
+  RegisterSuccessResponse,
+} from '@/types/authTypes';
 import { REFRESH_BEFORE } from '@/config/consts';
 
 const refreshDependents = new Set<string>();
@@ -41,38 +45,41 @@ const blankUser = {
   accessExp: 0,
   refreshExp: 0,
   error: '',
-}
+};
 
-export const useUserStore = create<UserState>()(
+export default create<UserState>()(
   persist(
     (set, get) => ({
       ...blankUser,
 
       register: async (username: string, password: string) => {
-        set({ loading: true, error: '' })
+        set({ loading: true, error: '' });
         try {
-          const res = await api.postJson('/auth/register', { username, password });
+          const res = await api.postJson('/auth/register', {
+            username,
+            password,
+          });
           if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.message)
+            const err = await res.json();
+            throw new Error(err.message);
           }
           const json: RegisterSuccessResponse = await res.json();
-          set({ username: json.username, loading: false, })
+          set({ username: json.username, loading: false });
           return true;
         } catch (err: unknown) {
-          console.error("userstore register err ", err)
-          const msgErr = err as { message: string }
-          set({ error: msgErr.message, loading: false })
+          console.error('userstore register err ', err);
+          const msgErr = err as { message: string };
+          set({ error: msgErr.message, loading: false });
           return false;
         }
       },
       login: async (username: string, password: string) => {
-        set({ loading: true, error: '' })
+        set({ loading: true, error: '' });
         try {
           const res = await api.postJson('/auth/login', { username, password });
           if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.message)
+            const err = await res.json();
+            throw new Error(err.message);
           }
           const json: LoginSuccessResponse = await res.json();
           set({
@@ -81,52 +88,56 @@ export const useUserStore = create<UserState>()(
             loading: false,
             accessExp: json.accessExpires,
             refreshExp: json.refreshExpires,
-          })
+          });
           return true;
         } catch (err: unknown) {
-          console.error("userstore login err ", err)
-          const msgErr = err as { message: string }
-          set({ error: msgErr.message, loading: false })
+          console.error('userstore login err ', err);
+          const msgErr = err as { message: string };
+          set({ error: msgErr.message, loading: false });
           return false;
         }
       },
       logout: async () => {
-        set({ loading: true, error: '' })
+        set({ loading: true, error: '' });
         try {
           const res = await api.postJson('/auth/logout', {});
           if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.message)
+            const err = await res.json();
+            throw new Error(err.message);
           }
-          set({ ...blankUser })
+          set({ ...blankUser });
         } catch (err: unknown) {
-          console.error("userstore logout err ", err)
-          const msgErr = err as { message: string }
-          set({ error: msgErr.message, loading: false })
+          console.error('userstore logout err ', err);
+          const msgErr = err as { message: string };
+          set({ error: msgErr.message, loading: false });
         }
       },
       refresh: async () => {
         const { refreshExp }: UserState = get();
-        console.log("refreshing", refreshDependents, refreshExp)
+        console.log('refreshing', refreshDependents, refreshExp);
         if (refreshExp <= Date.now()) {
-          set({ ...blankUser })
+          set({ ...blankUser });
           refreshDependents.clear();
           return false;
         }
         try {
-          const res = await api.postJson("/auth/refresh", {})
+          const res = await api.postJson('/auth/refresh', {});
           if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.message)
+            const err = await res.json();
+            throw new Error(err.message);
           }
           const json: RefreshSuccessResponse = await res.json();
-          set({ accessExp: json.accessExpires, refreshExp: json.refreshExpires, error: "" })
+          set({
+            accessExp: json.accessExpires,
+            refreshExp: json.refreshExpires,
+            error: '',
+          });
           scheduleRefresh(get);
-          console.debug("Refreshed access token")
+          console.debug('Refreshed access token');
           return true;
         } catch (err: unknown) {
-          console.error("userstore refresh err ", err)
-          set({ ...blankUser })
+          console.error('userstore refresh err ', err);
+          set({ ...blankUser });
           refreshDependents.clear();
           return false;
         }

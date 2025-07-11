@@ -12,7 +12,7 @@ import {
 import { Particle, MousePosition } from '@/types/particleTypes';
 import useThemeColor from '@/hooks/useThemeColor';
 import { R_SQ } from './config';
-import { useDebounce } from '@/hooks/useDebounce';
+import useDebounce from '@/hooks/useDebounce';
 
 export default function ParticleBanner({
   children,

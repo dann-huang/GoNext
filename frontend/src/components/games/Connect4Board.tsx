@@ -1,5 +1,5 @@
 import { GameBoardProps } from '@/types/gameTypes';
-import { useUserStore } from '@/hooks/useUserStore';
+import useUserStore from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
 import { useGameBoard } from '@/hooks/useGameBoard';
 

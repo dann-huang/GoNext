@@ -1,7 +1,7 @@
 'use client';
 
 import { GameBoardProps } from '@/types/gameTypes';
-import { useUserStore } from '@/hooks/useUserStore';
+import useUserStore from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
 import { X, Circle } from 'lucide-react';
 import { useGameBoard } from '@/hooks/useGameBoard';

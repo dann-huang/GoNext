@@ -4,7 +4,7 @@ import './globals.css';
 import NavBar from '@/components/UI/NavBar';
 import Footer from '@/components/UI/Footer';
 import ChatWindow from '@/components/Chat/ChatWindow';
-import ThemeInitializer from '@/components/UI/ThemeInitializer';
+import ClientInit from '@/components/ClientInit';
 import CookieConsent from '@/components/UI/CookieConsent';
 
 const roboto = Roboto({
@@ -31,21 +31,25 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <html lang='en' suppressHydrationWarning>
-    <head>
-      <ThemeInitializer />
-    </head>
-    <body className={`${roboto.variable} ${poppins.variable} antialiased`}>
-      <div className='min-h-screen flex flex-col'>
-        <NavBar />
-        <main className='flex flex-1 w-full mx-auto p-4 max-w-screen-sm md:max-w-screen-md
-            lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-2xl'>
-          {children}
-        </main>
-        <Footer />
-      </div>
-      <ChatWindow />
-      <CookieConsent />
-    </body>
-  </html>;
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <ClientInit />
+      </head>
+      <body className={`${roboto.variable} ${poppins.variable} antialiased`}>
+        <div className="min-h-screen flex flex-col">
+          <NavBar />
+          <main
+            className="flex flex-1 w-full mx-auto p-4 max-w-screen-sm md:max-w-screen-md
+            lg:max-w-screen-lg xl:max-w-screen-xl 2xl:max-w-screen-2xl"
+          >
+            {children}
+          </main>
+          <Footer />
+        </div>
+        <ChatWindow />
+        <CookieConsent />
+      </body>
+    </html>
+  );
 }

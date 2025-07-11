@@ -15,11 +15,13 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import Logo from '@/assets/gonext.svg';
+import ParticleBox from '@/components/UI/ParticleBox';
 
 export default function HomePage() {
   return (
     <main className="flex-1">
       <section className="relative w-full min-h-screen flex flex-col items-center justify-center">
+        <ParticleBox />
         <TitleBanner>
           <Logo
             className="w-full h-auto fill-primary p-12"

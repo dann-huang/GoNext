@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { GameBoardProps } from '@/types/gameTypes';
-import { useUserStore } from '@/hooks/useUserStore';
+import useUserStore from '@/hooks/useUserStore';
 import { cn } from '@/lib/utils';
 import { numToPiece } from './pieceMapping';
 import { useGameBoard } from '@/hooks/useGameBoard';

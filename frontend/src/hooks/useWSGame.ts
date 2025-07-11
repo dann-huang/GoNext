@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useWebSocket } from './useWebsocket';
+import useWebSocket from './useWebsocket';
 import { BoardGameState, GameMove, GameName } from '@/types/wsTypes';
 
 export default function useWebSocketGame() {
@@ -13,20 +13,23 @@ export default function useWebSocketGame() {
     board: [[]],
     status: 'waiting',
     winner: '',
-    validMoves: []
+    validMoves: [],
   });
 
-  const createGame = useCallback((gameName: GameName) => {
-    try {
-      setIsLoading(true);
-      sendGameMsg({ action: 'create', gameName });
-    } catch (error) {
-      console.error('Error creating game:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sendGameMsg]);
+  const createGame = useCallback(
+    (gameName: GameName) => {
+      try {
+        setIsLoading(true);
+        sendGameMsg({ action: 'create', gameName });
+      } catch (error) {
+        console.error('Error creating game:', error);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [sendGameMsg]
+  );
 
   const joinGame = useCallback(() => {
     try {
@@ -54,20 +57,23 @@ export default function useWebSocketGame() {
     }
   }, [sendGameMsg]);
 
-  const makeMove = useCallback((move: GameMove) => {
-    try {
-      setIsLoading(true);
-      sendGameMsg({
-        action: 'move',
-        move
-      });
-    } catch (error) {
-      console.error('Error making move:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sendGameMsg]);
+  const makeMove = useCallback(
+    (move: GameMove) => {
+      try {
+        setIsLoading(true);
+        sendGameMsg({
+          action: 'move',
+          move,
+        });
+      } catch (error) {
+        console.error('Error making move:', error);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [sendGameMsg]
+  );
 
   useEffect(() => {
     const handleGameState = (data: BoardGameState) => {
@@ -84,8 +90,6 @@ export default function useWebSocketGame() {
       setGameHandler(null);
     };
   }, [sendGameMsg, setGameHandler]);
-
-
 
   return {
     gameState,

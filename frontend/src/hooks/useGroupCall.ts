@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useReducer, useCallback, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebsocket';
-import { useUserStore } from '@/hooks/useUserStore';
+import useWebSocket from '@/hooks/useWebsocket';
+import useUserStore from '@/hooks/useUserStore';
 import { VidSignalMsg } from '@/types/wsTypes';
 
 interface Peer {
@@ -49,7 +49,7 @@ const ICE_SERVERS = {
   ],
 };
 
-export function useGroupCall() {
+export default function useGroupCall() {
   const sendSignal = useWebSocket(s => s.sendVidSignal);
   const setSignalHandler = useWebSocket(s => s.setVidSigHandler);
   const { username } = useUserStore();
