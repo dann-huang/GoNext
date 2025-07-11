@@ -4,7 +4,7 @@ import {
   SectionContent,
 } from '@/components/layout/AlternatingSection';
 import Button from '@/components/UI/Button';
-import TitleBanner from '@/components/UI/TitleBanner';
+import TitleBanner from '@/components/UI/particles/ParticleBanner';
 import {
   Gamepad2,
   PencilRuler,
@@ -20,9 +20,9 @@ export default function HomePage() {
       {/* Hero Section with Dot Matrix Banner */}
       <section className="w-full py-12 md:py-16">
         <div className="container mx-auto px-4 flex flex-col items-center justify-center">
-          <div className="w-full max-w-4xl h-[300px] md:h-[400px] relative">
-            <TitleBanner/>
-          </div>
+          <TitleBanner>
+            
+          </TitleBanner>
           <p className="mt-6 text-lg md:text-xl text-slate-300 max-w-2xl text-center">
             Interactive experiences built with Go and Next.js
           </p>
