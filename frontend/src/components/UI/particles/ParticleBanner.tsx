@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { toPng } from 'html-to-image';
 import { createParticle, updateParticles } from './particleUtils';
 import { Particle, MousePosition } from '@/types/particleTypes';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import useThemeColor from '@/hooks/useThemeColor';
 import { DENSITY, SPEED, R_SQ } from './config';
 
 export default function ParticleBanner({

@@ -13,6 +13,7 @@ import {
   User2,
   Github,
 } from 'lucide-react';
+import Logo from '@/assets/gonext.svg';
 
 export default function HomePage() {
   return (
@@ -20,9 +21,10 @@ export default function HomePage() {
       <section className="w-full py-12 md:py-16">
         <div className="container mx-auto px-4 flex flex-col items-center justify-center">
           <TitleBanner>
-            <h1 className="text-7xl md:text-8xl lg:text-9xl font-black tracking-tight p-10">
-              Go Next
-            </h1>
+            <Logo
+              className="w-full h-auto fill-primary p-15"
+              viewBox="0 0 720 460"
+            />
           </TitleBanner>
           <p className="mt-6 text-lg md:text-xl text-slate-300 max-w-2xl text-center">
             Interactive experiences built with Go and Next.js
