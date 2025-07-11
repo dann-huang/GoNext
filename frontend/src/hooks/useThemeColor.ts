@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-type ThemeColorName =
+export type ThemeColorName =
   | 'background'
   | 'surface'
   | 'text'
@@ -40,7 +40,7 @@ const getColors = () => {
   };
 };
 
-export const useThemeColor = (): ((name: ThemeColorName) => string) => {
+export const useThemeColor = (): ThemeColors => {
   const [colors, setColors] = useState<ThemeColors>(getColors);
 
   useEffect(() => {
@@ -60,12 +60,5 @@ export const useThemeColor = (): ((name: ThemeColorName) => string) => {
     };
   }, []);
 
-  return useCallback(
-    (name: ThemeColorName): string => {
-      return colors[name] || '';
-    },
-    [colors]
-  );
+  return colors;
 };
-
-export type { ThemeColorName };

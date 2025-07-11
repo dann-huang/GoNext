@@ -3,30 +3,31 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { toPng } from 'html-to-image';
-import {
-  createParticlesFromCanvas as createParticlesFromCanvasUtil,
-  updateParticles,
-  renderParticles,
-  type Particle,
-  type MousePosition,
-} from './particleUtils';
+import { createParticle, updateParticles } from './particleUtils';
+import { Particle, MousePosition } from '@/types/particleTypes';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { DENSITY, SPEED, R_SQ } from './config';
 
-const PARTICLE_DENSITY = 4;
-const PARTICLE_SPEED = 0.4;
-const MOUSE_RADIUS = 250;
-
-export default function ParticleBanner() {
+export default function ParticleBanner({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<number>(0);
+  const sampleRef = useRef<HTMLDivElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const mouseRef = useRef<MousePosition>({
     x: -1000,
     y: -1000,
-    radius: MOUSE_RADIUS,
+    radiusSq: R_SQ,
   });
-  const [particleColor, setParticleColor] = useState('#ffffff');
   const [isRendered, setIsRendered] = useState(false);
+  const colors = useThemeColor();
+  const colorsRef = useRef(colors);
+
+  useEffect(() => {
+    colorsRef.current = colors;
+  }, [colors]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
@@ -41,21 +42,29 @@ export default function ParticleBanner() {
     mouseRef.current.y = -1000;
   };
 
-  // Create particles from canvas image data
   const createParticlesFromCanvas = (canvas: HTMLCanvasElement) => {
-    const particles = createParticlesFromCanvasUtil(
-      canvas,
-      particleColor,
-      PARTICLE_DENSITY
-    );
-    particlesRef.current = particles;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+
+    const { width, height } = canvas;
+    const imageData = ctx.getImageData(0, 0, width, height).data;
+
+    for (let y = 0; y < height; y += DENSITY) {
+      for (let x = 0; x < width; x += DENSITY) {
+        const color = Math.random() < 0.9 ? 'primary' : 'accent';
+        const index = (y * width + x) * 4;
+        if (imageData[index + 3] > 128) {
+          particlesRef.current.push(createParticle(width, height, x, y, color));
+        }
+      }
+    }
   };
 
   const renderTextToCanvas = useCallback(async () => {
-    if (!textRef.current || !canvasRef.current) return;
+    if (!sampleRef.current || !canvasRef.current) return;
 
     try {
-      const dataUrl = await toPng(textRef.current, {
+      const dataUrl = await toPng(sampleRef.current, {
         pixelRatio: 2,
         backgroundColor: 'transparent',
       });
@@ -78,7 +87,7 @@ export default function ParticleBanner() {
     } catch (error) {
       console.error('Error rendering text to canvas:', error);
     }
-  }, [particleColor]);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -95,12 +104,10 @@ export default function ParticleBanner() {
       const parent = canvas.parentElement;
       if (!parent) return { width: 0, height: 0 };
 
-      // Get the parent container dimensions
       const rect = parent.getBoundingClientRect();
       const width = rect.width;
       const height = rect.height;
 
-      // Set actual size in memory (scaled for DPR)
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -111,11 +118,16 @@ export default function ParticleBanner() {
     const animate = () => {
       if (!ctx) return;
 
-      // Update and draw particles
-      updateParticles(particlesRef.current, mouseRef.current, PARTICLE_SPEED);
-      renderParticles(ctx, particlesRef.current);
+      updateParticles(particlesRef.current, mouseRef.current, SPEED);
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-      // Continue animation
+      for (const particle of particlesRef.current) {
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.fillStyle = colorsRef.current[particle.color];
+        ctx.fill();
+      }
+
       if (isAnimating) {
         animationFrameId = requestAnimationFrame(animate);
       }
@@ -142,39 +154,22 @@ export default function ParticleBanner() {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [particleColor]);
+  }, []);
 
   return (
-    <div className="relative w-full h-48 md:h-64 flex items-center justify-center">
-      {/* Text element used for rendering - only hidden after canvas is ready */}
+    <div className="relative">
       <div
-        ref={textRef}
+        ref={sampleRef}
         className={cn(
-          'absolute w-full h-full flex items-center justify-center transition-opacity pointer-events-none',
-          isRendered && 'opacity-0',
-          'px-4' // Add some horizontal padding for better text display
+          'transition-opacity pointer-events-none',
+          isRendered && 'opacity-0'
         )}
       >
-        <div
-          className={cn(
-            'text-7xl md:text-8xl lg:text-9xl font-black text-center w-full',
-            'transform transition-transform duration-300',
-            'whitespace-nowrap', // Prevent text wrapping
-            'tracking-tight' // Tighter letter spacing for better readability
-          )}
-          style={{
-            color: particleColor,
-            textShadow: `0 0 10px ${particleColor}33`, // Subtle glow effect
-          }}
-        >
-          Go Next
-        </div>
+        {children}
       </div>
-
-      {/* Canvas for rendering */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full block cursor-pointer"
+        className="absolute inset-0 w-full h-full"
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       />

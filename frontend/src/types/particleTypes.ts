@@ -1,18 +1,20 @@
-interface Particle {
+import { ThemeColorName } from '@/hooks/useThemeColor';
+
+export interface Particle {
   x: number;
   y: number;
   originX: number;
   originY: number;
   size: number;
-  color: string;
+  color: ThemeColorName;
   vx: number;
   vy: number;
   friction: number;
   ease: number;
 }
 
-interface MousePosition {
+export interface MousePosition {
   x: number;
   y: number;
-  radius: number;
+  radiusSq: number;
 }

@@ -17,11 +17,12 @@ import {
 export default function HomePage() {
   return (
     <main className="flex-1">
-      {/* Hero Section with Dot Matrix Banner */}
       <section className="w-full py-12 md:py-16">
         <div className="container mx-auto px-4 flex flex-col items-center justify-center">
           <TitleBanner>
-            
+            <h1 className="text-7xl md:text-8xl lg:text-9xl font-black tracking-tight p-10">
+              Go Next
+            </h1>
           </TitleBanner>
           <p className="mt-6 text-lg md:text-xl text-slate-300 max-w-2xl text-center">
             Interactive experiences built with Go and Next.js
