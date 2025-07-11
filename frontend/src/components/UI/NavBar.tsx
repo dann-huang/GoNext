@@ -16,9 +16,7 @@ const navItems: NavItem[] = [
   {
     title: 'Static',
     href: '#',
-    children: [
-      { href: '/minesweeper', title: 'Minesweeper' },
-    ],
+    children: [{ href: '/minesweeper', title: 'Minesweeper' }],
   },
   {
     title: 'Live',
@@ -139,10 +137,9 @@ export default function NavBar() {
   }, [isOpen]);
 
   return (
-    <header className="sticky top-0 z-50 bg-primary/95 backdrop-blur-sm shadow-md">
+    <header className="fixed w-full top-0 z-50 bg-primary/95 backdrop-blur-sm shadow-md">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center">
               <Logo
@@ -152,7 +149,6 @@ export default function NavBar() {
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
             {navItems.map((item, i) => {
               const hasChildren = item.children && item.children.length > 0;
@@ -209,7 +205,6 @@ export default function NavBar() {
             </div>
           </div>
 
-          {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -247,7 +242,6 @@ export default function NavBar() {
         </div>
       </nav>
 
-      {/* Mobile menu */}
       <div
         className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${
           isOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'

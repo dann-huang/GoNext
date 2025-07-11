@@ -1,6 +1,7 @@
 import { ThemeColorName } from '@/hooks/useThemeColor';
 import { Particle, MousePosition } from '@/types/particleTypes';
-import { SPREAD, SIZE, EASE, FRICTION } from './config';
+import { SPREAD, SIZE, EASE, FRICTION, SPEED, DENSITY } from './config';
+import { useMemo } from 'react';
 
 export const createParticle = (
   width: number,
@@ -20,7 +21,7 @@ export const createParticle = (
 
   let startX: number, startY: number;
 
-  const edgeSpread = 0.8;
+  const edgeSpread = 0.6;
   const buffer = 10;
   if (minDist === toLeft) {
     startX = -buffer;
@@ -50,10 +51,33 @@ export const createParticle = (
   };
 };
 
+export const parseImgData = (
+  canvas: HTMLCanvasElement,
+  particlesRef: React.RefObject<Particle[]>
+) => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const { width, height } = canvas;
+  const imageData = ctx.getImageData(0, 0, width, height).data;
+
+  particlesRef.current = [];
+
+  for (let y = 0; y < height; y += DENSITY) {
+    for (let x = 0; x < width; x += DENSITY) {
+      const index = (y * width + x) * 4;
+      if (imageData[index + 3] > 128) {
+        const color = Math.random() < 0.9 ? 'primary' : 'accent';
+        particlesRef.current.push(createParticle(width, height, x, y, color));
+      }
+    }
+  }
+};
+
 export const updateParticles = (
   particles: Particle[],
   mouse: MousePosition,
-  speed: number = 0.4
+  speed: number = SPEED
 ): void => {
   for (const particle of particles) {
     const dx = mouse.x - particle.x;
@@ -78,5 +102,66 @@ export const updateParticles = (
 
     particle.x += particle.vx;
     particle.y += particle.vy;
+  }
+};
+
+export const canvasHandlers = (
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  mouseRef: React.RefObject<MousePosition>
+) => {
+  const updateMousePosition = useMemo(
+    () => (clientX: number, clientY: number) => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      mouseRef.current.x = clientX - rect.left;
+      mouseRef.current.y = clientY - rect.top;
+    },
+    [canvasRef, mouseRef]
+  );
+
+  const handleMouseMove = useMemo(
+    () => (e: React.MouseEvent<HTMLCanvasElement>) => {
+      updateMousePosition(e.clientX, e.clientY);
+    },
+    [updateMousePosition]
+  );
+
+  const handleTouchMove = useMemo(
+    () => (e: React.TouchEvent<HTMLCanvasElement>) => {
+      if (e.touches.length < 1) return;
+      const touch = e.touches[0];
+      updateMousePosition(touch.clientX, touch.clientY);
+    },
+    [updateMousePosition]
+  );
+
+  const handleMouseLeave = useMemo(
+    () => () => {
+      mouseRef.current.x = -1000;
+      mouseRef.current.y = -1000;
+    },
+    [mouseRef]
+  );
+
+  return {
+    onMouseMove: handleMouseMove,
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleMouseLeave,
+    onTouchCancel: handleMouseLeave,
+    onMouseLeave: handleMouseLeave,
+  };
+};
+
+export const updateCanvasSize = (canvas: HTMLCanvasElement) => {
+  const parent = canvas.parentElement;
+  if (!parent) return;
+
+  const rect = parent.getBoundingClientRect();
+  const width = Math.floor(rect.width);
+  const height = Math.floor(rect.height);
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
   }
 };

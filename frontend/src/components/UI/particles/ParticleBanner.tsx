@@ -3,10 +3,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { toPng } from 'html-to-image';
-import { createParticle, updateParticles } from './particleUtils';
+import {
+  canvasHandlers,
+  parseImgData,
+  updateCanvasSize,
+  updateParticles,
+} from './particleUtils';
 import { Particle, MousePosition } from '@/types/particleTypes';
 import useThemeColor from '@/hooks/useThemeColor';
-import { DENSITY, SPEED, R_SQ } from './config';
+import { R_SQ } from './config';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function ParticleBanner({
   children,
@@ -21,68 +27,32 @@ export default function ParticleBanner({
     y: -1000,
     radiusSq: R_SQ,
   });
-  const [isRendered, setIsRendered] = useState(false);
   const colors = useThemeColor();
   const colorsRef = useRef(colors);
+  useEffect(() => void (colorsRef.current = colors), [colors]);
 
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const dbSize = useDebounce(canvasSize, 500);
   useEffect(() => {
-    colorsRef.current = colors;
-  }, [colors]);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  const updateMousePosition = (clientX: number, clientY: number) => {
-    if (!canvasRef.current) return;
+    const updateSize = () => {
+      setCanvasSize({
+        width: canvas.offsetWidth,
+        height: canvas.offsetHeight,
+      });
+    };
 
-    // Get the canvas position and size
-    const rect = canvasRef.current.getBoundingClientRect();
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(canvas);
 
-    // Calculate the mouse position relative to the canvas
-    // Ensure we're using the same coordinate system as the canvas
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
-    // Update mouse position
-    mouseRef.current.x = x;
-    mouseRef.current.y = y;
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    updateMousePosition(e.clientX, e.clientY);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (e.touches.length > 0) {
-      const touch = e.touches[0];
-      updateMousePosition(touch.clientX, touch.clientY);
-      e.preventDefault(); // Prevent scrolling while interacting with particles
-    }
-  };
-
-  const handleMouseLeave = () => {
-    mouseRef.current.x = -1000;
-    mouseRef.current.y = -1000;
-  };
-
-  const createParticlesFromCanvas = (canvas: HTMLCanvasElement) => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const { width, height } = canvas;
-    const imageData = ctx.getImageData(0, 0, width, height).data;
-
-    particlesRef.current = [];
-
-    for (let y = 0; y < height; y += DENSITY) {
-      for (let x = 0; x < width; x += DENSITY) {
-        const index = (y * width + x) * 4;
-        if (imageData[index + 3] > 128) {
-          const color = Math.random() < 0.9 ? 'primary' : 'accent';
-          particlesRef.current.push(createParticle(width, height, x, y, color));
-        }
-      }
-    }
-  };
-
-  const renderTextToCanvas = useCallback(async () => {
+  const sampleSnapshot = useCallback(async (callback: () => void) => {
     if (!sampleRef.current || !canvasRef.current) return;
 
     try {
@@ -106,25 +76,18 @@ export default function ParticleBanner({
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        createParticlesFromCanvas(canvasRef.current);
-        setIsRendered(true);
+        parseImgData(canvasRef.current, particlesRef);
+        callback();
       };
     } catch (error) {
       console.error('Error rendering text to canvas:', error);
     }
   }, []);
 
-  const getAnimationSpeed = () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return 0.2;
-    }
-    return 0.35;
-  };
-
   useEffect(() => {
+    sampleRef.current?.classList.remove('opacity-0');
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
+    if (!canvas || !dbSize.width || !dbSize.height) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -133,29 +96,6 @@ export default function ParticleBanner({
     let lastRenderTime = 0;
     const frameRate = 60;
     const frameInterval = 1000 / frameRate;
-
-    const updateCanvasSize = () => {
-      const parent = canvas.parentElement;
-      if (!parent) return { width: 0, height: 0 };
-
-      const rect = parent.getBoundingClientRect();
-      const width = Math.floor(rect.width);
-      const height = Math.floor(rect.height);
-
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-        particlesRef.current = [];
-        renderTextToCanvas();
-      }
-
-      return { width, height };
-    };
 
     const animate = (timestamp: number) => {
       if (!ctx) return;
@@ -166,12 +106,8 @@ export default function ParticleBanner({
       if (delta > frameInterval) {
         lastRenderTime = now - (delta % frameInterval);
 
-        const currentSpeed = getAnimationSpeed();
-        updateParticles(particlesRef.current, mouseRef.current, currentSpeed);
-
+        updateParticles(particlesRef.current, mouseRef.current);
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-        ctx.save();
 
         for (const particle of particlesRef.current) {
           ctx.beginPath();
@@ -179,8 +115,6 @@ export default function ParticleBanner({
           ctx.fillStyle = colorsRef.current[particle.color];
           ctx.fill();
         }
-
-        ctx.restore();
       }
 
       if (isAnimating) {
@@ -188,62 +122,29 @@ export default function ParticleBanner({
       }
     };
 
-    updateCanvasSize();
-    setIsRendered(false);
-
-    renderTextToCanvas().then(() => {
+    updateCanvasSize(canvas);
+    sampleSnapshot(() => {
+      sampleRef.current?.classList.add('opacity-0');
       animationFrameId = requestAnimationFrame(animate);
     });
 
-    const handleResize = () => {
-      updateCanvasSize();
-      renderTextToCanvas();
-    };
-
-    let resizeObserver: ResizeObserver | null = null;
-
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(handleResize);
-      const parent = canvas.parentElement;
-      if (parent) {
-        resizeObserver.observe(parent);
-      }
-    } else {
-      window.addEventListener('resize', handleResize);
-    }
-
     return () => {
       isAnimating = false;
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      } else {
-        window.removeEventListener('resize', handleResize);
-      }
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, []);
+  }, [dbSize]);
 
   return (
     <div className="relative">
-      <div
-        ref={sampleRef}
-        className={cn(
-          'transition-opacity pointer-events-none',
-          isRendered && 'opacity-0'
-        )}
-      >
+      <div ref={sampleRef} className="pointer-events-none">
         {children}
       </div>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full touch-none"
-        onMouseMove={handleMouseMove}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleMouseLeave}
-        onTouchCancel={handleMouseLeave}
-        onMouseLeave={handleMouseLeave}
+        {...canvasHandlers(canvasRef, mouseRef)}
         style={{
           WebkitTapHighlightColor: 'transparent',
         }}
