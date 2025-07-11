@@ -5,6 +5,7 @@ import {
 } from '@/components/layout/AlternatingSection';
 import Button from '@/components/UI/Button';
 import TitleBanner from '@/components/UI/particles/ParticleBanner';
+import HeroSection from '@/components/UI/HeroSection';
 import {
   Gamepad2,
   PencilRuler,
@@ -18,19 +19,19 @@ import Logo from '@/assets/gonext.svg';
 export default function HomePage() {
   return (
     <main className="flex-1">
-      <section className="w-full py-12 md:py-16">
-        <div className="container mx-auto px-4 flex flex-col items-center justify-center">
-          <TitleBanner>
-            <Logo
-              className="w-full h-auto fill-primary p-15"
-              viewBox="0 0 720 460"
-            />
-          </TitleBanner>
-          <p className="mt-6 text-lg md:text-xl text-slate-300 max-w-2xl text-center">
-            Interactive experiences built with Go and Next.js
-          </p>
-        </div>
-      </section>
+      <HeroSection>
+        <TitleBanner>
+          <Logo
+            className="w-full max-w-2xl h-auto fill-primary p-4 md:p-8"
+            viewBox="0 0 720 460"
+          />
+        </TitleBanner>
+        <p className="mt-6 text-lg md:text-xl text-foreground/80 max-w-2xl text-center px-4">
+          Interactive experiences built with Go and Next.js
+        </p>
+      </HeroSection>
+
+      <section id="content" className="py-16">
 
       <AlternatingSection bg="card">
         <SectionContent>
@@ -108,6 +109,7 @@ export default function HomePage() {
           </div>
         </SectionContent>
       </AlternatingSection>
+      </section>
     </main>
   );
 }

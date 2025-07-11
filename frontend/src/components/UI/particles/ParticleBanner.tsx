@@ -29,12 +29,32 @@ export default function ParticleBanner({
     colorsRef.current = colors;
   }, [colors]);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const updateMousePosition = (clientX: number, clientY: number) => {
     if (!canvasRef.current) return;
+
+    // Get the canvas position and size
     const rect = canvasRef.current.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    mouseRef.current.x = (e.clientX - rect.left) * dpr;
-    mouseRef.current.y = (e.clientY - rect.top) * dpr;
+
+    // Calculate the mouse position relative to the canvas
+    // Ensure we're using the same coordinate system as the canvas
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    // Update mouse position
+    mouseRef.current.x = x;
+    mouseRef.current.y = y;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    updateMousePosition(e.clientX, e.clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length > 0) {
+      const touch = e.touches[0];
+      updateMousePosition(touch.clientX, touch.clientY);
+      e.preventDefault(); // Prevent scrolling while interacting with particles
+    }
   };
 
   const handleMouseLeave = () => {
@@ -44,16 +64,18 @@ export default function ParticleBanner({
 
   const createParticlesFromCanvas = (canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
-    if (!ctx) return [];
+    if (!ctx) return;
 
     const { width, height } = canvas;
     const imageData = ctx.getImageData(0, 0, width, height).data;
 
+    particlesRef.current = [];
+
     for (let y = 0; y < height; y += DENSITY) {
       for (let x = 0; x < width; x += DENSITY) {
-        const color = Math.random() < 0.9 ? 'primary' : 'accent';
         const index = (y * width + x) * 4;
         if (imageData[index + 3] > 128) {
+          const color = Math.random() < 0.9 ? 'primary' : 'accent';
           particlesRef.current.push(createParticle(width, height, x, y, color));
         }
       }
@@ -65,8 +87,11 @@ export default function ParticleBanner({
 
     try {
       const dataUrl = await toPng(sampleRef.current, {
-        pixelRatio: 2,
+        pixelRatio: 1,
         backgroundColor: 'transparent',
+        cacheBust: true,
+        canvasWidth: canvasRef.current.width,
+        canvasHeight: canvasRef.current.height,
       });
 
       const img = new Image();
@@ -89,6 +114,13 @@ export default function ParticleBanner({
     }
   }, []);
 
+  const getAnimationSpeed = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return 0.2;
+    }
+    return 0.35;
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -98,34 +130,57 @@ export default function ParticleBanner({
 
     let animationFrameId: number;
     let isAnimating = true;
+    let lastRenderTime = 0;
+    const frameRate = 60;
+    const frameInterval = 1000 / frameRate;
 
     const updateCanvasSize = () => {
-      const dpr = window.devicePixelRatio || 1;
       const parent = canvas.parentElement;
       if (!parent) return { width: 0, height: 0 };
 
       const rect = parent.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
+      const width = Math.floor(rect.width);
+      const height = Math.floor(rect.height);
 
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        particlesRef.current = [];
+        renderTextToCanvas();
+      }
 
       return { width, height };
     };
 
-    const animate = () => {
+    const animate = (timestamp: number) => {
       if (!ctx) return;
 
-      updateParticles(particlesRef.current, mouseRef.current, SPEED);
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      const now = timestamp || Date.now();
+      const delta = now - lastRenderTime;
 
-      for (const particle of particlesRef.current) {
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-        ctx.fillStyle = colorsRef.current[particle.color];
-        ctx.fill();
+      if (delta > frameInterval) {
+        lastRenderTime = now - (delta % frameInterval);
+
+        const currentSpeed = getAnimationSpeed();
+        updateParticles(particlesRef.current, mouseRef.current, currentSpeed);
+
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        ctx.save();
+
+        for (const particle of particlesRef.current) {
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fillStyle = colorsRef.current[particle.color];
+          ctx.fill();
+        }
+
+        ctx.restore();
       }
 
       if (isAnimating) {
@@ -145,11 +200,25 @@ export default function ParticleBanner({
       renderTextToCanvas();
     };
 
-    window.addEventListener('resize', handleResize);
+    let resizeObserver: ResizeObserver | null = null;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(handleResize);
+      const parent = canvas.parentElement;
+      if (parent) {
+        resizeObserver.observe(parent);
+      }
+    } else {
+      window.addEventListener('resize', handleResize);
+    }
 
     return () => {
       isAnimating = false;
-      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      } else {
+        window.removeEventListener('resize', handleResize);
+      }
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
@@ -169,9 +238,15 @@ export default function ParticleBanner({
       </div>
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 w-full h-full touch-none"
         onMouseMove={handleMouseMove}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleMouseLeave}
+        onTouchCancel={handleMouseLeave}
         onMouseLeave={handleMouseLeave}
+        style={{
+          WebkitTapHighlightColor: 'transparent',
+        }}
       />
     </div>
   );
