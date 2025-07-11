@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Roboto } from 'next/font/google';
+import { Roboto, Poppins } from 'next/font/google';
 import './globals.css';
 import NavBar from '@/components/UI/NavBar';
 import Footer from '@/components/UI/Footer';
@@ -12,7 +12,14 @@ const roboto = Roboto({
   subsets: ['latin'],
   variable: '--font-roboto',
   display: 'swap',
-})
+});
+
+const poppins = Poppins({
+  weight: ['400', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'My App',
@@ -28,7 +35,7 @@ export default function RootLayout({
     <head>
       <ThemeInitializer />
     </head>
-    <body className={`${roboto.variable} antialiased`}>
+    <body className={`${roboto.variable} ${poppins.variable} antialiased`}>
       <div className='min-h-screen flex flex-col'>
         <NavBar />
         <main className='flex flex-1 w-full mx-auto p-4 max-w-screen-sm md:max-w-screen-md
