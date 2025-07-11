@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type UserNames struct {
 	Username    string `json:"username" validate:"required,alphanum,min=3,max=20"`
 	DisplayName string `json:"displayName" validate:"required,min=2,max=50"`
@@ -16,11 +18,19 @@ type UserResponse struct {
 	AccountType string `json:"accountType"`
 }
 
-func (u *User) ToResponse() *UserResponse {
-	return &UserResponse{
-		Username:    u.Username,
-		DisplayName: u.DisplayName,
-		AccountType: string(u.AccountType),
+type AuthResponse struct {
+	User      *UserResponse `json:"user"`
+	AccessExp int64         `json:"accessExp"` // Unix timestamp in seconds
+}
+
+func (u *User) ToAuthResponse(expiresAt time.Time) *AuthResponse {
+	return &AuthResponse{
+		User: &UserResponse{
+			Username:    u.Username,
+			DisplayName: u.DisplayName,
+			AccountType: string(u.AccountType),
+		},
+		AccessExp: expiresAt.UnixMilli(),
 	}
 }
 

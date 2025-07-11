@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import useUserStore from './useUserStore';
 import * as t from '@/types/wsTypes';
 import { create } from 'zustand';
+import { useTokenRefresh } from './useTokenRefresh';
 import { RECONNECT_INITIAL_DELAY, WS_URL } from '@/config/consts';
 
 interface WSState {
@@ -19,11 +20,11 @@ interface WSState {
   getStatus: () => t.WsStatus;
   getClients: () => string[];
 
-  connect: (username: string) => void;
+  connect: () => void;
   disconnect: () => void;
   sendMessage: (msg: t.OutgoingMsg) => void;
 
-  sendChat: (username: string, displayName: string, message: string) => void;
+  sendChat: (displayName: string, message: string) => void;
   joinRoom: (roomName: string) => void;
   leaveRoom: () => void;
 
@@ -58,10 +59,9 @@ const useWebSocket = create<WSState>()((set, get) => ({
     return 'disconnected';
   },
   getClients: () => get().clients,
-  connect: (username: string) => {
+  connect: () => {
     if (get().getStatus() !== 'disconnected')
       return console.warn('WS nothing to connect');
-    if (!username) return console.error('WS needs authentication');
 
     set({ error: '' });
 
@@ -148,10 +148,10 @@ const useWebSocket = create<WSState>()((set, get) => ({
       set({ error: 'WS failed to send' });
     }
   },
-  sendChat: (username: string, displayName: string, message: string) => {
+  sendChat: (displayName: string, message: string) => {
     const msg: t.ChatMsg = {
       type: t.msgChat,
-      sender: username,
+      sender: '',
       payload: { message, displayName },
     };
     get().sendMessage(msg);
@@ -193,30 +193,34 @@ const useWebSocket = create<WSState>()((set, get) => ({
 
 export default useWebSocket;
 
+const wsDependency = { type: 'websocket' } as const;
+
 export const useWSConnect = () => {
-  const { addRefDependent, remRefDependent, username } = useUserStore();
   const { connect, disconnect, getStatus } = useWebSocket();
+  const hasAccess = useTokenRefresh(wsDependency);
 
   useEffect(() => {
-    if (!username) return console.warn('WS: Not logged in');
-
-    addRefDependent('ws');
-    if (getStatus() === 'disconnected') connect(username);
+    if (!hasAccess) {
+      if (getStatus() !== 'disconnected') {
+        disconnect();
+      }
+      return;
+    }
+    if (getStatus() === 'disconnected') {
+      connect();
+    }
 
     const interval = setInterval(() => {
-      if (getStatus() === 'disconnected') connect(username);
+      if (getStatus() === 'disconnected') {
+        connect();
+      }
     }, RECONNECT_INITIAL_DELAY);
+
     return () => {
       clearInterval(interval);
-      remRefDependent('ws');
-      disconnect();
+      if (getStatus() !== 'disconnected') {
+        disconnect();
+      }
     };
-  }, [
-    connect,
-    disconnect,
-    getStatus,
-    addRefDependent,
-    remRefDependent,
-    username,
-  ]);
+  }, [connect, disconnect, getStatus, hasAccess]);
 };

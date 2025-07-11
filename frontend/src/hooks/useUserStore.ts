@@ -1,41 +1,21 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import api from '@/lib/api';
-import {
-  LoginSuccessResponse,
-  RefreshSuccessResponse,
-  RegisterSuccessResponse,
-} from '@/types/authTypes';
-import { REFRESH_BEFORE } from '@/config/consts';
+import useUserRoute from './useUserRoute';
+import { UserInfo } from '@/types/authTypes';
 
-const refreshDependents = new Set<string>();
-let refreshTimeout: NodeJS.Timeout | null = null;
-
-const scheduleRefresh = (get: () => UserState) => {
-  if (refreshTimeout) clearTimeout(refreshTimeout);
-  if (refreshDependents.size === 0) {
-    refreshTimeout = null;
-    return;
-  }
-  const { accessExp, refresh } = get();
-
-  const delay = Math.max(accessExp - REFRESH_BEFORE - Date.now(), 0);
-  refreshTimeout = setTimeout(refresh, delay);
-};
-
-interface UserState {
-  username: string;
-  displayName: string;
+interface UserState extends Omit<UserInfo, 'accountType'> {
   loading: boolean;
   accessExp: number;
-  refreshExp: number;
   error: string;
-  register: (username: string, password: string) => Promise<boolean>;
-  login: (username: string, password: string) => Promise<boolean>;
+  isGuest: boolean;
+  registerAsGuest: (displayName: string) => Promise<boolean>;
+  requestEmailCode: (email: string) => Promise<boolean>;
+  loginWithEmailCode: (email: string, code: string) => Promise<boolean>;
+  loginWithPassword: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refresh: () => Promise<boolean>;
-  addRefDependent: (id: string) => void;
-  remRefDependent: (id: string) => void;
+  clearError: () => void;
+  accessValid: () => boolean;
 }
 
 const blankUser = {
@@ -43,123 +23,132 @@ const blankUser = {
   displayName: '',
   loading: false,
   accessExp: 0,
-  refreshExp: 0,
   error: '',
+  isGuest: false,
 };
 
-export default create<UserState>()(
+const useUserStore = create<UserState>()(
   persist(
-    (set, get) => ({
-      ...blankUser,
+    (set, get) => {
+      const userRoute = useUserRoute();
 
-      register: async (username: string, password: string) => {
-        set({ loading: true, error: '' });
-        try {
-          const res = await api.postJson('/auth/register', {
-            username,
-            password,
-          });
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.message);
+      return {
+        ...blankUser,
+        registerAsGuest: async (displayName: string) => {
+          set({ loading: true, error: '' });
+          try {
+            const { user, accessExp: accessExpires } =
+              await userRoute.registerAsGuest(displayName);
+            set({
+              username: user.username,
+              displayName: user.displayName,
+              accessExp: accessExpires * 1000, // Convert to milliseconds
+              isGuest: user.accountType === 'guest',
+              loading: false,
+              error: '',
+            });
+            return true;
+          } catch (err: unknown) {
+            console.error('userstore register err ', err);
+            const msgErr = err as { message: string };
+            set({ error: msgErr.message, loading: false });
+            return false;
           }
-          const json: RegisterSuccessResponse = await res.json();
-          set({ username: json.username, loading: false });
-          return true;
-        } catch (err: unknown) {
-          console.error('userstore register err ', err);
-          const msgErr = err as { message: string };
-          set({ error: msgErr.message, loading: false });
-          return false;
-        }
-      },
-      login: async (username: string, password: string) => {
-        set({ loading: true, error: '' });
-        try {
-          const res = await api.postJson('/auth/login', { username, password });
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.message);
+        },
+        requestEmailCode: async (email: string) => {
+          set({ loading: true, error: '' });
+          try {
+            await userRoute.requestEmailCode(email);
+            set({ loading: false });
+            return true;
+          } catch (err: unknown) {
+            console.error('Failed to request email code:', err);
+            const msgErr = err as { message: string };
+            set({ error: msgErr.message, loading: false });
+            return false;
           }
-          const json: LoginSuccessResponse = await res.json();
-          set({
-            username: json.username,
-            displayName: json.displayname,
-            loading: false,
-            accessExp: json.accessExpires,
-            refreshExp: json.refreshExpires,
-          });
-          return true;
-        } catch (err: unknown) {
-          console.error('userstore login err ', err);
-          const msgErr = err as { message: string };
-          set({ error: msgErr.message, loading: false });
-          return false;
-        }
-      },
-      logout: async () => {
-        set({ loading: true, error: '' });
-        try {
-          const res = await api.postJson('/auth/logout', {});
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.message);
+        },
+        loginWithEmailCode: async (email: string, code: string) => {
+          set({ loading: true, error: '' });
+          try {
+            const { user, accessExp } = await userRoute.loginWithEmailCode(email, code);
+            set({
+              username: user.username,
+              displayName: user.displayName,
+              accessExp,
+              isGuest: user.accountType === 'guest',
+              loading: false,
+              error: '',
+            });
+            return true;
+          } catch (err: unknown) {
+            console.error('Login with email code failed:', err);
+            const msgErr = err as { message: string };
+            set({ error: msgErr.message, loading: false });
+            return false;
           }
-          set({ ...blankUser });
-        } catch (err: unknown) {
-          console.error('userstore logout err ', err);
-          const msgErr = err as { message: string };
-          set({ error: msgErr.message, loading: false });
-        }
-      },
-      refresh: async () => {
-        const { refreshExp }: UserState = get();
-        console.log('refreshing', refreshDependents, refreshExp);
-        if (refreshExp <= Date.now()) {
-          set({ ...blankUser });
-          refreshDependents.clear();
-          return false;
-        }
-        try {
-          const res = await api.postJson('/auth/refresh', {});
-          if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.message);
+        },
+        loginWithPassword: async (email: string, password: string) => {
+          set({ loading: true, error: '' });
+          try {
+            const { user, accessExp } = await userRoute.loginWithPassword(email, password);
+            set({
+              username: user.username,
+              displayName: user.displayName,
+              accessExp,
+              isGuest: user.accountType === 'guest',
+              loading: false,
+              error: '',
+            });
+            return true;
+          } catch (err: unknown) {
+            console.error('Login with password failed:', err);
+            const msgErr = err as { message: string };
+            set({ error: msgErr.message, loading: false });
+            return false;
           }
-          const json: RefreshSuccessResponse = await res.json();
-          set({
-            accessExp: json.accessExpires,
-            refreshExp: json.refreshExpires,
-            error: '',
-          });
-          scheduleRefresh(get);
-          console.debug('Refreshed access token');
-          return true;
-        } catch (err: unknown) {
-          console.error('userstore refresh err ', err);
-          set({ ...blankUser });
-          refreshDependents.clear();
-          return false;
-        }
-      },
-      addRefDependent: (id: string) => {
-        const { refreshExp } = get();
-        if (refreshExp > Date.now()) {
-          refreshDependents.add(id);
-          scheduleRefresh(get);
-        }
-      },
-      remRefDependent: (id: string) => {
-        refreshDependents.delete(id);
-        if (refreshDependents.size === 0 && refreshTimeout) {
-          clearTimeout(refreshTimeout);
-          refreshTimeout = null;
-        }
-      },
-    }),
+        },
+        logout: async () => {
+          set({ loading: true, error: '' });
+          try {
+            await userRoute.logout();
+            set({ ...blankUser });
+          } catch (err: unknown) {
+            console.error('userstore logout err ', err);
+            const msgErr = err as { message: string };
+            set({ error: msgErr.message, loading: false });
+          }
+        },
+        refresh: async () => {
+          try {
+            const { user, accessExp } = await userRoute.refresh();
+            set({
+              username: user.username,
+              displayName: user.displayName,
+              accessExp,
+              isGuest: user.accountType === 'guest',
+              error: '',
+            });
+            console.debug('Refreshed access token');
+            return true;
+          } catch (err: unknown) {
+            console.error('userstore refresh err ', err);
+            set({ ...blankUser });
+            return false;
+          }
+        },
+        clearError: () => set({ error: '' }),
+        accessValid: () => {
+          const { accessExp } = get();
+          return accessExp > Date.now();
+        },
+      };
+    },
     {
       name: 'user-storage',
       storage: createJSONStorage(() => localStorage),
     }
   )
 );
+
+export default useUserStore;

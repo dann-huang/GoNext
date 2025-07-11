@@ -1,20 +1,11 @@
 
-export interface RegisterSuccessResponse {
-  message: string;
+export interface UserInfo {
   username: string;
-  displayname: string;
+  displayName: string;
+  accountType: string;
 }
 
-export interface LoginSuccessResponse {
-  message: string;
-  username: string;
-  displayname: string;
-  accessExpires: number;
-  refreshExpires: number;
-}
-
-export interface RefreshSuccessResponse {
-  message: string;
-  accessExpires: number;
-  refreshExpires: number;
+export interface AuthResponse {
+  user: UserInfo;
+  accessExp: number;
 }
