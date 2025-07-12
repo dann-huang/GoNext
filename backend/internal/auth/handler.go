@@ -107,7 +107,7 @@ func (h *handlerImpl) guestHandler() http.HandlerFunc {
 			return
 		}
 
-		result, err := h.service.createGuest(r.Context(), req.Username, req.DisplayName)
+		result, err := h.service.createGuest(r.Context(), req.Name)
 		if err != nil {
 			if errors.Is(err, repo.ErrAlreadyExists) {
 				util.RespondErr(w, http.StatusConflict, "Username already taken", nil)
@@ -200,8 +200,10 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, ErrInvalidCode) {
 				util.RespondErr(w, http.StatusBadRequest, "Invalid or expired verification code", nil)
-			} else if errors.Is(err, ErrAlreadySet) {
-				util.RespondErr(w, http.StatusBadRequest, "Email is already set", nil)
+			} else if errors.Is(err, ErrCollision) {
+				util.RespondErr(w, http.StatusBadRequest, "Email is already in use by another account", nil)
+			} else if errors.Is(err, ErrUsernameCollision) {
+				util.RespondErr(w, http.StatusBadRequest, "Username is already in use by another account", nil)
 			} else {
 				util.RespondErr(w, http.StatusInternalServerError, "Failed to verify email", err)
 			}
@@ -283,7 +285,7 @@ func (h *handlerImpl) emailLoginHandler() http.HandlerFunc {
 			return
 		}
 
-		result, err := h.service.loginWithEmailCode(r.Context(), req.Email, req.Code)
+		result, err := h.service.emailLogin(r.Context(), req.Email, req.Code)
 		if err != nil {
 			slog.Info("email code login failed", "email", req.Email, "error", err)
 			util.RespondErr(w, http.StatusUnauthorized, "Invalid or expired code", nil)
@@ -301,7 +303,7 @@ func (h *handlerImpl) loginHandler() http.HandlerFunc {
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
-		result, err := h.service.loginWithPassword(r.Context(), req.Email, req.Password)
+		result, err := h.service.passwordLogin(r.Context(), req.Email, req.Password)
 		if err != nil {
 			util.RespondErr(w, http.StatusUnauthorized, "Invalid email or password", nil)
 			return

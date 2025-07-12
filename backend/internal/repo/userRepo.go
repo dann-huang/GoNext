@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"gonext/internal/model"
 	"strings"
@@ -10,9 +11,13 @@ import (
 	"github.com/lib/pq"
 )
 
+var (
+	ErrEmailExists    = errors.New("email already exists")
+	ErrUsernameExists = errors.New("username already exists")
+)
+
 type UserRepo interface {
 	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
-	ReadUserByName(ctx context.Context, username string) (*model.User, error)
 	ReadUserByID(ctx context.Context, id string) (*model.User, error)
 	ReadUserByEmail(ctx context.Context, email string) (*model.User, error)
 	UpdateUser(ctx context.Context, id string, params *model.UserUpdate) (*model.User, error)
@@ -67,45 +72,17 @@ func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.U
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch {
 			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "username"):
-				err = fmt.Errorf("%w: username already exists", ErrAlreadyExists)
+				err = fmt.Errorf("%w", ErrUsernameExists)
 			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "email"):
-				err = fmt.Errorf("%w: email already exists", ErrAlreadyExists)
+				err = fmt.Errorf("%w", ErrEmailExists)
+			default:
+				err = fmt.Errorf("%w", ErrAlreadyExists)
 			}
 		}
 		return nil, fmt.Errorf("repo: failed to create user: %w", err)
 	}
 
 	return &newUser, nil
-}
-
-func (r *pgUserRepo) ReadUserByName(ctx context.Context, username string) (*model.User, error) {
-	var user model.User
-	query := `
-		SELECT id, username, displayname, email, passhash, account_type, 
-		       created_at, updated_at, last_login_at
-		FROM users 
-		WHERE username = $1
-	`
-
-	err := r.db.QueryRowContext(ctx, query, username).Scan(
-		&user.ID,
-		&user.Username,
-		&user.DisplayName,
-		&user.Email,
-		&user.PassHash,
-		&user.AccountType,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-		&user.LastLoginAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			err = ErrNotFound
-		}
-		return nil, fmt.Errorf("repo: failed to get user by username=%v: %w", username, err)
-	}
-
-	return &user, nil
 }
 
 func (r *pgUserRepo) ReadUserByID(ctx context.Context, id string) (*model.User, error) {
@@ -231,9 +208,11 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, id string, params *model.Us
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch {
 			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "username"):
-				err = fmt.Errorf("%w: username already exists", ErrAlreadyExists)
+				err = fmt.Errorf("%w", ErrUsernameExists)
 			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "email"):
-				err = fmt.Errorf("%w: email already exists", ErrAlreadyExists)
+				err = fmt.Errorf("%w", ErrEmailExists)
+			default:
+				err = fmt.Errorf("%w", ErrAlreadyExists)
 			}
 		} else if err == sql.ErrNoRows {
 			err = ErrNotFound

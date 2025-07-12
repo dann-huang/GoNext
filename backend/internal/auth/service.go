@@ -10,17 +10,20 @@ import (
 	"gonext/internal/repo"
 	"gonext/internal/token"
 	"log/slog"
+	"math/rand"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	ErrInvalidCode = errors.New("invalid or expired verification code")
-	ErrAlreadySet  = errors.New("email is already set")
+	ErrInvalidCode       = errors.New("invalid or expired verification code")
+	ErrCollision         = errors.New("email is already set")
+	ErrUsernameCollision = errors.New("username is already set")
 )
 
 type service interface {
-	createGuest(ctx context.Context, username, displayName string) (*authResult, error)
+	createGuest(ctx context.Context, displayName string) (*authResult, error)
 	logoutUser(ctx context.Context, refreshToken string) error
 	refreshUser(ctx context.Context, refreshToken string) (*authResult, error)
 
@@ -30,8 +33,8 @@ type service interface {
 	setPassword(ctx context.Context, userToken *token.UserPayload, code string, password string) (*authResult, error)
 
 	sendEmailCode(ctx context.Context, email string) error
-	loginWithEmailCode(ctx context.Context, email, code string) (*authResult, error)
-	loginWithPassword(ctx context.Context, email, password string) (*authResult, error)
+	emailLogin(ctx context.Context, email, code string) (*authResult, error)
+	passwordLogin(ctx context.Context, email, password string) (*authResult, error)
 }
 
 type serviceImpl struct {
@@ -70,7 +73,7 @@ func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authRes
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
-	refreshToken, err := s.kvMngr.SetRefToken(ctx, user.Username)
+	refreshToken, err := s.kvMngr.SetRefToken(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
@@ -86,6 +89,18 @@ func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authRes
 	}, nil
 }
 
+const alphaNum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func (s *serviceImpl) randGuestName() string {
+	builder := strings.Builder{}
+	builder.Grow(14)
+	builder.WriteString("guest-")
+	for range 8 {
+		builder.WriteByte(alphaNum[rand.Intn(len(alphaNum))])
+	}
+	return builder.String()
+}
+
 func newService(accessManager token.UserManager, repo repo.UserRepo, kvMngr token.KVManager, mailer mail.Mailer, config *config.Auth) service {
 	return &serviceImpl{
 		accessMngr: accessManager,
@@ -96,14 +111,21 @@ func newService(accessManager token.UserManager, repo repo.UserRepo, kvMngr toke
 	}
 }
 
-func (s *serviceImpl) createGuest(ctx context.Context, username, displayName string) (*authResult, error) {
-	user, err := s.repo.CreateUser(ctx, &model.User{
-		Username:    username,
-		DisplayName: displayName,
-		AccountType: model.AccountTypeGuest,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create guest user: %w", err)
+func (s *serviceImpl) createGuest(ctx context.Context, displayName string) (*authResult, error) {
+	var user *model.User
+	var err error
+	for range 5 {
+		user, err = s.repo.CreateUser(ctx, &model.User{
+			Username:    s.randGuestName(),
+			DisplayName: displayName,
+			AccountType: model.AccountTypeGuest,
+		})
+		if !errors.Is(err, repo.ErrUsernameExists) {
+			return nil, fmt.Errorf("failed to create guest user: %w", err)
+		}
+		if user != nil {
+			break
+		}
 	}
 	return s.loginUser(ctx, user)
 }
@@ -136,6 +158,9 @@ func (s *serviceImpl) verifyEmail(ctx context.Context, userToken *token.UserPayl
 	}
 	user, err := s.repo.UpdateUser(ctx, userToken.UserID, &update)
 	if err != nil {
+		if errors.Is(err, repo.ErrEmailExists) {
+			return nil, ErrCollision
+		}
 		return nil, fmt.Errorf("failed to upgrade user: %w", err)
 	}
 	return s.loginUser(ctx, user)
@@ -171,7 +196,7 @@ func (s *serviceImpl) setPassword(ctx context.Context, userToken *token.UserPayl
 		PassHash: &hashedPassword,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
+		return nil, fmt.Errorf("can't update password: %w", err)
 	}
 	return s.loginUser(ctx, user)
 }
@@ -182,13 +207,13 @@ func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error
 }
 
 func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (*authResult, error) {
-	username, err := s.kvMngr.UseRefToken(ctx, refreshToken)
+	userID, err := s.kvMngr.UseRefToken(ctx, refreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
-	user, err := s.repo.ReadUserByName(ctx, username)
+	user, err := s.repo.ReadUserByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
+		return nil, fmt.Errorf("can't refresh user: %w", err)
 	}
 	return s.loginUser(ctx, user)
 }
@@ -199,7 +224,7 @@ func (s *serviceImpl) sendEmailCode(ctx context.Context, email string) error {
 		return err
 	}
 	if user != nil {
-		return ErrAlreadySet
+		return ErrCollision
 	}
 	token, err := s.kvMngr.SetMailToken(ctx, token.PurposeEmailLogin, email)
 	if err != nil {
@@ -212,7 +237,7 @@ func (s *serviceImpl) sendEmailCode(ctx context.Context, email string) error {
 	return nil
 }
 
-func (s *serviceImpl) loginWithEmailCode(ctx context.Context, email, code string) (*authResult, error) {
+func (s *serviceImpl) emailLogin(ctx context.Context, email, code string) (*authResult, error) {
 	_, err := s.kvMngr.UseMailToken(ctx, token.PurposeEmailLogin, code)
 	if err != nil {
 		return nil, ErrInvalidCode
@@ -224,7 +249,7 @@ func (s *serviceImpl) loginWithEmailCode(ctx context.Context, email, code string
 	return s.loginUser(ctx, user)
 }
 
-func (s *serviceImpl) loginWithPassword(ctx context.Context, email, password string) (*authResult, error) {
+func (s *serviceImpl) passwordLogin(ctx context.Context, email, password string) (*authResult, error) {
 	user, err := s.repo.ReadUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err

@@ -70,7 +70,7 @@ func NewRedisKVMngr(store repo.KVStore, cfg *config.Token) KVManager {
 }
 
 func (r *redisMngrImpl) SetRefToken(ctx context.Context, id string) (string, error) {
-	token := uuid.New().String()
+	token := uuid.NewString()
 	if err := r.store.Set(ctx, token, id, r.cfg.RefTTL); err != nil {
 		return "", fmt.Errorf("failed to set ref token: %w", err)
 	}

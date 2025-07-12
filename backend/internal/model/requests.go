@@ -3,8 +3,7 @@ package model
 import "time"
 
 type GuestRequest struct {
-	Username    string `json:"username" validate:"required,alphanum,min=3,max=20"`
-	DisplayName string `json:"displayName" validate:"required,min=2,max=50"`
+	Name string `json:"name" validate:"required,alphanum,min=5,max=30"`
 }
 
 type PassRequest struct {
