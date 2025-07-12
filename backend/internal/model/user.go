@@ -31,7 +31,7 @@ func (a AccountType) Value() (driver.Value, error) {
 }
 
 type User struct {
-	ID          int         `db:"id"`
+	ID          string      `db:"id"`
 	Username    string      `db:"username"`
 	DisplayName string      `db:"displayname"`
 	AccountType AccountType `db:"account_type"`

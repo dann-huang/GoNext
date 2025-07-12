@@ -13,11 +13,11 @@ import (
 type UserRepo interface {
 	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
 	ReadUserByName(ctx context.Context, username string) (*model.User, error)
-	ReadUserByID(ctx context.Context, id int) (*model.User, error)
+	ReadUserByID(ctx context.Context, id string) (*model.User, error)
 	ReadUserByEmail(ctx context.Context, email string) (*model.User, error)
-	UpdateUser(ctx context.Context, id int, params *model.UserUpdate) (*model.User, error)
-	DeleteUser(ctx context.Context, id int) error
-	UpdateLastLogin(ctx context.Context, id int) error
+	UpdateUser(ctx context.Context, id string, params *model.UserUpdate) (*model.User, error)
+	DeleteUser(ctx context.Context, id string) error
+	UpdateLastLogin(ctx context.Context, id string) error
 }
 
 func newUserRepo(db *sql.DB) UserRepo {
@@ -108,7 +108,7 @@ func (r *pgUserRepo) ReadUserByName(ctx context.Context, username string) (*mode
 	return &user, nil
 }
 
-func (r *pgUserRepo) ReadUserByID(ctx context.Context, id int) (*model.User, error) {
+func (r *pgUserRepo) ReadUserByID(ctx context.Context, id string) (*model.User, error) {
 	var user model.User
 	query := `
 		SELECT id, username, displayname, email, account_type, created_at, updated_at, last_login_at
@@ -168,7 +168,7 @@ func (r *pgUserRepo) ReadUserByEmail(ctx context.Context, email string) (*model.
 	return &user, nil
 }
 
-func (r *pgUserRepo) UpdateUser(ctx context.Context, id int, params *model.UserUpdate) (*model.User, error) {
+func (r *pgUserRepo) UpdateUser(ctx context.Context, id string, params *model.UserUpdate) (*model.User, error) {
 	updates := []string{}
 	args := []any{}
 	argCounter := 1
@@ -244,7 +244,7 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, id int, params *model.UserU
 	return &updatedUser, nil
 }
 
-func (r *pgUserRepo) DeleteUser(ctx context.Context, id int) error {
+func (r *pgUserRepo) DeleteUser(ctx context.Context, id string) error {
 	result, err := r.db.ExecContext(
 		ctx,
 		`DELETE FROM users WHERE id = $1`,
@@ -264,7 +264,7 @@ func (r *pgUserRepo) DeleteUser(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *pgUserRepo) UpdateLastLogin(ctx context.Context, id int) error {
+func (r *pgUserRepo) UpdateLastLogin(ctx context.Context, id string) error {
 	result, err := r.db.ExecContext(
 		ctx,
 		`UPDATE users SET last_login_at = NOW() WHERE id = $1`,

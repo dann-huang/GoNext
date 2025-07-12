@@ -21,13 +21,13 @@ type authImpl struct {
 
 func NewModule(
 	userRepo repo.UserRepo,
-	kvStore repo.KVStore,
+	kvMngr token.KVManager,
 	accMngr token.UserManager,
 	mailer mail.Mailer,
 	config *config.Auth,
 	authMdw mdw.Middleware,
 ) AuthModule {
-	service := newService(accMngr, userRepo, kvStore, mailer, config)
+	service := newService(accMngr, userRepo, kvMngr, mailer, config)
 	handler := newHandler(service, config)
 
 	router := newRouter(handler, authMdw)

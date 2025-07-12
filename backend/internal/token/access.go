@@ -6,7 +6,7 @@ import (
 )
 
 type UserPayload struct {
-	UserID      int               `json:"user_id"`
+	UserID      string            `json:"user_id"`
 	Username    string            `json:"username"`
 	Displayname string            `json:"displayname"`
 	AccountType model.AccountType `json:"account_type"`

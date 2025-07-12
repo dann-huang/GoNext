@@ -49,10 +49,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	kvMngr := token.NewRedisKVMngr(store.KVStore, appCfg.Token)
 	authMdw := mdw.AccessMdw(accessManager, appCfg.Auth.AccCookieName, appCfg.Auth.AccTTL)
 	authModule := auth.NewModule(
 		store.User,
-		store.KVStore,
+		kvMngr,
 		accessManager,
 		mailer,
 		appCfg.Auth,

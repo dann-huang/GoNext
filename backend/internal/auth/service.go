@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"gonext/internal/config"
@@ -13,7 +11,6 @@ import (
 	"gonext/internal/token"
 	"log/slog"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -40,7 +37,7 @@ type service interface {
 type serviceImpl struct {
 	accessMngr token.UserManager
 	repo       repo.UserRepo
-	kvStore    repo.KVStore
+	kvMngr     token.KVManager
 	mailer     mail.Mailer
 	cfg        *config.Auth
 }
@@ -61,14 +58,6 @@ func (s *serviceImpl) verifyPass(hashedPassword, password string) bool {
 	return err == nil
 }
 
-func (s *serviceImpl) rand6d() (string, error) {
-	b := make([]byte, 3)
-	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("failed to generate random code: %w", err)
-	}
-	return hex.EncodeToString(b)[:6], nil
-}
-
 func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authResult, error) {
 	userToken := &token.UserPayload{
 		UserID:      user.ID,
@@ -81,9 +70,9 @@ func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authRes
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
-	refreshToken := uuid.New().String()
-	if err := s.setRefreshToken(ctx, user.Username, refreshToken); err != nil {
-		return nil, fmt.Errorf("failed to store refresh token: %w", err)
+	refreshToken, err := s.kvMngr.SetRefToken(ctx, user.Username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
 
 	if err := s.repo.UpdateLastLogin(ctx, user.ID); err != nil {
@@ -97,44 +86,11 @@ func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authRes
 	}, nil
 }
 
-func (s *serviceImpl) setRefreshToken(ctx context.Context, username, token string) error {
-	if err := s.kvStore.Set(ctx, token, username, s.cfg.RefTTL); err != nil {
-		return fmt.Errorf("failed to set ref token: %w", err)
-	}
-	if err := s.kvStore.ListAdd(
-		ctx,
-		fmt.Sprintf(s.cfg.RefreshKey, username),
-		token,
-		s.cfg.RefTTL,
-	); err != nil {
-		return fmt.Errorf("failed to set ref token map: %w", err)
-	}
-	return nil
-}
-
-func (s *serviceImpl) unsetRefreshToken(ctx context.Context, username, token string) error {
-	var errList []error
-	if err := s.kvStore.Del(ctx, token); err != nil {
-		errList = append(errList, fmt.Errorf("failed to delete ref token: %w", err))
-	}
-	if err := s.kvStore.ListDel(
-		ctx,
-		fmt.Sprintf(s.cfg.RefreshKey, username),
-		token,
-	); err != nil {
-		errList = append(errList, fmt.Errorf("failed to delete ref token map: %w", err))
-	}
-	if len(errList) > 0 {
-		return errors.Join(errList...)
-	}
-	return nil
-}
-
-func newService(accessManager token.UserManager, repo repo.UserRepo, kv repo.KVStore, mailer mail.Mailer, config *config.Auth) service {
+func newService(accessManager token.UserManager, repo repo.UserRepo, kvMngr token.KVManager, mailer mail.Mailer, config *config.Auth) service {
 	return &serviceImpl{
 		accessMngr: accessManager,
 		repo:       repo,
-		kvStore:    kv,
+		kvMngr:     kvMngr,
 		mailer:     mailer,
 		cfg:        config,
 	}
@@ -153,21 +109,18 @@ func (s *serviceImpl) createGuest(ctx context.Context, username, displayName str
 }
 
 func (s *serviceImpl) setupEmail(ctx context.Context, userToken *token.UserPayload, email string) error {
-	code, err := s.rand6d()
+	token, err := s.kvMngr.SetEmailSetupToken(ctx, userToken.UserID, email)
 	if err != nil {
-		return fmt.Errorf("failed to generate verification code: %w", err)
-	}
-	if err := s.kvStore.Set(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userToken.UserID, code), email, s.cfg.EmailCodeTTL); err != nil {
 		return fmt.Errorf("failed to store verification code: %w", err)
 	}
-	if err := s.mailer.VerificationEmail(email, userToken.Displayname, code); err != nil {
+	if err := s.mailer.VerificationEmail(email, userToken.Displayname, token); err != nil {
 		return fmt.Errorf("failed to send verification email: %w", err)
 	}
 	return nil
 }
 
 func (s *serviceImpl) verifyEmail(ctx context.Context, userToken *token.UserPayload, code string) (*authResult, error) {
-	email, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userToken.UserID, code))
+	email, err := s.kvMngr.UseEmailSetupToken(ctx, userToken.UserID, code)
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
 			return nil, ErrInvalidCode
@@ -185,9 +138,6 @@ func (s *serviceImpl) verifyEmail(ctx context.Context, userToken *token.UserPayl
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade user: %w", err)
 	}
-	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userToken.UserID, code)); err != nil {
-		slog.Error("failed to delete email code", "error", err)
-	}
 	return s.loginUser(ctx, user)
 }
 
@@ -195,14 +145,11 @@ func (s *serviceImpl) reqPassCode(ctx context.Context, userToken *token.UserPayl
 	if userToken.Email == nil {
 		return errors.New("email not set")
 	}
-	code, err := s.rand6d()
+	tokenStr, err := s.kvMngr.SetMailToken(ctx, token.PurposePasswordReset, userToken.UserID)
 	if err != nil {
-		return fmt.Errorf("failed to generate verification code: %w", err)
-	}
-	if err := s.kvStore.Set(ctx, fmt.Sprintf(s.cfg.EmailPassKey, userToken.UserID), code, s.cfg.EmailCodeTTL); err != nil {
 		return fmt.Errorf("failed to store verification code: %w", err)
 	}
-	if err := s.mailer.SendPasswordCode(*userToken.Email, userToken.Displayname, code); err != nil {
+	if err := s.mailer.SendPasswordCode(*userToken.Email, userToken.Displayname, tokenStr); err != nil {
 		return fmt.Errorf("failed to send verification email: %w", err)
 	}
 	return nil
@@ -212,11 +159,9 @@ func (s *serviceImpl) setPassword(ctx context.Context, userToken *token.UserPayl
 	if userToken.Email == nil {
 		return nil, errors.New("email not set")
 	}
-	if storedCode, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.EmailPassKey, userToken.UserID)); err != nil || storedCode != code {
+	_, err := s.kvMngr.UseMailToken(ctx, token.PurposePasswordReset, code)
+	if err != nil {
 		return nil, ErrInvalidCode
-	}
-	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.EmailPassKey, userToken.UserID)); err != nil {
-		slog.Error("failed to delete email code", "error", err)
 	}
 	hashedPassword, err := s.hashPass(password)
 	if err != nil {
@@ -232,15 +177,12 @@ func (s *serviceImpl) setPassword(ctx context.Context, userToken *token.UserPayl
 }
 
 func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error {
-	username, err := s.kvStore.Get(ctx, refreshToken)
-	if err != nil {
-		return fmt.Errorf("failed to find ref tokens: %w", err)
-	}
-	return s.unsetRefreshToken(ctx, username, refreshToken)
+	_, err := s.kvMngr.UseRefToken(ctx, refreshToken)
+	return err
 }
 
 func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (*authResult, error) {
-	username, err := s.kvStore.Get(ctx, refreshToken)
+	username, err := s.kvMngr.UseRefToken(ctx, refreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("invalid refresh token: %w", err)
 	}
@@ -256,15 +198,14 @@ func (s *serviceImpl) sendEmailCode(ctx context.Context, email string) error {
 	if err != nil {
 		return err
 	}
-	code, err := s.rand6d()
-	if err != nil {
-		return fmt.Errorf("failed to generate code: %w", err)
+	if user != nil {
+		return ErrAlreadySet
 	}
-	err = s.kvStore.Set(ctx, fmt.Sprintf(s.cfg.EmailLoginKey, user.ID), code, s.cfg.EmailCodeTTL)
+	token, err := s.kvMngr.SetMailToken(ctx, token.PurposeEmailLogin, email)
 	if err != nil {
 		return fmt.Errorf("failed to store code: %w", err)
 	}
-	err = s.mailer.SendLoginCode(email, email, code)
+	err = s.mailer.SendLoginCode(email, email, token)
 	if err != nil {
 		return fmt.Errorf("failed to send code: %w", err)
 	}
@@ -272,21 +213,13 @@ func (s *serviceImpl) sendEmailCode(ctx context.Context, email string) error {
 }
 
 func (s *serviceImpl) loginWithEmailCode(ctx context.Context, email, code string) (*authResult, error) {
-	storedCode, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.EmailLoginKey, email))
-	if err != nil || storedCode == "" {
-		return nil, ErrInvalidCode
-	}
-	if storedCode != code {
+	_, err := s.kvMngr.UseMailToken(ctx, token.PurposeEmailLogin, code)
+	if err != nil {
 		return nil, ErrInvalidCode
 	}
 	user, err := s.repo.ReadUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
-	}
-
-	// todo: considering not proceeding due to potential security concerns
-	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.EmailLoginKey, user.ID)); err != nil {
-		slog.Error("failed to delete used login code", "error", err, "email", email)
 	}
 	return s.loginUser(ctx, user)
 }

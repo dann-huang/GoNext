@@ -48,6 +48,11 @@ type Mail struct {
 	MailFrom string
 }
 
+type Token struct {
+	RefTTL         time.Duration
+	EmailedCodeTTL time.Duration
+}
+
 type AppConfig struct {
 	// Port        string
 	// FrontendUrl string
@@ -56,6 +61,7 @@ type AppConfig struct {
 	DB          *DB
 	WS          *WS
 	Mail        *Mail
+	Token       *Token
 }
 
 func Load() (*AppConfig, error) {
@@ -100,6 +106,10 @@ func Load() (*AppConfig, error) {
 			MsgBuffer:      256,
 			SendBuffer:     64,
 			RecvBuffer:     64,
+		},
+		Token: &Token{
+			RefTTL:         24 * time.Hour,
+			EmailedCodeTTL: 10 * time.Minute,
 		},
 	}
 
