@@ -21,13 +21,14 @@ type handler interface {
 	logoutHandler() http.HandlerFunc
 	refreshHandler() http.HandlerFunc
 
+	setEmailHandler() http.HandlerFunc
+	verifyEmailHandler() http.HandlerFunc
+	reqPassHandler() http.HandlerFunc
+	setPassHandler() http.HandlerFunc
+
 	emailCodeHandler() http.HandlerFunc
 	emailLoginHandler() http.HandlerFunc
 	loginHandler() http.HandlerFunc
-
-	setupEmailHandler() http.HandlerFunc
-	verifyEmailHandler() http.HandlerFunc
-	changePasswordHandler() http.HandlerFunc
 }
 
 func newHandler(service service, config *config.Auth) handler {
@@ -101,7 +102,7 @@ func (h *handlerImpl) decodeValidate(w http.ResponseWriter, r *http.Request, v a
 
 func (h *handlerImpl) guestHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.UserNames
+		var req model.GuestRequest
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
@@ -111,7 +112,6 @@ func (h *handlerImpl) guestHandler() http.HandlerFunc {
 			if errors.Is(err, repo.ErrAlreadyExists) {
 				util.RespondErr(w, http.StatusConflict, "Username already taken", nil)
 			} else {
-				slog.Error("failed to create user", "error", err)
 				util.RespondErr(w, http.StatusInternalServerError, "Failed to create user", nil)
 			}
 			return
@@ -163,27 +163,24 @@ func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 	}
 }
 
-func (h *handlerImpl) setupEmailHandler() http.HandlerFunc {
+func (h *handlerImpl) setEmailHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := mdw.GetUser(r.Context())
 		if user == nil {
 			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
-
 		var req model.Email
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
-
-		if err := h.service.setupEmail(r.Context(), user.UserID, req.Email); err != nil {
+		if err := h.service.setupEmail(r.Context(), user, req.Email); err != nil {
 			slog.Error("failed to initiate upgrade", "error", err)
 			util.RespondErr(w, http.StatusInternalServerError, "Failed to initiate upgrade", nil)
 			return
 		}
-
 		util.RespondJSON(w, http.StatusOK, map[string]string{
-			"message": "Verification email sent",
+			"message": "email may be sent",
 		})
 	}
 }
@@ -195,13 +192,11 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
-
-		var req model.VerifyEmail
+		var req model.EmailCode
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
-
-		result, err := h.service.verifyEmail(r.Context(), user.UserID, req.Code)
+		result, err := h.service.verifyEmail(r.Context(), user, req.Code)
 		if err != nil {
 			if errors.Is(err, ErrInvalidCode) {
 				util.RespondErr(w, http.StatusBadRequest, "Invalid or expired verification code", nil)
@@ -218,19 +213,15 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 	}
 }
 
-func (h *handlerImpl) changePasswordHandler() http.HandlerFunc {
+func (h *handlerImpl) reqPassHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := mdw.GetUser(r.Context())
 		if user == nil {
 			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
-		var req model.UserPass
-		if !h.decodeValidate(w, r, &req) {
-			return
-		}
 
-		if err := h.service.setPassword(r.Context(), user.UserID, req.CurrentPass, req.NewPass); err != nil {
+		if err := h.service.reqPassCode(r.Context(), user); err != nil {
 			slog.Error("failed to set password", "error", err)
 			switch err.Error() {
 			case "current password is required":
@@ -246,6 +237,27 @@ func (h *handlerImpl) changePasswordHandler() http.HandlerFunc {
 		util.RespondJSON(w, http.StatusOK, map[string]string{
 			"message": "Password updated successfully",
 		})
+	}
+}
+
+func (h *handlerImpl) setPassHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := mdw.GetUser(r.Context())
+		if user == nil {
+			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
+			return
+		}
+		var req model.PassRequest
+		if !h.decodeValidate(w, r, &req) {
+			return
+		}
+		result, err := h.service.setPassword(r.Context(), user, req.Code, req.Pass)
+		if err != nil {
+			util.RespondErr(w, http.StatusUnauthorized, "Invalid password", nil)
+			return
+		}
+		expires := h.setAuthCookies(w, result.access, result.refresh)
+		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
 	}
 }
 

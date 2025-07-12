@@ -27,10 +27,13 @@ func newRouter(h handler, authMdw Middleware) chi.Router {
 		r.Use(authMdw)
 
 		r.Route("/email", func(r chi.Router) {
-			r.Post("/setup", h.setupEmailHandler())
+			r.Post("/setup", h.setEmailHandler())
 			r.Post("/verify", h.verifyEmailHandler())
 		})
-		r.Post("/password", h.changePasswordHandler())
+		r.Route("/pass", func(r chi.Router) {
+			r.Post("/request", h.reqPassHandler())
+			r.Post("/set", h.setPassHandler())
+		})
 	})
 
 	return r

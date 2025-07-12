@@ -15,8 +15,8 @@ type UserRepo interface {
 	ReadUserByName(ctx context.Context, username string) (*model.User, error)
 	ReadUserByID(ctx context.Context, id int) (*model.User, error)
 	ReadUserByEmail(ctx context.Context, email string) (*model.User, error)
-	UpdateUser(ctx context.Context, username string, params *model.UserUpdate) (*model.User, error)
-	DeleteUser(ctx context.Context, username string) error
+	UpdateUser(ctx context.Context, id int, params *model.UserUpdate) (*model.User, error)
+	DeleteUser(ctx context.Context, id int) error
 	UpdateLastLogin(ctx context.Context, id int) error
 }
 
@@ -168,7 +168,7 @@ func (r *pgUserRepo) ReadUserByEmail(ctx context.Context, email string) (*model.
 	return &user, nil
 }
 
-func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *model.UserUpdate) (*model.User, error) {
+func (r *pgUserRepo) UpdateUser(ctx context.Context, id int, params *model.UserUpdate) (*model.User, error) {
 	updates := []string{}
 	args := []any{}
 	argCounter := 1
@@ -201,15 +201,15 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 	}
 
 	if len(updates) == 0 {
-		return r.ReadUserByName(ctx, username)
+		return r.ReadUserByID(ctx, id)
 	}
 
-	args = append(args, username)
+	args = append(args, id)
 
 	query := fmt.Sprintf(`
 		UPDATE users 
 		SET %s
-		WHERE username = $%d
+		WHERE id = $%d
 		RETURNING id, username, displayname, email, passhash, 
 		          account_type, created_at, updated_at, last_login_at
 	`, strings.Join(updates, ", "), argCounter)
@@ -244,11 +244,11 @@ func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *mo
 	return &updatedUser, nil
 }
 
-func (r *pgUserRepo) DeleteUser(ctx context.Context, username string) error {
+func (r *pgUserRepo) DeleteUser(ctx context.Context, id int) error {
 	result, err := r.db.ExecContext(
 		ctx,
-		`DELETE FROM users WHERE username = $1`,
-		username,
+		`DELETE FROM users WHERE id = $1`,
+		id,
 	)
 	if err != nil {
 		return fmt.Errorf("repo: failed to delete user: %w", err)

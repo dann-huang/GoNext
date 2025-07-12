@@ -2,14 +2,14 @@ package model
 
 import "time"
 
-type UserNames struct {
+type GuestRequest struct {
 	Username    string `json:"username" validate:"required,alphanum,min=3,max=20"`
 	DisplayName string `json:"displayName" validate:"required,min=2,max=50"`
 }
 
-type UserPass struct {
-	CurrentPass string `json:"currentPassword,omitempty"`
-	NewPass     string `json:"newPassword" validate:"required,min=8"`
+type PassRequest struct {
+	Pass string `json:"password" validate:"required,min=8"`
+	Code string `json:"code" validate:"required,len=6"`
 }
 
 type UserResponse struct {
@@ -38,13 +38,18 @@ type Email struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
-type VerifyEmail struct {
+type EmailCode struct {
 	Code string `json:"code" validate:"required,len=6"`
 }
 
 type EmailLogin struct {
 	Email string `json:"email" validate:"required,email"`
 	Code  string `json:"code" validate:"required,len=6"`
+}
+
+type EmailPassword struct {
+	Code     string `json:"code" validate:"required,len=6"`
+	Password string `json:"password" validate:"required"`
 }
 
 type UpgradeResponse struct {

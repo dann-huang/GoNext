@@ -9,3 +9,8 @@ export interface AuthResponse {
   user: UserInfo;
   accessExp: number;
 }
+
+export interface GuestReq {
+  username: string;
+  displayName: string;
+}

@@ -9,8 +9,9 @@ import (
 )
 
 type Mailer interface {
-	VerificationEmail(email, code string) error
-	SendLoginCode(email, username, code string) error
+	VerificationEmail(email, name, code string) error
+	SendLoginCode(email, name, code string) error
+	SendPasswordCode(email, name, code string) error
 }
 
 type resendMailer struct {
@@ -26,12 +27,13 @@ func NewResendMailer(cfg *config.Mail) Mailer {
 	}
 }
 
-func (s *resendMailer) VerificationEmail(email, code string) error {
+func (s *resendMailer) VerificationEmail(email, name, code string) error {
 	emailBody := fmt.Sprintf(`
 		<h1>Verify Your Email</h1>
+		<p>Hello %s,</p>
 		<p>Your verification code is: <strong>%s</strong></p>
 		<p>This code will expire in 10 minutes.</p>
-	`, code)
+	`, name, code)
 
 	if _, err := s.client.Emails.Send(&resend.SendEmailRequest{
 		From:    s.from,
@@ -66,18 +68,44 @@ func (s *resendMailer) SendLoginCode(email, username, code string) error {
 	return nil
 }
 
+func (s *resendMailer) SendPasswordCode(email, username, code string) error {
+	emailBody := fmt.Sprintf(`
+		<h1>Password Code</h1>
+		<p>Hello %s,</p>
+		<p>Your password setup code is: <strong>%s</strong></p>
+		<p>This code will expire in 10 minutes.</p>
+		<p>If you didn't request this code, you can safely ignore this email.</p>
+	`, username, code)
+
+	if _, err := s.client.Emails.Send(&resend.SendEmailRequest{
+		From:    s.from,
+		To:      []string{email},
+		Subject: "Your Password Code",
+		Html:    emailBody,
+	}); err != nil {
+		return fmt.Errorf("failed to send password code email: %w", err)
+	}
+
+	return nil
+}
+
 type mockMailer struct{}
 
 func NewMockMailer() Mailer {
 	return &mockMailer{}
 }
 
-func (m *mockMailer) VerificationEmail(email, code string) error {
-	fmt.Printf("***** Verification Code for %s: %s *****\n", email, code)
+func (m *mockMailer) VerificationEmail(email, name, code string) error {
+	fmt.Printf("***** Verification Code for %s<%s>: %s *****\n", name, email, code)
 	return nil
 }
 
 func (m *mockMailer) SendLoginCode(email, username, code string) error {
-	fmt.Printf("***** Login Code for %s: %s *****\n", email, code)
+	fmt.Printf("***** Login Code for %s<%s>: %s *****\n", username, email, code)
+	return nil
+}
+
+func (m *mockMailer) SendPasswordCode(email, username, code string) error {
+	fmt.Printf("***** Password Code for %s<%s>: %s *****\n", username, email, code)
 	return nil
 }

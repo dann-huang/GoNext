@@ -19,6 +19,7 @@ type Auth struct {
 	EmailCodeTTL  time.Duration
 	EmailSetupKey string
 	EmailLoginKey string
+	EmailPassKey  string
 }
 
 type DB struct {
@@ -80,6 +81,7 @@ func Load() (*AppConfig, error) {
 			RefreshKey:    "refToken:%v",
 			EmailSetupKey: "emailSetup:%v|%v",
 			EmailLoginKey: "emailLogin:%v",
+			EmailPassKey:  "emailPass:%v",
 		},
 		DB: &DB{
 			PostgresUrl:  os.Getenv("POSTGRES_URL"),

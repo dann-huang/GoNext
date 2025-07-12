@@ -24,11 +24,13 @@ var (
 
 type service interface {
 	createGuest(ctx context.Context, username, displayName string) (*authResult, error)
-	setupEmail(ctx context.Context, userID int, email string) error
-	verifyEmail(ctx context.Context, userID int, code string) (*authResult, error)
-	setPassword(ctx context.Context, userID int, currentPassword, newPassword string) error
 	logoutUser(ctx context.Context, refreshToken string) error
 	refreshUser(ctx context.Context, refreshToken string) (*authResult, error)
+
+	setupEmail(ctx context.Context, userToken *token.UserPayload, email string) error
+	verifyEmail(ctx context.Context, userToken *token.UserPayload, code string) (*authResult, error)
+	reqPassCode(ctx context.Context, userToken *token.UserPayload) error
+	setPassword(ctx context.Context, userToken *token.UserPayload, code string, password string) (*authResult, error)
 
 	sendEmailCode(ctx context.Context, email string) error
 	loginWithEmailCode(ctx context.Context, email, code string) (*authResult, error)
@@ -67,19 +69,15 @@ func (s *serviceImpl) rand6d() (string, error) {
 	return hex.EncodeToString(b)[:6], nil
 }
 
-func newService(accessManager token.UserManager, repo repo.UserRepo, kv repo.KVStore, mailer mail.Mailer, config *config.Auth) service {
-	return &serviceImpl{
-		accessMngr: accessManager,
-		repo:       repo,
-		kvStore:    kv,
-		mailer:     mailer,
-		cfg:        config,
-	}
-}
-
 func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authResult, error) {
-	accessToken, err := s.accessMngr.GenerateToken(
-		token.NewUserPayload(user.ID, user.Username, user.DisplayName, user.AccountType))
+	userToken := &token.UserPayload{
+		UserID:      user.ID,
+		Username:    user.Username,
+		Displayname: user.DisplayName,
+		AccountType: user.AccountType,
+		Email:       user.Email,
+	}
+	accessToken, err := s.accessMngr.GenerateToken(userToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
@@ -97,111 +95,6 @@ func (s *serviceImpl) loginUser(ctx context.Context, user *model.User) (*authRes
 		refresh: refreshToken,
 		user:    user,
 	}, nil
-}
-
-func (s *serviceImpl) createGuest(ctx context.Context, username, displayName string) (*authResult, error) {
-	user, err := s.repo.CreateUser(ctx, &model.User{
-		Username:    username,
-		DisplayName: displayName,
-		AccountType: model.AccountTypeGuest,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create guest user: %w", err)
-	}
-	return s.loginUser(ctx, user)
-}
-
-func (s *serviceImpl) setPassword(ctx context.Context, userID int, currentPassword, newPassword string) error {
-	user, err := s.repo.ReadUserByID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("user not found: %w", err)
-	}
-
-	if user.PassHash != nil {
-		if currentPassword == "" {
-			return fmt.Errorf("current password is required")
-		}
-		if !s.verifyPass(*user.PassHash, currentPassword) {
-			return fmt.Errorf("invalid current password")
-		}
-	}
-	hash, err := s.hashPass(newPassword)
-	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	_, err = s.repo.UpdateUser(ctx, user.Username, &model.UserUpdate{
-		PassHash: &hash,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update password: %w", err)
-	}
-
-	return nil
-}
-
-func (s *serviceImpl) setupEmail(ctx context.Context, userID int, email string) error {
-	code, err := s.rand6d()
-	if err != nil {
-		return fmt.Errorf("failed to generate verification code: %w", err)
-	}
-	if err := s.kvStore.Set(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userID, code), email, s.cfg.EmailCodeTTL); err != nil {
-		return fmt.Errorf("failed to store verification code: %w", err)
-	}
-	if err := s.mailer.VerificationEmail(email, code); err != nil {
-		return fmt.Errorf("failed to send verification email: %w", err)
-	}
-	return nil
-}
-
-func (s *serviceImpl) verifyEmail(ctx context.Context, userID int, code string) (*authResult, error) {
-	user, err := s.repo.ReadUserByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
-	}
-	if user.AccountType != model.AccountTypeGuest {
-		return nil, ErrAlreadySet
-	}
-
-	email, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userID, code))
-	if err != nil {
-		if errors.Is(err, repo.ErrNotFound) {
-			return nil, ErrInvalidCode
-		}
-		return nil, fmt.Errorf("failed to verify code: %w", err)
-	}
-	accountType := model.AccountTypeUser
-	user, err = s.repo.UpdateUser(ctx, user.Username, &model.UserUpdate{
-		Email:       &email,
-		AccountType: &accountType,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to upgrade user: %w", err)
-	}
-	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userID, code)); err != nil {
-		slog.Error("failed to delete email code", "error", err)
-	}
-	return s.loginUser(ctx, user)
-}
-
-func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error {
-	username, err := s.kvStore.Get(ctx, refreshToken)
-	if err != nil {
-		return fmt.Errorf("failed to find ref tokens: %w", err)
-	}
-	return s.unsetRefreshToken(ctx, username, refreshToken)
-}
-
-func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (*authResult, error) {
-	username, err := s.kvStore.Get(ctx, refreshToken)
-	if err != nil {
-		return nil, fmt.Errorf("invalid refresh token: %w", err)
-	}
-	user, err := s.repo.ReadUserByName(ctx, username)
-	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
-	}
-	return s.loginUser(ctx, user)
 }
 
 func (s *serviceImpl) setRefreshToken(ctx context.Context, username, token string) error {
@@ -235,6 +128,127 @@ func (s *serviceImpl) unsetRefreshToken(ctx context.Context, username, token str
 		return errors.Join(errList...)
 	}
 	return nil
+}
+
+func newService(accessManager token.UserManager, repo repo.UserRepo, kv repo.KVStore, mailer mail.Mailer, config *config.Auth) service {
+	return &serviceImpl{
+		accessMngr: accessManager,
+		repo:       repo,
+		kvStore:    kv,
+		mailer:     mailer,
+		cfg:        config,
+	}
+}
+
+func (s *serviceImpl) createGuest(ctx context.Context, username, displayName string) (*authResult, error) {
+	user, err := s.repo.CreateUser(ctx, &model.User{
+		Username:    username,
+		DisplayName: displayName,
+		AccountType: model.AccountTypeGuest,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create guest user: %w", err)
+	}
+	return s.loginUser(ctx, user)
+}
+
+func (s *serviceImpl) setupEmail(ctx context.Context, userToken *token.UserPayload, email string) error {
+	code, err := s.rand6d()
+	if err != nil {
+		return fmt.Errorf("failed to generate verification code: %w", err)
+	}
+	if err := s.kvStore.Set(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userToken.UserID, code), email, s.cfg.EmailCodeTTL); err != nil {
+		return fmt.Errorf("failed to store verification code: %w", err)
+	}
+	if err := s.mailer.VerificationEmail(email, userToken.Displayname, code); err != nil {
+		return fmt.Errorf("failed to send verification email: %w", err)
+	}
+	return nil
+}
+
+func (s *serviceImpl) verifyEmail(ctx context.Context, userToken *token.UserPayload, code string) (*authResult, error) {
+	email, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userToken.UserID, code))
+	if err != nil {
+		if errors.Is(err, repo.ErrNotFound) {
+			return nil, ErrInvalidCode
+		}
+		return nil, fmt.Errorf("failed to verify code: %w", err)
+	}
+	update := model.UserUpdate{
+		Email: &email,
+	}
+	if userToken.AccountType == model.AccountTypeGuest {
+		newType := model.AccountTypeUser
+		update.AccountType = &newType
+	}
+	user, err := s.repo.UpdateUser(ctx, userToken.UserID, &update)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upgrade user: %w", err)
+	}
+	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.EmailSetupKey, userToken.UserID, code)); err != nil {
+		slog.Error("failed to delete email code", "error", err)
+	}
+	return s.loginUser(ctx, user)
+}
+
+func (s *serviceImpl) reqPassCode(ctx context.Context, userToken *token.UserPayload) error {
+	if userToken.Email == nil {
+		return errors.New("email not set")
+	}
+	code, err := s.rand6d()
+	if err != nil {
+		return fmt.Errorf("failed to generate verification code: %w", err)
+	}
+	if err := s.kvStore.Set(ctx, fmt.Sprintf(s.cfg.EmailPassKey, userToken.UserID), code, s.cfg.EmailCodeTTL); err != nil {
+		return fmt.Errorf("failed to store verification code: %w", err)
+	}
+	if err := s.mailer.SendPasswordCode(*userToken.Email, userToken.Displayname, code); err != nil {
+		return fmt.Errorf("failed to send verification email: %w", err)
+	}
+	return nil
+}
+
+func (s *serviceImpl) setPassword(ctx context.Context, userToken *token.UserPayload, code string, password string) (*authResult, error) {
+	if userToken.Email == nil {
+		return nil, errors.New("email not set")
+	}
+	if storedCode, err := s.kvStore.Get(ctx, fmt.Sprintf(s.cfg.EmailPassKey, userToken.UserID)); err != nil || storedCode != code {
+		return nil, ErrInvalidCode
+	}
+	if err := s.kvStore.Del(ctx, fmt.Sprintf(s.cfg.EmailPassKey, userToken.UserID)); err != nil {
+		slog.Error("failed to delete email code", "error", err)
+	}
+	hashedPassword, err := s.hashPass(password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+	user, err := s.repo.UpdateUser(ctx, userToken.UserID, &model.UserUpdate{
+		PassHash: &hashedPassword,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+	return s.loginUser(ctx, user)
+}
+
+func (s *serviceImpl) logoutUser(ctx context.Context, refreshToken string) error {
+	username, err := s.kvStore.Get(ctx, refreshToken)
+	if err != nil {
+		return fmt.Errorf("failed to find ref tokens: %w", err)
+	}
+	return s.unsetRefreshToken(ctx, username, refreshToken)
+}
+
+func (s *serviceImpl) refreshUser(ctx context.Context, refreshToken string) (*authResult, error) {
+	username, err := s.kvStore.Get(ctx, refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("invalid refresh token: %w", err)
+	}
+	user, err := s.repo.ReadUserByName(ctx, username)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+	return s.loginUser(ctx, user)
 }
 
 func (s *serviceImpl) sendEmailCode(ctx context.Context, email string) error {
