@@ -10,6 +10,7 @@ import (
 
 type Mailer interface {
 	VerificationEmail(email, code string) error
+	SendLoginCode(email, username, code string) error
 }
 
 type resendMailer struct {
@@ -44,6 +45,27 @@ func (s *resendMailer) VerificationEmail(email, code string) error {
 	return nil
 }
 
+func (s *resendMailer) SendLoginCode(email, username, code string) error {
+	emailBody := fmt.Sprintf(`
+		<h1>Login Code</h1>
+		<p>Hello %s,</p>
+		<p>Your login code is: <strong>%s</strong></p>
+		<p>This code will expire in 10 minutes.</p>
+		<p>If you didn't request this code, you can safely ignore this email.</p>
+	`, username, code)
+
+	if _, err := s.client.Emails.Send(&resend.SendEmailRequest{
+		From:    s.from,
+		To:      []string{email},
+		Subject: "Your Login Code",
+		Html:    emailBody,
+	}); err != nil {
+		return fmt.Errorf("failed to send login code email: %w", err)
+	}
+
+	return nil
+}
+
 type mockMailer struct{}
 
 func NewMockMailer() Mailer {
@@ -52,5 +74,10 @@ func NewMockMailer() Mailer {
 
 func (m *mockMailer) VerificationEmail(email, code string) error {
 	fmt.Printf("***** Verification Code for %s: %s *****\n", email, code)
+	return nil
+}
+
+func (m *mockMailer) SendLoginCode(email, username, code string) error {
+	fmt.Printf("***** Login Code for %s: %s *****\n", email, code)
 	return nil
 }

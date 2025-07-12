@@ -7,18 +7,18 @@ import (
 )
 
 type Auth struct {
-	AccCookieName   string
-	AccSecret       string
-	AccTTL          time.Duration
-	RefCookieName   string
-	RefStoredFormat string
-	RefTTL          time.Duration
-	Issuer          string
-	Audience        string
-	Domain          string
-	EmailCodeTTL    time.Duration
-	EmailSetupKey   string
-	EmailLoginKey   string
+	AccCookieName string
+	AccSecret     string
+	AccTTL        time.Duration
+	RefCookieName string
+	RefreshKey    string
+	RefTTL        time.Duration
+	Issuer        string
+	Audience      string
+	Domain        string
+	EmailCodeTTL  time.Duration
+	EmailSetupKey string
+	EmailLoginKey string
 }
 
 type DB struct {
@@ -67,18 +67,19 @@ func Load() (*AppConfig, error) {
 			MailFrom: os.Getenv("MAIL_FROM"),
 		},
 		Auth: &Auth{
-			AccCookieName:   "access_token",
-			AccSecret:       os.Getenv("JWT_ACCESS_SECRET"),
-			AccTTL:          10 * time.Minute,
-			RefCookieName:   "refresh_token",
-			RefStoredFormat: "refToken:%v",
-			RefTTL:          24 * time.Hour,
-			Issuer:          "gonext",
-			Audience:        "AuthService",
-			Domain:          os.Getenv("DOMAIN"),
-			EmailCodeTTL:    10 * time.Minute,
-			EmailSetupKey:   "emailSetup:%d",
-			EmailLoginKey:   "emailLogin:%d",
+			AccCookieName: "access_token",
+			AccSecret:     os.Getenv("JWT_ACCESS_SECRET"),
+			AccTTL:        10 * time.Minute,
+			RefCookieName: "refresh_token",
+			RefTTL:        24 * time.Hour,
+			Issuer:        "gonext",
+			Audience:      "AuthService",
+			Domain:        os.Getenv("DOMAIN"),
+			EmailCodeTTL:  10 * time.Minute,
+
+			RefreshKey:    "refToken:%v",
+			EmailSetupKey: "emailSetup:%v|%v",
+			EmailLoginKey: "emailLogin:%v",
 		},
 		DB: &DB{
 			PostgresUrl:  os.Getenv("POSTGRES_URL"),

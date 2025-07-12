@@ -50,7 +50,6 @@ func (h *handlerImpl) indexHandler() http.HandlerFunc {
 	}
 }
 
-// setAuthCookie sets an HTTP-only cookie with the given name, value, and expiration
 func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path string, expires time.Time) {
 	cookie := &http.Cookie{
 		Name:     name,
@@ -58,7 +57,7 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 		Path:     path,
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   false, // Set based on your environment
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 	}
 
@@ -69,37 +68,41 @@ func (h *handlerImpl) setAuthCookie(w http.ResponseWriter, name, value, path str
 	http.SetCookie(w, cookie)
 }
 
-// setAuthCookies sets both access and refresh token cookies
-func (h *handlerImpl) setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string, expiresIn int) {
-	// Set access token cookie (short-lived)
+func (h *handlerImpl) setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) time.Time {
 	h.setAuthCookie(
 		w,
-		h.cfg.AccCookieName, // Use configured cookie name
-		accessToken,
-		"/",
-		time.Now().Add(time.Duration(expiresIn)*time.Second),
-	)
-
-	// Set refresh token cookie (long-lived)
-	h.setAuthCookie(
-		w,
-		h.cfg.RefCookieName, // Use configured cookie name
+		h.cfg.RefCookieName,
 		refreshToken,
 		"/api/auth/refresh",
-		time.Now().Add(h.cfg.RefTTL*time.Second), // Use configured TTL
+		time.Now().Add(h.cfg.RefTTL),
 	)
+	expires := time.Now().Add(h.cfg.AccTTL)
+	h.setAuthCookie(
+		w,
+		h.cfg.AccCookieName,
+		accessToken,
+		"/",
+		expires,
+	)
+	return expires
+}
+
+func (h *handlerImpl) decodeValidate(w http.ResponseWriter, r *http.Request, v any) bool {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
+		return false
+	}
+	if err := h.validate.Struct(v); err != nil {
+		util.RespondErr(w, http.StatusBadRequest, "Validation failed", err)
+		return false
+	}
+	return true
 }
 
 func (h *handlerImpl) guestHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req model.UserNames
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
-			return
-		}
-
-		if err := validator.New(validator.WithRequiredStructEnabled()).Struct(req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Validation failed", err)
+		if !h.decodeValidate(w, r, &req) {
 			return
 		}
 
@@ -114,11 +117,8 @@ func (h *handlerImpl) guestHandler() http.HandlerFunc {
 			return
 		}
 
-		accessExpires := time.Now().Add(h.cfg.AccTTL)
-		h.setAuthCookie(w, "access_token", result.access, "/", accessExpires)
-		h.setAuthCookie(w, "refresh_token", result.refresh, "/auth/refresh", time.Now().Add(h.cfg.RefTTL))
-
-		util.RespondJSON(w, http.StatusCreated, result.user.ToAuthResponse(accessExpires))
+		expires := h.setAuthCookies(w, result.access, result.refresh)
+		util.RespondJSON(w, http.StatusCreated, result.user.ToAuthResponse(expires))
 	}
 }
 
@@ -158,11 +158,8 @@ func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 			return
 		}
 
-		accessExpires := time.Now().Add(h.cfg.AccTTL)
-		h.setAuthCookie(w, "access_token", result.access, "/", accessExpires)
-		h.setAuthCookie(w, "refresh_token", result.refresh, "/auth/refresh", time.Now().Add(h.cfg.RefTTL))
-
-		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(accessExpires))
+		expires := h.setAuthCookies(w, result.access, result.refresh)
+		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
 	}
 }
 
@@ -174,15 +171,8 @@ func (h *handlerImpl) setupEmailHandler() http.HandlerFunc {
 			return
 		}
 
-		var req model.SetupEmail
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			slog.Error("failed to decode request body", "error", err)
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request body", nil)
-			return
-		}
-
-		if err := h.validate.Struct(req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Invalid email address", nil)
+		var req model.Email
+		if !h.decodeValidate(w, r, &req) {
 			return
 		}
 
@@ -207,13 +197,7 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 		}
 
 		var req model.VerifyEmail
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
-			return
-		}
-
-		if err := h.validate.Struct(req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Validation failed", err)
+		if !h.decodeValidate(w, r, &req) {
 			return
 		}
 
@@ -221,17 +205,16 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, ErrInvalidCode) {
 				util.RespondErr(w, http.StatusBadRequest, "Invalid or expired verification code", nil)
+			} else if errors.Is(err, ErrAlreadySet) {
+				util.RespondErr(w, http.StatusBadRequest, "Email is already set", nil)
 			} else {
 				util.RespondErr(w, http.StatusInternalServerError, "Failed to verify email", err)
 			}
 			return
 		}
 
-		accessExpires := time.Now().Add(h.cfg.AccTTL)
-		h.setAuthCookie(w, "access_token", result.access, "/", accessExpires)
-		h.setAuthCookie(w, "refresh_token", result.refresh, "/auth/refresh", time.Now().Add(h.cfg.RefTTL))
-
-		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(accessExpires))
+		expires := h.setAuthCookies(w, result.access, result.refresh)
+		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
 	}
 }
 
@@ -243,12 +226,7 @@ func (h *handlerImpl) changePasswordHandler() http.HandlerFunc {
 			return
 		}
 		var req model.UserPass
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
-			return
-		}
-		if err := h.validate.Struct(req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Validation failed", err)
+		if !h.decodeValidate(w, r, &req) {
 			return
 		}
 
@@ -271,60 +249,28 @@ func (h *handlerImpl) changePasswordHandler() http.HandlerFunc {
 	}
 }
 
-// emailCodeHandler handles requests to send a login code to an email
 func (h *handlerImpl) emailCodeHandler() http.HandlerFunc {
-	type request struct {
-		Email string `json:"email" validate:"required,email"`
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
+		var req model.Email
+		if !h.decodeValidate(w, r, &req) {
 			return
 		}
 
-		if err := h.validate.Struct(req); err != nil {
-			util.RespondErr(w, http.StatusBadRequest, "Validation failed", err)
-			return
-		}
-
-		// Send the login code via email
-		if err := h.service.sendEmailCode(r.Context(), req.Email); err != nil {
+		if err := h.service.sendEmailCode(r.Context(), req.Email); err != nil && !errors.Is(err, repo.ErrAlreadyExists) {
 			slog.Error("failed to send email code", "error", err, "email", req.Email)
-			// Don't leak information about whether the email exists
-			util.RespondErr(w, http.StatusOK, "If the email is registered, you will receive a login code", nil)
-			return
 		}
-
-		util.RespondJSON(w, http.StatusOK, map[string]string{
-			"message": "If the email is registered, you will receive a login code",
-		})
+		util.RespondJSON(w, http.StatusOK, map[string]string{"message": "Email may be sent"})
 	}
 }
 
-// emailLoginHandler handles login with email and code
 func (h *handlerImpl) emailLoginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Email string `json:"email" validate:"required,email"`
-			Code  string `json:"code" validate:"required"`
-		}
-
-		// Decode and validate request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			slog.Error("failed to decode email login request", "error", err)
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", nil)
+		var req model.EmailLogin
+		if !h.decodeValidate(w, r, &req) {
+			slog.Info("email login validation failed", "email", req.Email)
 			return
 		}
 
-		if err := h.validate.Struct(req); err != nil {
-			slog.Info("email login validation failed", "email", req.Email, "error", err)
-			util.RespondErr(w, http.StatusBadRequest, "Invalid input", nil)
-			return
-		}
-
-		// Attempt login with email code
 		result, err := h.service.loginWithEmailCode(r.Context(), req.Email, req.Code)
 		if err != nil {
 			slog.Info("email code login failed", "email", req.Email, "error", err)
@@ -332,69 +278,23 @@ func (h *handlerImpl) emailLoginHandler() http.HandlerFunc {
 			return
 		}
 
-		// Convert token TTL to seconds for the cookie
-		expiresIn := int(h.cfg.AccTTL.Seconds())
-
-		// Set auth cookies
-		h.setAuthCookies(w, result.access, result.refresh, expiresIn)
-
-		// Log successful login
-		slog.Info("successful email code login", "user_id", result.user.ID, "email", req.Email)
-
-		// Return success response
-		util.RespondJSON(w, http.StatusOK, map[string]interface{}{
-			"user":          result.user,
-			"access_token":  result.access,
-			"expires_in":    expiresIn,
-			"refresh_token": result.refresh,
-		})
+		expires := h.setAuthCookies(w, result.access, result.refresh)
+		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
 	}
 }
 
-// loginHandler handles login with email and password
 func (h *handlerImpl) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Email    string `json:"email" validate:"required,email"`
-			Password string `json:"password" validate:"required"`
-		}
-
-		// Decode and validate request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			slog.Error("failed to decode login request", "error", err)
-			util.RespondErr(w, http.StatusBadRequest, "Invalid request", nil)
+		var req model.PasswordLogin
+		if !h.decodeValidate(w, r, &req) {
 			return
 		}
-
-		if err := h.validate.Struct(req); err != nil {
-			slog.Info("login validation failed", "email", req.Email, "error", err)
-			util.RespondErr(w, http.StatusBadRequest, "Invalid input", nil)
-			return
-		}
-
-		// Attempt login with email and password
 		result, err := h.service.loginWithPassword(r.Context(), req.Email, req.Password)
 		if err != nil {
-			slog.Info("password login failed", "email", req.Email, "error", err)
 			util.RespondErr(w, http.StatusUnauthorized, "Invalid email or password", nil)
 			return
 		}
-
-		// Convert token TTL to seconds for the cookie
-		expiresIn := int(h.cfg.AccTTL.Seconds())
-
-		// Set auth cookies
-		h.setAuthCookies(w, result.access, result.refresh, expiresIn)
-
-		// Log successful login
-		slog.Info("successful password login", "user_id", result.user.ID, "email", req.Email)
-
-		// Return success response
-		util.RespondJSON(w, http.StatusOK, map[string]interface{}{
-			"user":          result.user,
-			"access_token":  result.access,
-			"expires_in":    expiresIn,
-			"refresh_token": result.refresh,
-		})
+		expires := h.setAuthCookies(w, result.access, result.refresh)
+		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
 	}
 }

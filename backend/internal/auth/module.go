@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"errors"
-
 	"github.com/go-chi/chi/v5"
 
 	"gonext/internal/config"
@@ -45,7 +43,3 @@ type authResult struct {
 	refresh string
 	user    *model.User
 }
-
-var (
-	ErrInvalidCode = errors.New("invalid or expired verification code")
-)

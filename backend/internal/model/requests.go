@@ -34,7 +34,7 @@ func (u *User) ToAuthResponse(expiresAt time.Time) *AuthResponse {
 	}
 }
 
-type SetupEmail struct {
+type Email struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
@@ -42,7 +42,17 @@ type VerifyEmail struct {
 	Code string `json:"code" validate:"required,len=6"`
 }
 
+type EmailLogin struct {
+	Email string `json:"email" validate:"required,email"`
+	Code  string `json:"code" validate:"required,len=6"`
+}
+
 type UpgradeResponse struct {
 	Message string        `json:"message"`
 	User    *UserResponse `json:"user,omitempty"`
+}
+
+type PasswordLogin struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }

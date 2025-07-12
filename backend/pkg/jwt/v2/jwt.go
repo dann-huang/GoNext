@@ -16,9 +16,6 @@ type Manager[P any] interface {
 
 func NewManager[P any](secret string, expiry time.Duration, issuer, audience string, payloadType P) (Manager[P], error) {
 	val := reflect.ValueOf(payloadType)
-	// if val.Kind() == reflect.Ptr {
-	// 	val = val.Elem()
-	// }
 	if val.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("jwt: payloadType must be struct")
 	}
@@ -91,8 +88,6 @@ func (m *jwtManager[P]) ValidateToken(token string) (*P, error) {
 	if !ok {
 		return nil, fmt.Errorf("fwt: payload doesn't conform to type %v", m.payloadType)
 	}
-	//payload := reflect.New(m.payloadType).Elem().Interface().(P) //or do this
-
 	err = json.Unmarshal(claims.Payload, payloadPtr)
 	if err != nil {
 		return nil, fmt.Errorf("fwt: payload unmarshal failed %w", err)

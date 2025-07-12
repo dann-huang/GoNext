@@ -14,8 +14,10 @@ type UserRepo interface {
 	CreateUser(ctx context.Context, user *model.User) (*model.User, error)
 	ReadUserByName(ctx context.Context, username string) (*model.User, error)
 	ReadUserByID(ctx context.Context, id int) (*model.User, error)
+	ReadUserByEmail(ctx context.Context, email string) (*model.User, error)
 	UpdateUser(ctx context.Context, username string, params *model.UserUpdate) (*model.User, error)
 	DeleteUser(ctx context.Context, username string) error
+	UpdateLastLogin(ctx context.Context, id int) error
 }
 
 func newUserRepo(db *sql.DB) UserRepo {
@@ -35,12 +37,18 @@ func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.U
 		          created_at, updated_at, last_login_at
 	`
 
+	var lowerEmail *string
+	if user.Email != nil {
+		temp := strings.ToLower(*user.Email)
+		lowerEmail = &temp
+	}
+
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
 		user.Username,
 		user.DisplayName,
-		sql.NullString{String: *user.Email, Valid: user.Email != nil},
+		sql.NullString{String: *lowerEmail, Valid: lowerEmail != nil},
 		sql.NullString{String: *user.PassHash, Valid: user.PassHash != nil},
 		user.AccountType,
 	).Scan(
@@ -128,14 +136,47 @@ func (r *pgUserRepo) ReadUserByID(ctx context.Context, id int) (*model.User, err
 	return &user, nil
 }
 
+func (r *pgUserRepo) ReadUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	var user model.User
+	query := `
+		SELECT id, username, displayname, email, passhash, account_type, 
+		       created_at, updated_at, last_login_at
+		FROM users 
+		WHERE email = $1 AND deleted_at IS NULL
+	`
+
+	lowerEmail := strings.ToLower(email)
+	err := r.db.QueryRowContext(ctx, query, lowerEmail).Scan(
+		&user.ID,
+		&user.Username,
+		&user.DisplayName,
+		&user.Email,
+		&user.PassHash,
+		&user.AccountType,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.LastLoginAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("%w: user not found with email %s", ErrNotFound, email)
+		}
+		return nil, fmt.Errorf("repo: failed to get user by email: %w", err)
+	}
+
+	return &user, nil
+}
+
 func (r *pgUserRepo) UpdateUser(ctx context.Context, username string, params *model.UserUpdate) (*model.User, error) {
 	updates := []string{}
 	args := []any{}
 	argCounter := 1
 
 	if params.Email != nil {
+		lowerEmail := strings.ToLower(*params.Email)
 		updates = append(updates, fmt.Sprintf("email = $%d", argCounter))
-		args = append(args, *params.Email)
+		args = append(args, lowerEmail)
 		argCounter++
 	}
 	if params.Username != nil {
@@ -223,7 +264,6 @@ func (r *pgUserRepo) DeleteUser(ctx context.Context, username string) error {
 	return nil
 }
 
-// UpdateLastLogin updates the last login timestamp for a user
 func (r *pgUserRepo) UpdateLastLogin(ctx context.Context, id int) error {
 	result, err := r.db.ExecContext(
 		ctx,
