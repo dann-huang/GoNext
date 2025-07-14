@@ -5,7 +5,7 @@ interface InitState {
   setParticlesInit: (init: boolean) => void;
 }
 
-export default create<InitState>()((set) => ({
+export default create<InitState>()(set => ({
   particlesInit: false,
   setParticlesInit: (init: boolean) => set({ particlesInit: init }),
 }));

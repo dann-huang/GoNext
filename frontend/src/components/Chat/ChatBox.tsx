@@ -40,7 +40,7 @@ export default function ChatBox() {
       <div className="px-3 py-2 bg-primary text-on-primary border-b border-secondary">
         {showRoomInput ? (
           <form
-            onSubmit={(e) => {
+            onSubmit={e => {
               e.preventDefault();
               if (newRoom.trim()) {
                 joinRoom(newRoom.trim());
@@ -79,7 +79,7 @@ export default function ChatBox() {
               <SquarePen className="w-4 h-4" />
             </div>
             <button
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 leaveRoom();
               }}
@@ -153,7 +153,7 @@ export default function ChatBox() {
           type="text"
           placeholder="Compose message here..."
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={e => setMessage(e.target.value)}
           className="flex-grow rounded-r-none"
         />
         <Button type="submit" className="rounded-l-none border-secondary">

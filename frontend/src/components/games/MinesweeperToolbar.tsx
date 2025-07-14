@@ -84,7 +84,7 @@ export function MineToolbar({ gameState, reset, remainingMines, setDiff }: Toolb
         variant='ghost'
         selectSize='sm'
         text='Difficulty'
-        onChange={(value) => handleDifficultyChange(value)}
+        onChange={value => handleDifficultyChange(value)}
         options={Object.keys(DIFFICULTIES)}
         className='w-full'
         menuClassName='w-full'

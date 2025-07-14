@@ -23,7 +23,7 @@ const scheduleRefresh = (refresh: () => Promise<boolean>) => {
 };
 
 export const useTokenRefresh = (dependency: object) => {
-  const { refresh, accessValid } = useUserStore((state) => state);
+  const { refresh, accessValid } = useUserStore(state => state);
 
   useEffect(() => {
     refreshDependents.set(dependency, true);

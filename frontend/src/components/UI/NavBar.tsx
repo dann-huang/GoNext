@@ -60,7 +60,7 @@ const MobileNavItem = ({
   const hasChildren = item.children && item.children.length > 0;
   const isActive =
     pathname === item.href ||
-    item.children?.some((child) => child.href === pathname);
+    item.children?.some(child => child.href === pathname);
 
   return (
     <div className="w-full">
@@ -91,7 +91,7 @@ const MobileNavItem = ({
       </div>
       {hasChildren && isOpen && (
         <div className="ml-4 mt-1 space-y-1">
-          {item.children?.map((child) => (
+          {item.children?.map(child => (
             <Link
               key={child.href}
               href={child.href}
@@ -137,7 +137,7 @@ export default function NavBar() {
   }, [isOpen]);
 
   return (
-    <header className="fixed w-full top-0 z-50 bg-primary/95 backdrop-blur-sm shadow-md">
+    <header className="sticky w-full top-0 z-50 bg-primary/95 backdrop-blur-sm shadow-md">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex-shrink-0">
@@ -150,11 +150,11 @@ export default function NavBar() {
           </div>
 
           <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item, i) => {
+            {navItems.map(item => {
               const hasChildren = item.children && item.children.length > 0;
               const isActive =
                 pathname === item.href ||
-                item.children?.some((child) => child.href === pathname);
+                item.children?.some(child => child.href === pathname);
 
               if (hasChildren) {
                 return (
@@ -183,7 +183,7 @@ export default function NavBar() {
                     </button>
                     <div className="absolute left-0 mt-1 w-56 rounded-md shadow-lg bg-primary border border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                       <div className="py-1">
-                        {item.children?.map((child) => (
+                        {item.children?.map(child => (
                           <NavLink
                             key={child.href}
                             item={child}
@@ -248,7 +248,7 @@ export default function NavBar() {
         }`}
       >
         <div className="px-2 pt-2 pb-4 space-y-1 sm:px-3 bg-primary/95 backdrop-blur-sm">
-          {navItems.map((item) => (
+          {navItems.map(item => (
             <MobileNavItem key={item.href} item={item} pathname={pathname} />
           ))}
           <div className="px-4 py-2">

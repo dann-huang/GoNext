@@ -10,7 +10,7 @@ import { MessageCircleMore, X } from 'lucide-react';
 
 export default function ChatWindow() {
   const [isOpen, setIsOpen] = useState(false);
-  const expire = useUserStore((state) => state.accessExp);
+  const expire = useUserStore(state => state.accessExp);
   const loggedIn = expire > Date.now();
   useWSConnect();
 

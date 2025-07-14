@@ -37,7 +37,7 @@ export default function LoginGuest() {
         type="text"
         placeholder="Enter name here"
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={e => setName(e.target.value)}
         disabled={isLoading}
         className="w-full mt-2"
       />

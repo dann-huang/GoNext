@@ -83,7 +83,7 @@ export function Select({
         role="listbox"
         tabIndex={-1}
       >
-        {options.map((option) => (
+        {options.map(option => (
           <button
             key={option}
             onClick={() => handleOptionClick(option)}

@@ -5,7 +5,7 @@ import Button from '@/components/UI/Button';
 
 export default function LivePage() {
   return <div className='w-full max-w-3xl mx-auto p-6'>
-    <h1 className='text-3xl font-bold mb-6'>Let&apos;s Go Live!</h1>
+    <h1 className='text-3xl font-bold mb-6'>Go Live!</h1>
     
     <div className='bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-8 rounded'>
       <p className='font-semibold'>👋 Getting Started</p>

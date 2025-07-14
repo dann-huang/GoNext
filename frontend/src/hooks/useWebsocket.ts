@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import useUserStore from './useUserStore';
 import * as t from '@/types/wsTypes';
 import { create } from 'zustand';
 import { useTokenRefresh } from './useTokenRefresh';
@@ -77,7 +76,7 @@ const useWebSocket = create<WSState>()((set, get) => ({
           case t.msgChat:
           case t.msgStatus:
           case t.msgError:
-            set((state) => ({ ...state, msgLog: [...state.msgLog, msg] }));
+            set(state => ({ ...state, msgLog: [...state.msgLog, msg] }));
             break;
 
           case t.msgRawSignal:
@@ -115,7 +114,7 @@ const useWebSocket = create<WSState>()((set, get) => ({
       }
     };
 
-    ws.onclose = (event) => {
+    ws.onclose = event => {
       console.debug('WS closed:', event.code, event.reason);
       set({
         error: `WS disconnected: code ${event.code}, reason: ${
@@ -167,7 +166,7 @@ const useWebSocket = create<WSState>()((set, get) => ({
     const msg: t.LeaveRoomMsg = { type: t.msgLeaveRoom };
     get().sendMessage(msg);
   },
-  setVidSigHandler: (handler) => {
+  setVidSigHandler: handler => {
     vidSigHandler = handler;
   },
   sendVidSignal: (payload: t.VidSignalMsg['payload']) => {
@@ -177,7 +176,7 @@ const useWebSocket = create<WSState>()((set, get) => ({
   setDrawHandler: (handler: (data: t.DrawPayload) => void) => {
     drawHandler = handler;
   },
-  setGameHandler: (handler) => {
+  setGameHandler: handler => {
     gameHandler = handler;
   },
   sendGameMsg: (payload: t.GamePayload) => {

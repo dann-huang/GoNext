@@ -45,7 +45,7 @@ const useUserStore = create<UserState>()(
         },
         logout: () => {
           set({ ...blankUser });
-          authRoutes.logout().catch((err) => {
+          authRoutes.logout().catch(err => {
             console.error('logout err ', err);
           });
         },

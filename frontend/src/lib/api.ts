@@ -7,11 +7,11 @@ type ApiResponse<T> = {
 };
 
 async function handleSend<T>(route: string, options: RequestInit): Promise<T> {
-  const response = await fetch(route, options).catch((e) => {
+  const response = await fetch(route, options).catch(e => {
     console.warn('fetch err ', e);
     throw new Error('Network error');
   });
-  const data: ApiResponse<T> = await response.json().catch((e) => {
+  const data: ApiResponse<T> = await response.json().catch(e => {
     console.error('json err ', e);
     return {};
   });

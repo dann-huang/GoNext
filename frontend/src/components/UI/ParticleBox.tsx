@@ -75,5 +75,5 @@ export default function ParticleBox() {
 
   if (!particlesInit) return null;
 
-  return <Particles id="tsparticles" options={options} />;
+  return <Particles id="tsparticles" options={options} className='pointer-events-none'/>;
 }

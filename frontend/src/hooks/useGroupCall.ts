@@ -63,18 +63,18 @@ export default function useGroupCall() {
   const createPeer = useCallback((peerUsername: string) => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
 
-    pc.onicecandidate = (event) => {
+    pc.onicecandidate = event => {
       if (event.candidate) {
         sendSignal({ type: 'ice', target: peerUsername, candidate: event.candidate.toJSON() });
       }
     };
 
-    pc.ontrack = (event) => {
+    pc.ontrack = event => {
       dispatch({ type: 'SET_STREAM', payload: { username: peerUsername, stream: event.streams[0] } });
     };
 
     if (localStream) {
-      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
 
     dispatch({ type: 'ADD_PEER', payload: { username: peerUsername, conn: pc } });
@@ -165,7 +165,7 @@ export default function useGroupCall() {
 
   const leaveCall = () => {
     if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+      localStream.getTracks().forEach(track => track.stop());
     }
     dispatch({ type: 'CLEAR_PEERS' });
     setLocalStream(null);
@@ -175,7 +175,7 @@ export default function useGroupCall() {
 
   const toggleAudio = () => {
     if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
+      localStream.getAudioTracks().forEach(track => {
         track.enabled = !audioOn;
       });
       setAudioOn(!audioOn);
@@ -184,7 +184,7 @@ export default function useGroupCall() {
 
   const toggleVideo = () => {
     if (localStream) {
-      localStream.getVideoTracks().forEach((track) => {
+      localStream.getVideoTracks().forEach(track => {
         track.enabled = !videoOn;
       });
       setVideoOn(!videoOn);
