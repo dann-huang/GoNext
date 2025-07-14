@@ -33,12 +33,10 @@ const useUserStore = create<UserState>()(
     (set, get) => {
       return {
         ...blankUser,
-        guestLogin: async (displayName: string) => {
+        guestLogin: async (name: string) => {
           set({ loading: true, error: '' });
           try {
-            const { user, accessExp } = await authRoutes.registerGuest(
-              displayName
-            );
+            const { user, accessExp } = await authRoutes.registerGuest(name);
             set({
               username: user.username,
               displayName: user.displayName,
@@ -56,8 +54,8 @@ const useUserStore = create<UserState>()(
           }
         },
         logout: () => {
-          set({ ...blankUser, loading: false, error:'' });
-          authRoutes.logout().catch(e=>{
+          set({ ...blankUser, loading: false, error: '' });
+          authRoutes.logout().catch((e) => {
             console.error('userstore logout err ', e);
           });
         },
