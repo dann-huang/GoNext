@@ -28,7 +28,7 @@ type handler interface {
 
 	emailCodeHandler() http.HandlerFunc
 	emailLoginHandler() http.HandlerFunc
-	loginHandler() http.HandlerFunc
+	passLoginHandler() http.HandlerFunc
 }
 
 func newHandler(service service, config *config.Auth) handler {
@@ -88,6 +88,17 @@ func (h *handlerImpl) setAuthCookies(w http.ResponseWriter, accessToken, refresh
 	return expires
 }
 
+func (h *handlerImpl) authResponse(w http.ResponseWriter, code int, user *model.User, expiresAt time.Time) {
+	util.RespondJSON(w, code, &authRes{
+		User: &userInfo{
+			Username:    user.Username,
+			DisplayName: user.DisplayName,
+			AccountType: string(user.AccountType),
+		},
+		AccessExp: expiresAt.UnixMilli(),
+	})
+}
+
 func (h *handlerImpl) decodeValidate(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
 		util.RespondErr(w, http.StatusBadRequest, "Invalid request", err)
@@ -102,7 +113,7 @@ func (h *handlerImpl) decodeValidate(w http.ResponseWriter, r *http.Request, v a
 
 func (h *handlerImpl) guestHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.GuestRequest
+		var req guestReq
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
@@ -118,7 +129,7 @@ func (h *handlerImpl) guestHandler() http.HandlerFunc {
 		}
 
 		expires := h.setAuthCookies(w, result.access, result.refresh)
-		util.RespondJSON(w, http.StatusCreated, result.user.ToAuthResponse(expires))
+		h.authResponse(w, http.StatusCreated, result.user, expires)
 	}
 }
 
@@ -159,7 +170,7 @@ func (h *handlerImpl) refreshHandler() http.HandlerFunc {
 		}
 
 		expires := h.setAuthCookies(w, result.access, result.refresh)
-		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
+		h.authResponse(w, http.StatusOK, result.user, expires)
 	}
 }
 
@@ -170,7 +181,7 @@ func (h *handlerImpl) setEmailHandler() http.HandlerFunc {
 			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
-		var req model.Email
+		var req setEmailReq
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
@@ -192,7 +203,7 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
-		var req model.EmailCode
+		var req verifyEmailReq
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
@@ -211,7 +222,7 @@ func (h *handlerImpl) verifyEmailHandler() http.HandlerFunc {
 		}
 
 		expires := h.setAuthCookies(w, result.access, result.refresh)
-		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
+		h.authResponse(w, http.StatusOK, result.user, expires)
 	}
 }
 
@@ -249,7 +260,7 @@ func (h *handlerImpl) setPassHandler() http.HandlerFunc {
 			util.RespondErr(w, http.StatusUnauthorized, "User not authenticated", nil)
 			return
 		}
-		var req model.PassRequest
+		var req passReq
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
@@ -259,13 +270,13 @@ func (h *handlerImpl) setPassHandler() http.HandlerFunc {
 			return
 		}
 		expires := h.setAuthCookies(w, result.access, result.refresh)
-		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
+		h.authResponse(w, http.StatusOK, result.user, expires)
 	}
 }
 
 func (h *handlerImpl) emailCodeHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.Email
+		var req setEmailReq
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
@@ -279,7 +290,7 @@ func (h *handlerImpl) emailCodeHandler() http.HandlerFunc {
 
 func (h *handlerImpl) emailLoginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.EmailLogin
+		var req emailLoginReq
 		if !h.decodeValidate(w, r, &req) {
 			slog.Info("email login validation failed", "email", req.Email)
 			return
@@ -293,22 +304,22 @@ func (h *handlerImpl) emailLoginHandler() http.HandlerFunc {
 		}
 
 		expires := h.setAuthCookies(w, result.access, result.refresh)
-		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
+		h.authResponse(w, http.StatusOK, result.user, expires)
 	}
 }
 
-func (h *handlerImpl) loginHandler() http.HandlerFunc {
+func (h *handlerImpl) passLoginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req model.PasswordLogin
+		var req passLoginReq
 		if !h.decodeValidate(w, r, &req) {
 			return
 		}
-		result, err := h.service.passwordLogin(r.Context(), req.Email, req.Password)
+		result, err := h.service.passwordLogin(r.Context(), req.Email, req.Pass)
 		if err != nil {
 			util.RespondErr(w, http.StatusUnauthorized, "Invalid email or password", nil)
 			return
 		}
 		expires := h.setAuthCookies(w, result.access, result.refresh)
-		util.RespondJSON(w, http.StatusOK, result.user.ToAuthResponse(expires))
+		h.authResponse(w, http.StatusOK, result.user, expires)
 	}
 }

@@ -16,16 +16,8 @@ func newRouter(h handler, authMdw Middleware) chi.Router {
 	r.Post("/logout", h.logoutHandler())
 	r.Post("/refresh", h.refreshHandler())
 
-	r.Route("/email", func(r chi.Router) {
-		r.Post("/code", h.emailCodeHandler())
-		r.Post("/login", h.emailLoginHandler())
-	})
-
-	r.Post("/login", h.loginHandler())
-
 	r.Group(func(r chi.Router) {
 		r.Use(authMdw)
-
 		r.Route("/email", func(r chi.Router) {
 			r.Post("/setup", h.setEmailHandler())
 			r.Post("/verify", h.verifyEmailHandler())
@@ -34,6 +26,12 @@ func newRouter(h handler, authMdw Middleware) chi.Router {
 			r.Post("/request", h.reqPassHandler())
 			r.Post("/set", h.setPassHandler())
 		})
+	})
+
+	r.Route("/login", func(r chi.Router) {
+		r.Post("/getCode", h.emailCodeHandler())
+		r.Post("/useCode", h.emailLoginHandler())
+		r.Post("/password", h.passLoginHandler())
 	})
 
 	return r

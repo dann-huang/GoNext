@@ -1,19 +1,18 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import useUserRoute from './useUserRoute';
+import getAuthRoutes from '../api/authRoutes';
 import { UserInfo } from '@/types/authTypes';
 
-interface UserState extends Omit<UserInfo, 'accountType'> {
-  loading: boolean;
+interface UserState extends UserInfo {
   accessExp: number;
   error: string;
-  isGuest: boolean;
-  registerAsGuest: (displayName: string) => Promise<boolean>;
-  requestEmailCode: (email: string) => Promise<boolean>;
-  loginWithEmailCode: (email: string, code: string) => Promise<boolean>;
-  loginWithPassword: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  loading: boolean;
+
+  guestLogin: (displayName: string) => Promise<boolean>;
+
+  logout: () => void;
   refresh: () => Promise<boolean>;
+
   clearError: () => void;
   accessValid: () => boolean;
 }
@@ -21,29 +20,30 @@ interface UserState extends Omit<UserInfo, 'accountType'> {
 const blankUser = {
   username: '',
   displayName: '',
-  loading: false,
+  accountType: '',
   accessExp: 0,
   error: '',
-  isGuest: false,
+  loading: false,
 };
+
+const authRoutes = getAuthRoutes();
 
 const useUserStore = create<UserState>()(
   persist(
     (set, get) => {
-      const userRoute = useUserRoute();
-
       return {
         ...blankUser,
-        registerAsGuest: async (displayName: string) => {
+        guestLogin: async (displayName: string) => {
           set({ loading: true, error: '' });
           try {
-            const { user, accessExp: accessExpires } =
-              await userRoute.registerAsGuest(displayName);
+            const { user, accessExp } = await authRoutes.registerGuest(
+              displayName
+            );
             set({
               username: user.username,
               displayName: user.displayName,
-              accessExp: accessExpires * 1000, // Convert to milliseconds
-              isGuest: user.accountType === 'guest',
+              accountType: user.accountType,
+              accessExp,
               loading: false,
               error: '',
             });
@@ -55,85 +55,29 @@ const useUserStore = create<UserState>()(
             return false;
           }
         },
-        requestEmailCode: async (email: string) => {
-          set({ loading: true, error: '' });
-          try {
-            await userRoute.requestEmailCode(email);
-            set({ loading: false });
-            return true;
-          } catch (err: unknown) {
-            console.error('Failed to request email code:', err);
-            const msgErr = err as { message: string };
-            set({ error: msgErr.message, loading: false });
-            return false;
-          }
-        },
-        loginWithEmailCode: async (email: string, code: string) => {
-          set({ loading: true, error: '' });
-          try {
-            const { user, accessExp } = await userRoute.loginWithEmailCode(email, code);
-            set({
-              username: user.username,
-              displayName: user.displayName,
-              accessExp,
-              isGuest: user.accountType === 'guest',
-              loading: false,
-              error: '',
-            });
-            return true;
-          } catch (err: unknown) {
-            console.error('Login with email code failed:', err);
-            const msgErr = err as { message: string };
-            set({ error: msgErr.message, loading: false });
-            return false;
-          }
-        },
-        loginWithPassword: async (email: string, password: string) => {
-          set({ loading: true, error: '' });
-          try {
-            const { user, accessExp } = await userRoute.loginWithPassword(email, password);
-            set({
-              username: user.username,
-              displayName: user.displayName,
-              accessExp,
-              isGuest: user.accountType === 'guest',
-              loading: false,
-              error: '',
-            });
-            return true;
-          } catch (err: unknown) {
-            console.error('Login with password failed:', err);
-            const msgErr = err as { message: string };
-            set({ error: msgErr.message, loading: false });
-            return false;
-          }
-        },
-        logout: async () => {
-          set({ loading: true, error: '' });
-          try {
-            await userRoute.logout();
-            set({ ...blankUser });
-          } catch (err: unknown) {
-            console.error('userstore logout err ', err);
-            const msgErr = err as { message: string };
-            set({ error: msgErr.message, loading: false });
-          }
+        logout: () => {
+          set({ ...blankUser, loading: false, error:'' });
+          authRoutes.logout().catch(e=>{
+            console.error('userstore logout err ', e);
+          });
         },
         refresh: async () => {
+          set({ loading: true, error: '' });
           try {
-            const { user, accessExp } = await userRoute.refresh();
+            const { user, accessExp } = await authRoutes.refreshAccess();
             set({
               username: user.username,
               displayName: user.displayName,
+              accountType: user.accountType,
               accessExp,
-              isGuest: user.accountType === 'guest',
+              loading: false,
               error: '',
             });
-            console.debug('Refreshed access token');
             return true;
           } catch (err: unknown) {
             console.error('userstore refresh err ', err);
-            set({ ...blankUser });
+            const msgErr = err as { message: string };
+            set({ error: msgErr.message, loading: false });
             return false;
           }
         },
