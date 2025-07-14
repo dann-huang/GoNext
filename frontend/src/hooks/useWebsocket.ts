@@ -12,19 +12,19 @@ interface WSState {
   currentRoom: string;
 
   msgLog: t.DisplayableMsg[];
-  clients: string[];
+  clients: Record<string, string>;
 
   gameStates: t.IncomingGameState[];
   boardGameState: t.BoardGameState | null;
 
   getStatus: () => t.WsStatus;
-  getClients: () => string[];
+  getClients: () => Record<string, string>;
 
   connect: () => void;
   disconnect: () => void;
   sendMessage: (msg: t.OutgoingMsg) => void;
 
-  sendChat: (displayName: string, message: string) => void;
+  sendChat: (message: string) => void;
   joinRoom: (roomName: string) => void;
   leaveRoom: () => void;
 
@@ -47,8 +47,7 @@ const useWebSocket = create<WSState>()((set, get) => ({
   error: '',
 
   msgLog: [],
-  clients: [],
-
+  clients: {},
   gameStates: [],
   boardGameState: null,
 
@@ -134,7 +133,7 @@ const useWebSocket = create<WSState>()((set, get) => ({
       ws = null;
     }
     console.debug('WS disconnect');
-    set({ currentRoom: '', msgLog: [], clients: [], error: '' });
+    set({ currentRoom: '', msgLog: [], clients: {}, error: '' });
   },
   sendMessage: (msg: t.OutgoingMsg) => {
     if (!ws || get().getStatus() !== 'connected') {
@@ -148,11 +147,11 @@ const useWebSocket = create<WSState>()((set, get) => ({
       set({ error: 'WS failed to send' });
     }
   },
-  sendChat: (displayName: string, message: string) => {
+  sendChat: (message: string) => {
     const msg: t.ChatMsg = {
       type: t.msgChat,
       sender: '',
-      payload: { message, displayName },
+      payload: { message },
     };
     get().sendMessage(msg);
   },

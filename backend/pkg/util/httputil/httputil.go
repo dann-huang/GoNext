@@ -1,9 +1,10 @@
-package util
+package httputil
 
 import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 )
 
 func RespondErr(w http.ResponseWriter, status int, msg string, err error) {
@@ -29,4 +30,18 @@ func RespondJSON(w http.ResponseWriter, code int, payload any) {
 	if _, err := w.Write(response); err != nil {
 		slog.Error("failed to write response", "error", err)
 	}
+}
+
+func SetAuthCookie(w http.ResponseWriter, name, value, path string, expires time.Time) {
+	cookie := &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     path,
+		Expires:  expires,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+	}
+
+	http.SetCookie(w, cookie)
 }

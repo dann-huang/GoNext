@@ -16,6 +16,7 @@ import (
 	"gonext/internal/repo"
 	"gonext/internal/token"
 	"gonext/pkg/jwt/v2"
+	"gonext/pkg/util/httputil"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -38,6 +39,7 @@ func main() {
 	defer postgres.Close()
 	store := repo.NewStore(postgres, redis)
 	mailer := mail.NewResendMailer(appCfg.Mail)
+	validator := httputil.NewValidator()
 
 	accessManager, err := jwt.NewManager(
 		appCfg.Auth.AccSecret,
@@ -58,6 +60,7 @@ func main() {
 		mailer,
 		appCfg.Auth,
 		authMdw,
+		validator,
 	)
 
 	r := chi.NewRouter()
@@ -85,6 +88,10 @@ func main() {
 	})
 
 	r.Get("/stat/*", external.StaticPageHandler(appCfg.StaticPages))
+
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		httputil.RespondErr(w, http.StatusNotFound, "Route not found", nil)
+	})
 
 	println("---Server start---")
 	if err := http.ListenAndServe(":3333", r); err != nil {

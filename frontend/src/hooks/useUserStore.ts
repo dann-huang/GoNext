@@ -5,15 +5,12 @@ import { UserInfo } from '@/types/authTypes';
 
 interface UserState extends UserInfo {
   accessExp: number;
-  error: string;
-  loading: boolean;
 
-  guestLogin: (displayName: string) => Promise<boolean>;
+  guestLogin: (displayName: string) => Promise<Error>;
 
   logout: () => void;
-  refresh: () => Promise<boolean>;
+  refresh: () => Promise<Error>;
 
-  clearError: () => void;
   accessValid: () => boolean;
 }
 
@@ -22,8 +19,6 @@ const blankUser = {
   displayName: '',
   accountType: '',
   accessExp: 0,
-  error: '',
-  loading: false,
 };
 
 const authRoutes = getAuthRoutes();
@@ -34,7 +29,6 @@ const useUserStore = create<UserState>()(
       return {
         ...blankUser,
         guestLogin: async (name: string) => {
-          set({ loading: true, error: '' });
           try {
             const { user, accessExp } = await authRoutes.registerGuest(name);
             set({
@@ -42,25 +36,20 @@ const useUserStore = create<UserState>()(
               displayName: user.displayName,
               accountType: user.accountType,
               accessExp,
-              loading: false,
-              error: '',
             });
-            return true;
-          } catch (err: unknown) {
-            console.error('userstore register err ', err);
-            const msgErr = err as { message: string };
-            set({ error: msgErr.message, loading: false });
-            return false;
+            return '';
+          } catch (err: any) {
+            console.warn('guestLogin err ', err);
+            return err;
           }
         },
         logout: () => {
-          set({ ...blankUser, loading: false, error: '' });
-          authRoutes.logout().catch((e) => {
-            console.error('userstore logout err ', e);
+          set({ ...blankUser });
+          authRoutes.logout().catch((err) => {
+            console.error('logout err ', err);
           });
         },
         refresh: async () => {
-          set({ loading: true, error: '' });
           try {
             const { user, accessExp } = await authRoutes.refreshAccess();
             set({
@@ -68,18 +57,13 @@ const useUserStore = create<UserState>()(
               displayName: user.displayName,
               accountType: user.accountType,
               accessExp,
-              loading: false,
-              error: '',
             });
-            return true;
-          } catch (err: unknown) {
-            console.error('userstore refresh err ', err);
-            const msgErr = err as { message: string };
-            set({ error: msgErr.message, loading: false });
-            return false;
+            return '';
+          } catch (err: any) {
+            console.warn('refresh err ', err);
+            return err;
           }
         },
-        clearError: () => set({ error: '' }),
         accessValid: () => {
           const { accessExp } = get();
           return accessExp > Date.now();

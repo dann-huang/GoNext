@@ -15,7 +15,6 @@ type Auth struct {
 	RefTTL        time.Duration
 	Issuer        string
 	Audience      string
-	Domain        string
 	EmailCodeTTL  time.Duration
 	EmailSetupKey string
 	EmailLoginKey string
@@ -81,7 +80,6 @@ func Load() (*AppConfig, error) {
 			RefTTL:        24 * time.Hour,
 			Issuer:        "gonext",
 			Audience:      "AuthService",
-			Domain:        os.Getenv("DOMAIN"),
 			EmailCodeTTL:  10 * time.Minute,
 
 			RefreshKey:    "refToken:%v",

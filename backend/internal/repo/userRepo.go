@@ -37,24 +37,34 @@ func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.U
 	var newUser model.User
 	query := `
 		INSERT INTO users (username, displayname, email, passhash, account_type)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5::account_type_enum)
 		RETURNING id, username, displayname, email, passhash, account_type, 
 		          created_at, updated_at, last_login_at
 	`
-
-	var lowerEmail *string
-	if user.Email != nil {
-		temp := strings.ToLower(*user.Email)
-		lowerEmail = &temp
-	}
 
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
 		user.Username,
 		user.DisplayName,
-		sql.NullString{String: *lowerEmail, Valid: lowerEmail != nil},
-		sql.NullString{String: *user.PassHash, Valid: user.PassHash != nil},
+		sql.NullString{
+			String: func() string {
+				if user.Email != nil {
+					return strings.ToLower(*user.Email)
+				}
+				return ""
+			}(),
+			Valid: user.Email != nil,
+		},
+		sql.NullString{
+			String: func() string {
+				if user.PassHash != nil {
+					return *user.PassHash
+				}
+				return ""
+			}(),
+			Valid: user.PassHash != nil,
+		},
 		user.AccountType,
 	).Scan(
 		&newUser.ID,
@@ -76,12 +86,11 @@ func (r *pgUserRepo) CreateUser(ctx context.Context, user *model.User) (*model.U
 			case pqErr.Code == "23505" && strings.Contains(pqErr.Constraint, "email"):
 				err = fmt.Errorf("%w", ErrEmailExists)
 			default:
-				err = fmt.Errorf("%w", ErrAlreadyExists)
+				err = fmt.Errorf("%w: %w", ErrAlreadyExists, err)
 			}
 		}
 		return nil, fmt.Errorf("repo: failed to create user: %w", err)
 	}
-
 	return &newUser, nil
 }
 

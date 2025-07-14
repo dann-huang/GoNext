@@ -19,7 +19,7 @@ func (a *AccountType) Scan(value any) error {
 		*a = AccountTypeGuest
 		return nil
 	}
-	if s, ok := value.(string); ok {
+	if s, ok := value.([]byte); ok {
 		*a = AccountType(s)
 		return nil
 	}

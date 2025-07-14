@@ -20,14 +20,11 @@ export default function LoginGuest() {
     setIsLoading(true);
     setError('');
 
-    try {
-      await userStore.guestLogin(name);
-    } catch (err) {
-      setError('Failed to sign in. Please try again.');
-      console.error('Guest login error:', err);
-    } finally {
-      setIsLoading(false);
+    const err = await userStore.guestLogin(name);
+    if (err) {
+      setError(err.message);
     }
+    setIsLoading(false);
   };
 
   return (
@@ -45,7 +42,10 @@ export default function LoginGuest() {
         className="w-full mt-2"
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <p className="text-xs text-text/30 mt-1">Guest accounts will become inaccessible after 24 hours of inactivity, but you can always create a new one.</p>
+      <p className="text-xs text-text/30 mt-1">
+        Guest accounts will become inaccessible after 24 hours of inactivity,
+        but you can always create a new one.
+      </p>
       <Button
         type="submit"
         className="w-full mt-3"

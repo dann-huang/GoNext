@@ -9,6 +9,7 @@ import (
 	"gonext/internal/model"
 	"gonext/internal/repo"
 	"gonext/internal/token"
+	"gonext/pkg/util/httputil"
 )
 
 type AuthModule interface {
@@ -26,9 +27,10 @@ func NewModule(
 	mailer mail.Mailer,
 	config *config.Auth,
 	authMdw mdw.Middleware,
+	validator *httputil.Validator,
 ) AuthModule {
 	service := newService(accMngr, userRepo, kvMngr, mailer, config)
-	handler := newHandler(service, config)
+	handler := newHandler(service, config, validator)
 
 	router := newRouter(handler, authMdw)
 	return &authImpl{router: router}

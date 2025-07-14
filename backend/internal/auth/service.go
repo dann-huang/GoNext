@@ -120,7 +120,7 @@ func (s *serviceImpl) createGuest(ctx context.Context, displayName string) (*aut
 			DisplayName: displayName,
 			AccountType: model.AccountTypeGuest,
 		})
-		if !errors.Is(err, repo.ErrUsernameExists) {
+		if err != nil && !errors.Is(err, repo.ErrUsernameExists) {
 			return nil, fmt.Errorf("failed to create guest user: %w", err)
 		}
 		if user != nil {

@@ -6,51 +6,43 @@ type ApiResponse<T> = {
   error?: string;
 };
 
-async function handleResponse<T>(response: Response): Promise<T> {
-  const data = (await response.json()) as ApiResponse<T>;
-  
+async function handleSend<T>(route: string, options: RequestInit): Promise<T> {
+  const response = await fetch(route, options).catch((e) => {
+    console.warn('fetch err ', e);
+    throw new Error('Network error');
+  });
+  const data: ApiResponse<T> = await response.json().catch((e) => {
+    console.error('json err ', e);
+    return {};
+  });
   if (!response.ok) {
-    const error = new Error(data.message || 'An error occurred');
-    (error as any).status = response.status;
-    throw error;
+    throw new Error(data?.message || data?.error || 'Something went quite wrong...');
   }
-  
   return data as T;
 }
 
 const api = {
-  async postJson<T = void, U = unknown>(
-    route: string, 
-    payload: U,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const response = await fetch(apiURL + route, {
+  postJson<T = void, U = unknown>(route: string, payload: U): Promise<T> {
+    const options = {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
       },
       body: JSON.stringify(payload),
-      ...options,
-    });
+    };
 
-    return handleResponse<T>(response);
+    return handleSend<T>(apiURL + route, options);
   },
 
-  async get<T = void>(
-    route: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const response = await fetch(apiURL + route, {
+  get<T = void>(route: string): Promise<T> {
+    const options = {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
       },
-      ...options,
-    });
+    };
 
-    return handleResponse<T>(response);
+    return handleSend<T>(apiURL + route, options);
   },
 };
 

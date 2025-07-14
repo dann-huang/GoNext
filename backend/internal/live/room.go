@@ -18,12 +18,12 @@ func (r *room) broadcastLocked(msg []byte) {
 	}
 }
 
-func (r *room) clientListMsgLocked() [][2]string {
-	clientList := make([][2]string, 0, len(r.clients))
+func (r *room) clientListMsgLocked() map[string]string {
+	clientMap := make(map[string]string, len(r.clients))
 	for client := range r.clients {
-		clientList = append(clientList, [2]string{client.ID, client.user.Displayname})
+		clientMap[client.ID] = client.user.Displayname
 	}
-	return clientList
+	return clientMap
 }
 
 func (r *room) addClient(client *client) {
