@@ -48,7 +48,7 @@ GoNext is a continually evolving personal project. Planned enhancements include:
 
 * **More single player games:** Planning Sudoku incl. solver and variants
 * **More multipleayer games:** Planning card and board games, once I bite the bullet and get the UX sorted out. 
-* **Expanded User Profiles & Social Features:** Friend list, more direct ways to play with them etc.
+* **User Features:** Persistant user profiles, friend lists, more direct ways to play with them etc.
 
 ---
 
