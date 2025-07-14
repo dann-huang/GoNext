@@ -91,8 +91,10 @@ export default function HomePage() {
 
         <AlternatingSection bg="card">
           <SectionContent>
-            <div className="relative aspect-square rounded-2xl overflow-hidden bg-accent/10 flex items-center justify-center">
-              <User2 className="h-32 w-32 text-accent" />
+            <div className="flex items-center justify-center">
+              <div className="aspect-square w-1/2 max-w-[250px] rounded-2xl overflow-hidden bg-accent/10 flex items-center justify-center">
+                <User2 className="h-32 w-32 text-accent" />
+              </div>
             </div>
           </SectionContent>
           <SectionContent className="space-y-4">
@@ -103,8 +105,7 @@ export default function HomePage() {
             </p>
             <p>
               This project is my playground for experimenting with real-time web
-              technologies and building fun, collaborative tools that people can
-              enjoy together.
+              technologies and building things hopefully entertains people.
             </p>
           </SectionContent>
         </AlternatingSection>
