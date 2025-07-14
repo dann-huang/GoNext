@@ -31,8 +31,12 @@ This project emphasizes real-time interactivity and robust architecture, demonst
 
 * **Full-Stack Architecture:** A high-performance Go backend seamlessly integrated with a modern, reactive Next.js and TypeScript frontend.
 * **Real-time Communication:** Custom WebSocket implementations power all interactive features.
-* **Live Chat:** Instant, real-time text communication between users.
+* **Text Chat:** Instant, real-time text communication between users.
+* **Video Chat:** Integrating WebRTC for peer-to-peer video communication.
 * **Collaborative Drawing Canvas:** A shared, interactive canvas where multiple users can draw together in real-time.
+* **Singleplayer Games:** Currently just minesweeper, but more to come!
+* **Multiplayer Games:** Implementing classic real-time board games like Chess or Connect Four.
+
 * **User Authentication:** Secure user registration and login using JSON Web Tokens (JWT).
 * **Containerized Environment:** The entire application stack (frontend, backend, database, cache, proxy) is orchestrated using Docker Compose for consistent local development and production environments.
 * **Automated Deployment:** Features a robust CI/CD pipeline for automatic deployment to `daniel-h.ca`.
@@ -40,12 +44,11 @@ This project emphasizes real-time interactivity and robust architecture, demonst
 ---
 
 ## Project Roadmap
-
 GoNext is a continually evolving personal project. Planned enhancements include:
 
-* **Multiplayer Board Games:** Implementing classic real-time board games like Chess or Connect Four.
-* **Video Chat:** Integrating WebRTC for peer-to-peer video communication.
-* **Expanded User Profiles & Social Features:** Building out more personalized user experiences.
+* **More single player games:** Planning Sudoku incl. solver and variants
+* **More multipleayer games:** Planning card and board games, once I bite the bullet and get the UX sorted out. 
+* **Expanded User Profiles & Social Features:** Friend list, more direct ways to play with them etc.
 
 ---
 
@@ -105,7 +108,7 @@ This section provides instructions for setting up the project for local developm
     docker-compose up --build
     ```
 
-This will build the Docker images and start all services. The frontend will be available at `http://localhost:3000`.
+This will build the Docker images and start all services. The frontend will be available at `http://localhost`.
 
 ---
 
