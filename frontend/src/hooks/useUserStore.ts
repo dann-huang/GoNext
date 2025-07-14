@@ -6,10 +6,10 @@ import { UserInfo } from '@/types/authTypes';
 interface UserState extends UserInfo {
   accessExp: number;
 
-  guestLogin: (displayName: string) => Promise<Error>;
+  guestLogin: (displayName: string) => Promise<null | Error>;
 
   logout: () => void;
-  refresh: () => Promise<Error>;
+  refresh: () => Promise<boolean>;
 
   accessValid: () => boolean;
 }
@@ -37,15 +37,18 @@ const useUserStore = create<UserState>()(
               accountType: user.accountType,
               accessExp,
             });
-            return '';
-          } catch (err: any) {
-            console.warn('guestLogin err ', err);
-            return err;
+            return null;
+          } catch (error) {
+            console.warn('guestLogin err', error);
+            if (error instanceof Error) {
+              return error;
+            }
+            return new Error(String(error));
           }
         },
         logout: () => {
           set({ ...blankUser });
-          authRoutes.logout().catch(err => {
+          authRoutes.logout().catch((err) => {
             console.error('logout err ', err);
           });
         },
@@ -58,10 +61,10 @@ const useUserStore = create<UserState>()(
               accountType: user.accountType,
               accessExp,
             });
-            return '';
-          } catch (err: any) {
-            console.warn('refresh err ', err);
-            return err;
+            return true;
+          } catch (error) {
+            console.warn('refresh err', error);
+            return false;
           }
         },
         accessValid: () => {

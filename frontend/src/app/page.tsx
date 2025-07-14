@@ -3,16 +3,8 @@ import {
   AlternatingSection,
   SectionContent,
 } from '@/components/layout/AlternatingSection';
-import Button from '@/components/UI/Button';
 import TitleBanner from '@/components/UI/particles/ParticleBanner';
-import {
-  Gamepad2,
-  PencilRuler,
-  Video,
-  Users,
-  User2,
-  Github,
-} from 'lucide-react';
+import { Gamepad2, PencilRuler, Video, User2, Github } from 'lucide-react';
 import Logo from '@/assets/gonext.svg';
 import ParticleBox from '@/components/UI/ParticleBox';
 
@@ -85,8 +77,8 @@ export default function HomePage() {
               What Is This?
             </h2>
             <p>
-              Go Next is a collection of fun things I've built for you to enjoy
-              with friends.
+              Go Next is a collection of fun things I&apos;ve built for you to
+              enjoy with friends.
             </p>
             <p>
               From classic board games to creative drawing sessions, everything

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Button from './Button';
 import Link from 'next/link';
-import { X } from 'lucide-react';
 
 const COOKIE_CONSENT_KEY = 'gonext-cookie-consent';
 

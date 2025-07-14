@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 import { toPng } from 'html-to-image';
 import {
-  canvasHandlers,
   parseImgData,
   updateCanvasSize,
   updateParticles,
@@ -13,6 +11,7 @@ import { Particle, MousePosition } from '@/types/particleTypes';
 import useThemeColor from '@/hooks/useThemeColor';
 import { R_SQ } from './config';
 import useDebounce from '@/hooks/useDebounce';
+import { useCanvasHandlers } from '@/hooks/useCanvasHandlers';
 
 export default function ParticleBanner({
   children,
@@ -144,7 +143,7 @@ export default function ParticleBanner({
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full touch-none"
-        {...canvasHandlers(canvasRef, mouseRef)}
+        {...useCanvasHandlers(canvasRef, mouseRef)}
         style={{
           WebkitTapHighlightColor: 'transparent',
         }}

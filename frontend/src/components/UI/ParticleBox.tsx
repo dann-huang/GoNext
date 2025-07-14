@@ -37,10 +37,15 @@ export default function ParticleBox() {
         },
         links: {
           color: primary,
-          distance: 150,
+          distance: 120,
           enable: true,
           opacity: 0.5,
           width: 1,
+          triangles: {
+            enable: true,
+            opacity: 0.1,
+            color: primary,
+          },
         },
         move: {
           direction: MoveDirection.none,
@@ -48,8 +53,8 @@ export default function ParticleBox() {
           outModes: {
             default: OutMode.out,
           },
-          random: false,
-          speed: 3,
+          random: true,
+          speed: 2,
           straight: false,
         },
         number: {
@@ -60,12 +65,32 @@ export default function ParticleBox() {
         },
         opacity: {
           value: 0.8,
+          animation: {
+            enable: true,
+            speed: 0.5,
+            minimumValue: 0.1,
+            sync: false,
+          },
         },
         shape: {
           type: 'circle',
         },
         size: {
-          value: { min: 1, max: 5 },
+          value: { min: 2, max: 6 },
+          animation: {
+            enable: true,
+            speed: 2,
+            minimumValue: 1,
+            sync: false,
+          },
+        },
+        wobble: {
+          distance: 10,
+          enable: true,
+          speed: {
+            min: -2,
+            max: 2,
+          },
         },
       },
       detectRetina: true,

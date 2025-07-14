@@ -14,7 +14,7 @@ export default function ClientInit() {
     }).then(() => {
       setParticlesInit(true);
     });
-  }, []);
+  }, [setParticlesInit]);
 
   // anti FOUC
   return (
