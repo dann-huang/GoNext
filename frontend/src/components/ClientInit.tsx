@@ -1,9 +1,26 @@
 'use client';
 
-// anti FOUC
-export default function ThemeInitializer() {
-  return <script dangerouslySetInnerHTML={{
-    __html: `
+import useClientStore from '@/hooks/useClientStore';
+import { useEffect } from 'react';
+import { initParticlesEngine } from '@tsparticles/react';
+import { loadSlim } from '@tsparticles/slim';
+
+export default function ClientInit() {
+  // setup tsParticles
+  const { setParticlesInit } = useClientStore();
+  useEffect(() => {
+    initParticlesEngine(async (engine) => {
+      await loadSlim(engine);
+    }).then(() => {
+      setParticlesInit(true);
+    });
+  }, [setParticlesInit]);
+
+  // anti FOUC
+  return (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `
       (function () {
         try {
           const themeStr = localStorage.getItem('theme-store');
@@ -19,6 +36,8 @@ export default function ThemeInitializer() {
           }
         } catch (e) { console.error('theme script failed', e); }
       })()
-    `
-  }} />;
-} 
+    `,
+      }}
+    />
+  );
+}

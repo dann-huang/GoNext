@@ -9,7 +9,7 @@ type useBoardProps = {
   touchOffset?: { x: number; y: number };
 };
 
-export function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y: 10 } }: useBoardProps) {
+export default function useGameBoard({ onCellClick, onCellDrop, touchOffset = { x: 0, y: 10 } }: useBoardProps) {
   const [hoveredCell, setHoveredCell] = useState<number | null>(null);
   const [dragging, setDrag] = useState<number | null>(null);
 

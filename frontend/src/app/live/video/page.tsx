@@ -1,8 +1,8 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebsocket';
-import { useGroupCall } from '@/hooks/useGroupCall';
+import useWebSocket from '@/hooks/useWebsocket';
+import useGroupCall from '@/hooks/useGroupCall';
 import Button from '@/components/UI/Button';
 
 function VideoContainer({ children, username }: { children: React.ReactNode; username?: string }) {

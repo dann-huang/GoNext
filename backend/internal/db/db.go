@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"letsgo/internal/config"
+	"gonext/internal/config"
 
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"

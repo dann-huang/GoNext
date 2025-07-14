@@ -1,24 +1,51 @@
 package model
 
 import (
+	"database/sql/driver"
+	"errors"
 	"time"
 )
 
-type User struct {
-	ID          int       `db:"id"`
-	Username    string    `db:"username"`
-	DisplayName string    `db:"displayname"`
-	PassHash    string    `db:"passhash"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+type AccountType string
+
+const (
+	AccountTypeGuest AccountType = "guest"
+	AccountTypeUser  AccountType = "user"
+	AccountTypeAdmin AccountType = "admin"
+)
+
+func (a *AccountType) Scan(value any) error {
+	if value == nil {
+		*a = AccountTypeGuest
+		return nil
+	}
+	if s, ok := value.([]byte); ok {
+		*a = AccountType(s)
+		return nil
+	}
+	return errors.New("failed to scan AccountType")
 }
 
-type UserReq struct {
-	Username string `json:"username" validate:"required,alphanum,min=3,max=10"`
-	Password string `json:"password" validate:"required"`
+func (a AccountType) Value() (driver.Value, error) {
+	return string(a), nil
+}
+
+type User struct {
+	ID          string      `db:"id"`
+	Username    string      `db:"username"`
+	DisplayName string      `db:"displayname"`
+	AccountType AccountType `db:"account_type"`
+	Email       *string     `db:"email"`
+	PassHash    *string     `db:"passhash"`
+	CreatedAt   time.Time   `db:"created_at"`
+	UpdatedAt   time.Time   `db:"updated_at"`
+	LastLoginAt time.Time   `db:"last_login_at"`
 }
 
 type UserUpdate struct {
-	DisplayName *string `json:"displayName"`
-	Password    *string `json:"password"`
+	Username    *string
+	DisplayName *string
+	AccountType *AccountType
+	Email       *string
+	PassHash    *string
 }

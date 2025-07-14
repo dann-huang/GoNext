@@ -2,7 +2,7 @@ package mdw
 
 import (
 	"context"
-	"letsgo/internal/token"
+	"gonext/internal/token"
 	"net/http"
 	"time"
 )
@@ -11,8 +11,9 @@ type ContextKey string
 
 type Middleware = func(http.Handler) http.Handler
 
-func AccessMdw(jwt token.UserManager, cookieName string,
-	cookieTTL time.Duration, payloadKey ContextKey) Middleware {
+const userCtxKey ContextKey = "user"
+
+func AccessMdw(mngr token.UserManager, cookieName string, cookieTTL time.Duration) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -21,28 +22,23 @@ func AccessMdw(jwt token.UserManager, cookieName string,
 				http.Error(w, "Unauthorized - missing token", http.StatusUnauthorized)
 				return
 			}
-			payload, err := jwt.ValidateToken(cookie.Value)
+			payload, err := mngr.ValidateToken(cookie.Value)
 			if err != nil {
 				http.Error(w, "Unauthorized - invalid token", http.StatusUnauthorized)
 				return
 			}
 
-			// // rotate token. Maybe look into rotating every x uses?
-			// newToken, err := jwt.GenerateToken(payload)
-			// if err != nil {
-			// 	http.Error(w, "Internal Server Error - token rotation failed", http.StatusInternalServerError)
-			// 	return
-			// }
-			// http.SetCookie(w, &http.Cookie{
-			// 	Name:     cookieName,
-			// 	Value:    newToken,
-			// 	Expires:  time.Now().Add(cookieTTL),
-			// 	HttpOnly: true,
-			// 	Secure:   true,
-			// })
+			ctx := context.WithValue(r.Context(), userCtxKey, payload)
 
-			ctx := context.WithValue(r.Context(), payloadKey, payload)
+			// TODO: Implement token rotation
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func GetUser(ctx context.Context) *token.UserPayload {
+	if user, ok := ctx.Value(userCtxKey).(*token.UserPayload); ok {
+		return user
+	}
+	return nil
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useReducer, useCallback, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebsocket';
-import { useUserStore } from '@/hooks/useUserStore';
+import useWebSocket from '@/hooks/useWebsocket';
+import useUserStore from '@/hooks/useUserStore';
 import { VidSignalMsg } from '@/types/wsTypes';
 
 interface Peer {
@@ -49,7 +49,7 @@ const ICE_SERVERS = {
   ],
 };
 
-export function useGroupCall() {
+export default function useGroupCall() {
   const sendSignal = useWebSocket(s => s.sendVidSignal);
   const setSignalHandler = useWebSocket(s => s.setVidSigHandler);
   const { username } = useUserStore();
@@ -63,18 +63,18 @@ export function useGroupCall() {
   const createPeer = useCallback((peerUsername: string) => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
 
-    pc.onicecandidate = (event) => {
+    pc.onicecandidate = event => {
       if (event.candidate) {
         sendSignal({ type: 'ice', target: peerUsername, candidate: event.candidate.toJSON() });
       }
     };
 
-    pc.ontrack = (event) => {
+    pc.ontrack = event => {
       dispatch({ type: 'SET_STREAM', payload: { username: peerUsername, stream: event.streams[0] } });
     };
 
     if (localStream) {
-      localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
     }
 
     dispatch({ type: 'ADD_PEER', payload: { username: peerUsername, conn: pc } });
@@ -165,7 +165,7 @@ export function useGroupCall() {
 
   const leaveCall = () => {
     if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+      localStream.getTracks().forEach(track => track.stop());
     }
     dispatch({ type: 'CLEAR_PEERS' });
     setLocalStream(null);
@@ -175,7 +175,7 @@ export function useGroupCall() {
 
   const toggleAudio = () => {
     if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
+      localStream.getAudioTracks().forEach(track => {
         track.enabled = !audioOn;
       });
       setAudioOn(!audioOn);
@@ -184,7 +184,7 @@ export function useGroupCall() {
 
   const toggleVideo = () => {
     if (localStream) {
-      localStream.getVideoTracks().forEach((track) => {
+      localStream.getVideoTracks().forEach(track => {
         track.enabled = !videoOn;
       });
       setVideoOn(!videoOn);

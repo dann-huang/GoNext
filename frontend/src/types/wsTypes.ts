@@ -45,7 +45,6 @@ export interface ChatMsg {
   sender: string;
   payload: {
     message: string;
-    displayName: string;
   };
 }
 
@@ -66,7 +65,7 @@ export interface GetClientRes {
   sender: '_server';
   payload: {
     roomName: string;
-    clients: string[];
+    clients: Record<string, string>;
   };
 }
 

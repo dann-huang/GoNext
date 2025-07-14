@@ -1,19 +1,16 @@
 package token
 
 import (
-	"letsgo/pkg/jwt/v2"
+	"gonext/internal/model"
+	"gonext/pkg/jwt/v2"
 )
 
 type UserPayload struct {
-	Username    string
-	Displayname string
-}
-
-func NewUserPayload(username, displayname string) *UserPayload {
-	return &UserPayload{
-		Username:    username,
-		Displayname: displayname,
-	}
+	UserID      string            `json:"user_id"`
+	Username    string            `json:"username"`
+	Displayname string            `json:"displayname"`
+	AccountType model.AccountType `json:"account_type"`
+	Email       *string           `json:"email,omitempty"`
 }
 
 type UserManager = jwt.Manager[UserPayload]

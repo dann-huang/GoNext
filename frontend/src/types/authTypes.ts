@@ -1,20 +1,37 @@
-
-export interface RegisterSuccessResponse {
-  message: string;
+export interface UserInfo {
   username: string;
-  displayname: string;
+  displayName: string;
+  accountType: string;
 }
 
-export interface LoginSuccessResponse {
-  message: string;
-  username: string;
-  displayname: string;
-  accessExpires: number;
-  refreshExpires: number;
+export interface AuthResponse {
+  user: UserInfo;
+  accessExp: number;
 }
 
-export interface RefreshSuccessResponse {
-  message: string;
-  accessExpires: number;
-  refreshExpires: number;
+export interface GuestRequest {
+  name: string;
+}
+
+export interface SetEmailRequest {
+  email: string;
+}
+
+export interface VerifyEmailRequest {
+  code: string;
+}
+
+export interface EmailLoginRequest {
+  email: string;
+  code: string;
+}
+
+export interface PassRequest {
+  pass: string;
+  code: string;
+}
+
+export interface PassLoginRequest {
+  email: string;
+  pass: string;
 }

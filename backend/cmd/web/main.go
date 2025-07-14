@@ -5,16 +5,18 @@ import (
 	"net/http"
 	"os"
 
-	"letsgo/internal/auth"
-	"letsgo/internal/config"
-	"letsgo/internal/db"
-	"letsgo/internal/external"
-	"letsgo/internal/game"
-	"letsgo/internal/live"
-	"letsgo/internal/mdw"
-	"letsgo/internal/repo"
-	"letsgo/internal/token"
-	"letsgo/pkg/jwt/v2"
+	"gonext/internal/auth"
+	"gonext/internal/config"
+	"gonext/internal/db"
+	"gonext/internal/external"
+	"gonext/internal/game"
+	"gonext/internal/live"
+	"gonext/internal/mail"
+	"gonext/internal/mdw"
+	"gonext/internal/repo"
+	"gonext/internal/token"
+	"gonext/pkg/jwt/v2"
+	"gonext/pkg/util/httputil"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -35,25 +37,38 @@ func main() {
 		panic(err)
 	}
 	defer postgres.Close()
-
 	store := repo.NewStore(postgres, redis)
+	mailer := mail.NewResendMailer(appCfg.Mail)
+	validator := httputil.NewValidator()
 
-	accessManager, err := jwt.NewManager(appCfg.Auth.AccSecret,
-		appCfg.Auth.AccTTL, appCfg.Auth.Issuer, appCfg.Auth.Audience, token.UserPayload{})
+	accessManager, err := jwt.NewManager(
+		appCfg.Auth.AccSecret,
+		appCfg.Auth.AccTTL,
+		appCfg.Auth.Issuer,
+		appCfg.Auth.Audience,
+		token.UserPayload{},
+	)
 	if err != nil {
 		panic(err)
 	}
-	authModule := auth.NewModule(store.User, store.KVStore, accessManager, appCfg.Auth)
-
-	const userCtxKey mdw.ContextKey = "userPayload"
-	userAccMdw := mdw.AccessMdw(accessManager, appCfg.Auth.AccCookieName, appCfg.Auth.AccTTL, userCtxKey)
+	kvMngr := token.NewRedisKVMngr(store.KVStore, appCfg.Token)
+	authMdw := mdw.AccessMdw(accessManager, appCfg.Auth.AccCookieName, appCfg.Auth.AccTTL)
+	authModule := auth.NewModule(
+		store.User,
+		kvMngr,
+		accessManager,
+		mailer,
+		appCfg.Auth,
+		authMdw,
+		validator,
+	)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	gameReg := game.NewRegistry()
-	gameReg.RegisterAll()
+	gameRegistry := game.NewRegistry()
+	gameRegistry.RegisterAll()
 
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -65,14 +80,18 @@ func main() {
 		})
 
 		api.Mount("/auth", authModule.Router())
-		api.Mount("/live", live.Router(userAccMdw, userCtxKey, gameReg, appCfg.WS))
+
+		api.Group(func(protected chi.Router) {
+			protected.Use(authMdw)
+			protected.Mount("/live", live.Router(gameRegistry, appCfg.WS))
+		})
 	})
 
-	// static pages
 	r.Get("/stat/*", external.StaticPageHandler(appCfg.StaticPages))
 
-	// frontend
-	// r.Mount("/", external.FrontendRevProxy(cfg.FrontendUrl))
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		httputil.RespondErr(w, http.StatusNotFound, "Route not found", nil)
+	})
 
 	println("---Server start---")
 	if err := http.ListenAndServe(":3333", r); err != nil {

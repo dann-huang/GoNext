@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ChatIndicator from '@/components/UI/ChatIndicator';
-import { useWebSocket } from '@/hooks/useWebsocket';
+import useWebSocket from '@/hooks/useWebsocket';
 
 export default function LiveLayout({
   children,
@@ -28,9 +28,9 @@ export default function LiveLayout({
 
   if (!currentRoom) {
     return <div className='w-full flex flex-col items-center justify-center '>
-      <h1 className='text-2xl font-bold mb-4'>Let&apos;s Go Live!</h1>
+      <h1 className='text-2xl font-bold mb-4'>Hold on!</h1>
       <p className='text-lg mb-6 max-w-md text-center'>
-        These pages are only accessible while in a chat channel.
+        These pages are only accessible while logged in; we need a name to display after all.
         Use the bottom right button to connect~
       </p>
 

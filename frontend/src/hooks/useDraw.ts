@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { useWebSocket } from './useWebsocket';
+import useWebSocket from './useWebsocket';
 import type { DrawPayload } from '@/types/wsTypes';
 import { msgRawSignal } from '@/types/wsTypes';
 import { DRAW_START_COLOR, DRAW_STROKE_INTERVAL, DRAW_START_WIDTH } from '@/config/consts';
@@ -16,7 +16,7 @@ interface DrawState {
   lineWidth: number;
 }
 
-export function useDraw() {
+export default function useDraw() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawState, setDrawState] = useState<DrawState>({

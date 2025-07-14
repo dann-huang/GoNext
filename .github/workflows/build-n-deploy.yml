@@ -28,8 +28,8 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:${{ steps.tag.outputs.version }}
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-frontend:latest
+            ${{ secrets.DOCKERHUB_NAME }}/gonext-frontend:${{ steps.tag.outputs.version }}
+            ${{ secrets.DOCKERHUB_NAME }}/gonext-frontend:latest
 
       - name: Build and push backend
         uses: docker/build-push-action@v5
@@ -38,8 +38,8 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:${{ steps.tag.outputs.version }}
-            ${{ secrets.DOCKERHUB_NAME }}/letsgo-backend:latest
+            ${{ secrets.DOCKERHUB_NAME }}/gonext-backend:${{ steps.tag.outputs.version }}
+            ${{ secrets.DOCKERHUB_NAME }}/gonext-backend:latest
 
   deploy:
     needs: build
@@ -85,13 +85,13 @@ jobs:
             
             echo "Cleaning up old deployment..."
             docker compose -f docker-compose.yml down --remove-orphans || true
-            docker compose -p letsgo-prod -f docker-compose.prod.yml down --remove-orphans || true
+            docker compose -p gonext-prod -f docker-compose.prod.yml down --remove-orphans || true
             
             echo "Pulling images..."
-            docker compose -p letsgo-prod -f docker-compose.prod.yml pull || { echo "❌ Docker compose pull failed"; exit 1; }
+            docker compose -p gonext-prod -f docker-compose.prod.yml pull || { echo "❌ Docker compose pull failed"; exit 1; }
             
             echo "Docker composing..."
-            docker compose -p letsgo-prod -f docker-compose.prod.yml up -d --remove-orphans || { 
+            docker compose -p gonext-prod -f docker-compose.prod.yml up -d --remove-orphans || { 
               echo "❌ Deployment failed"
               if ! grep -q "^LAST_WORKING_TAG=" .env; then
                 echo "⚠️ No last working version"
@@ -101,7 +101,7 @@ jobs:
               echo "Rolling back to last working version: $LAST_WORKING"
               git checkout $LAST_WORKING
               sed -i "s/^TAG=.*/TAG=$LAST_WORKING/" .env
-              docker compose -p letsgo-prod -f docker-compose.prod.yml up -d --remove-orphans
+              docker compose -p gonext-prod -f docker-compose.prod.yml up -d --remove-orphans
               exit 1
             }
             
@@ -121,7 +121,7 @@ jobs:
                 echo "Rolling back to last working version: $LAST_WORKING"
                 git checkout $LAST_WORKING
                 sed -i "s/^TAG=.*/TAG=$LAST_WORKING/" .env
-                docker compose -p letsgo-prod -f docker-compose.prod.yml up -d --remove-orphans
+                docker compose -p gonext-prod -f docker-compose.prod.yml up -d --remove-orphans
                 exit 1
               fi
               echo "Health check attempt $i failed, retrying in 10s..."

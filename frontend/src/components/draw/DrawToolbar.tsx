@@ -31,7 +31,7 @@ export function DrawToolbar({
         id='color'
         type='color'
         value={currentColor}
-        onChange={(e) => changeColor(e.target.value)}
+        onChange={e => changeColor(e.target.value)}
         className='w-6'
       />
 
@@ -47,7 +47,7 @@ export function DrawToolbar({
         min='1'
         max='20'
         value={currentWidth}
-        onChange={(e) => changeWidth(parseInt(e.target.value))}
+        onChange={e => changeWidth(parseInt(e.target.value))}
         className='w-12'
       />
 

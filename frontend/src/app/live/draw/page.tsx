@@ -1,7 +1,7 @@
 'use client';
 
-import { useDraw } from '@/hooks/useDraw';
-import { useWebSocket } from '@/hooks/useWebsocket';
+import useDraw from '@/hooks/useDraw';
+import useWebSocket from '@/hooks/useWebsocket';
 import { DrawToolbar } from '@/components/draw/DrawToolbar';
 import { useState, useRef, useEffect } from 'react';
 import { DRAW_CANVAS_WIDTH, DRAW_CANVAS_HEIGHT } from '@/config/consts';
