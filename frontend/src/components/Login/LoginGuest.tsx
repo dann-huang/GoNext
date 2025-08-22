@@ -29,7 +29,7 @@ export default function LoginGuest() {
 
   return (
     <form onSubmit={handleSubmit} className="w-full mt-4">
-      <label htmlFor="name" className="text-sm">
+      <label htmlFor="name">
         What should we call you?
       </label>
       <Input
