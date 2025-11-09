@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ArrowLeft, Mail } from 'lucide-react';
 import useUserStore from '@/hooks/useUserStore';
-import Button from '../UI/Button';
-import Input from '../UI/Input';
+import Button from '../../UI/Button';
+import Input from '../../UI/Input';
 
 interface CodeLoginProps {
   onBack: () => void;

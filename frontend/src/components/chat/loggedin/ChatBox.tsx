@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import useWebSocket from '@/hooks/useWebsocket';
 import useUserStore from '@/hooks/useUserStore';
-import Input from '../UI/Input';
-import Button from '../UI/Button';
+import Input from '../../UI/Input';
+import Button from '../../UI/Button';
 import { msgError } from '@/types/wsTypes';
 import { SquarePen, LogOut, DoorOpen } from 'lucide-react';
 

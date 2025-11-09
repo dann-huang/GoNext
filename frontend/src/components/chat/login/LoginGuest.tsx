@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import Button from '../UI/Button';
-import Input from '../UI/Input';
+import Button from '../../UI/Button';
+import Input from '../../UI/Input';
 import { Loader2 } from 'lucide-react';
 import useUserStore from '@/hooks/useUserStore';
 

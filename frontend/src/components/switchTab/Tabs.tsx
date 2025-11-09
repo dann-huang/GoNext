@@ -7,7 +7,7 @@ interface TabsProps {
   className?: string;
 }
 
-export function Tabs({
+export default function Tabs({
   tabs,
   activeTab,
   className = '',

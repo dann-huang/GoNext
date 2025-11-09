@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import useUserStore from '@/hooks/useUserStore';
-import Button from '../UI/Button';
-import Input from '../UI/Input';
+import Button from '../../UI/Button';
+import Input from '../../UI/Input';
 
 interface PasswordLoginProps {
   onBack: () => void;

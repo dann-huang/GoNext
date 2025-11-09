@@ -8,7 +8,7 @@ interface SelectorProps {
   className?: string;
 }
 
-export function Selector({
+export default function Selector({
   tabs,
   activeTab,
   onTabChange,
