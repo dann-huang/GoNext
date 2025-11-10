@@ -7,7 +7,7 @@ import LoginBox from './login/LoginBox';
 import ChatBox from './loggedin/ChatBox';
 import Button from '../UI/Button';
 import { MessageCircleMore, X } from 'lucide-react';
-import LoggedinBox from './loggedin/LoggedinBox';
+// import LoggedinBox from './loggedin/LoggedinBox';
 
 export default function ChatWindow() {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,7 +43,7 @@ export default function ChatWindow() {
             <X />
           </Button>
           <div className="w-full h-full rounded-lg overflow-hidden">
-            {loggedIn ? <LoggedinBox /> : <LoginBox />}
+            {loggedIn ? <ChatBox /> : <LoginBox />}
           </div>
         </div>
       ) : (

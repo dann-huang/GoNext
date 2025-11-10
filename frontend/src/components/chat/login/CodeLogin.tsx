@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import useUserStore from '@/hooks/useUserStore';
 import Button from '../../UI/Button';
 import Input from '../../UI/Input';
@@ -23,7 +23,7 @@ export default function CodeLogin({ onBack }: CodeLoginProps) {
       setError('Please enter your email');
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const err = await userStore.getLoginCode(email);
@@ -46,10 +46,10 @@ export default function CodeLogin({ onBack }: CodeLoginProps) {
       setError('Please enter the verification code');
       return;
     }
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
       const err = await userStore.codeLogin(email, code);
       if (err) {
@@ -116,7 +116,7 @@ export default function CodeLogin({ onBack }: CodeLoginProps) {
       <form onSubmit={handleVerifyCode} className="space-y-4">
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
-            We've sent a 6-digit code to {email}
+            We&apos;ve sent a 6-digit code to {email}
           </p>
           <label htmlFor="code" className="text-sm font-medium">
             Verification code
@@ -128,7 +128,9 @@ export default function CodeLogin({ onBack }: CodeLoginProps) {
             pattern="[0-9]*"
             required
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+            }
             placeholder="123456"
             className="text-center tracking-widest font-mono"
           />

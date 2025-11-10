@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ArrowLeft, X } from 'lucide-react';
-import { Tabs } from '../../switchTab/Tabs';
+import Tabs from '@/components/switchTab/Tabs';
 import PasswordLogin from './PasswordLogin';
 import CodeLogin from './CodeLogin';
-import Button from '../../UI/Button';
+import Button from '@/components/UI/Button';
 
 export default function LoginReturn() {
   const [activeTab, setActiveTab] = useState(0);
