@@ -133,7 +133,7 @@ export default function ParticleBanner({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [dbSize]);
+  }, [dbSize, sampleSnapshot]);
 
   return (
     <div className="relative">

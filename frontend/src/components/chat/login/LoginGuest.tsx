@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import Button from '../UI/Button';
-import Input from '../UI/Input';
+import Button from '../../UI/Button';
+import Input from '../../UI/Input';
 import { Loader2 } from 'lucide-react';
 import useUserStore from '@/hooks/useUserStore';
 
@@ -29,7 +29,7 @@ export default function LoginGuest() {
 
   return (
     <form onSubmit={handleSubmit} className="w-full mt-4">
-      <label htmlFor="name" className="text-sm">
+      <label htmlFor="name">
         What should we call you?
       </label>
       <Input

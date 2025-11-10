@@ -3,7 +3,7 @@ import { Roboto, Poppins } from 'next/font/google';
 import './globals.css';
 import NavBar from '@/components/UI/NavBar';
 import Footer from '@/components/UI/Footer';
-import ChatWindow from '@/components/Chat/ChatWindow';
+import ChatWindow from '@/components/chat/ChatWindow';
 import ClientInit from '@/components/ClientInit';
 import CookieConsent from '@/components/UI/CookieConsent';
 

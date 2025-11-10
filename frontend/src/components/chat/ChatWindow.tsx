@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import useUserStore from '@/hooks/useUserStore';
 import { useWSConnect } from '@/hooks/useWebsocket';
-import LoginBox from '../Login/LoginBox';
-import ChatBox from './ChatBox';
+import LoginBox from './login/LoginBox';
+import ChatBox from './loggedin/ChatBox';
 import Button from '../UI/Button';
 import { MessageCircleMore, X } from 'lucide-react';
+// import LoggedinBox from './loggedin/LoggedinBox';
 
 export default function ChatWindow() {
   const [isOpen, setIsOpen] = useState(false);
